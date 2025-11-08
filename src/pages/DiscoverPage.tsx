@@ -1,6 +1,6 @@
 import "@mantine/core/styles.css";
 import {
-  ActionIcon,
+  Anchor,
   Badge,
   Box,
   Button,
@@ -19,6 +19,7 @@ import {
   TextInput,
   ThemeIcon,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
@@ -26,6 +27,7 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconCalendar,
+  IconExternalLink,
   IconFilter,
   IconRocket,
   IconSearch,
@@ -334,21 +336,33 @@ export function DiscoverPage() {
 
           {/* Results header */}
           {data && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">
-                Showing {sortedGrants.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–
-                {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount)} of{" "}
-                {data.totalCount.toLocaleString()} results
-              </Text>
-              <Button
-                variant="subtle"
-                size="xs"
-                onClick={() => refetch()}
-                disabled={isLoading}
-              >
-                Refresh
-              </Button>
-            </Group>
+            <Paper p="md" withBorder>
+              <Group justify="space-between" align="center">
+                <Stack gap={4}>
+                  <Text fw={600} size="lg">
+                    {data.totalCount.toLocaleString()} Opportunities Found
+                  </Text>
+                  <Text size="sm" c="dimmed">
+                    Showing {sortedGrants.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount)}
+                    {data.totalCount > 1000 && (
+                      <Text span c="orange" ml={4}>
+                        • Consider refining filters for more specific results
+                      </Text>
+                    )}
+                  </Text>
+                </Stack>
+                <Button
+                  variant="light"
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  leftSection={<IconSearch size={16} />}
+                >
+                  Refresh
+                </Button>
+              </Group>
+            </Paper>
           )}
 
           {/* Loading state */}
@@ -390,23 +404,61 @@ export function DiscoverPage() {
 
           {/* Results list */}
           {!isLoading && !error && sortedGrants.length > 0 && (
-            <Stack gap="sm">
+            <Stack gap="md">
               {sortedGrants.map((grant) => {
                 const isSaved = savedGrantIds.has(grant.id);
                 const isClosingSoon =
                   grant.closeDate &&
                   dayjs(grant.closeDate).diff(dayjs(), "day") <= 30;
+                const grantsGovUrl = `https://www.grants.gov/search-results-detail/${grant.number}`;
 
                 return (
-                  <Card key={grant.id} padding="md" withBorder>
-                    <Stack gap="sm">
-                      <Group justify="space-between" align="flex-start">
-                        <Stack gap={4} style={{ flex: 1 }}>
-                          <Text fw={600} size="lg">
+                  <Card key={grant.id} padding="lg" withBorder radius="md" shadow="sm">
+                    <Stack gap="md">
+                      {/* Header with title and actions */}
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Stack gap={6} style={{ flex: 1, minWidth: 0 }}>
+                          {/* Opportunity Number */}
+                          <Group gap={8}>
+                            <Badge variant="dot" color="gray" size="sm">
+                              {grant.number}
+                            </Badge>
+                            <Badge
+                              variant="light"
+                              color={grant.status === "posted" ? "green" : "blue"}
+                              size="sm"
+                            >
+                              {grant.status}
+                            </Badge>
+                          </Group>
+
+                          {/* Title as external link */}
+                          <Anchor
+                            href={grantsGovUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            fw={600}
+                            size="lg"
+                            c="dark"
+                            style={{
+                              textDecoration: "none",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                            }}
+                          >
                             {grant.title}
-                          </Text>
-                          <Group gap="xs">
-                            <Text size="sm" c="dimmed">
+                            <IconExternalLink
+                              size={16}
+                              style={{ marginLeft: 4, verticalAlign: "middle" }}
+                            />
+                          </Anchor>
+
+                          {/* Agency and ALN */}
+                          <Group gap="xs" wrap="wrap">
+                            <Text size="sm" c="dimmed" fw={500}>
                               {grant.agency}
                             </Text>
                             {grant.aln && (
@@ -414,52 +466,79 @@ export function DiscoverPage() {
                                 <Text size="sm" c="dimmed">
                                   •
                                 </Text>
-                                <Badge variant="light" size="sm">
-                                  ALN: {grant.aln}
-                                </Badge>
+                                <Text size="sm" c="dimmed">
+                                  CFDA {grant.aln}
+                                </Text>
                               </>
                             )}
                           </Group>
                         </Stack>
-                        <ActionIcon
-                          variant={isSaved ? "filled" : "light"}
-                          color="grape"
-                          size="lg"
-                          onClick={() => handleSaveToggle(grant, isSaved)}
+
+                        {/* Save button */}
+                        <Tooltip
+                          label={isSaved ? "Saved to pipeline" : "Save to pipeline"}
+                          position="left"
                         >
-                          {isSaved ? (
-                            <IconBookmarkFilled size={20} />
-                          ) : (
-                            <IconBookmark size={20} />
-                          )}
-                        </ActionIcon>
+                          <Button
+                            variant={isSaved ? "filled" : "light"}
+                            color="grape"
+                            size="sm"
+                            leftSection={
+                              isSaved ? (
+                                <IconBookmarkFilled size={16} />
+                              ) : (
+                                <IconBookmark size={16} />
+                              )
+                            }
+                            onClick={() => handleSaveToggle(grant, isSaved)}
+                          >
+                            {isSaved ? "Saved" : "Save"}
+                          </Button>
+                        </Tooltip>
                       </Group>
 
-                      <Group gap="md">
-                        <Badge
-                          variant="light"
-                          color={grant.status === "posted" ? "green" : "blue"}
-                        >
-                          {grant.status}
-                        </Badge>
+                      <Divider />
+
+                      {/* Dates row */}
+                      <Group gap="lg" wrap="wrap">
                         {grant.openDate && (
-                          <Text size="sm" c="dimmed">
-                            Opened: {dayjs(grant.openDate).format("MMM D, YYYY")}
-                          </Text>
+                          <Group gap={6}>
+                            <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                              Opened
+                            </Text>
+                            <Text size="sm">
+                              {dayjs(grant.openDate).format("MMM D, YYYY")}
+                            </Text>
+                          </Group>
                         )}
-                        {grant.closeDate ? (
-                          <Text
-                            size="sm"
-                            fw={isClosingSoon ? 600 : 400}
-                            c={isClosingSoon ? "orange" : "dimmed"}
-                          >
-                            Due: {dayjs(grant.closeDate).format("MMM D, YYYY")}
+                        <Group gap={6}>
+                          <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                            {grant.closeDate ? "Closes" : "Deadline"}
                           </Text>
-                        ) : (
-                          <Text size="sm" c="dimmed">
-                            Due: TBD
-                          </Text>
-                        )}
+                          {grant.closeDate ? (
+                            <Text
+                              size="sm"
+                              fw={isClosingSoon ? 700 : 500}
+                              c={isClosingSoon ? "orange" : undefined}
+                            >
+                              {dayjs(grant.closeDate).format("MMM D, YYYY")}
+                              {isClosingSoon && (
+                                <Badge
+                                  color="orange"
+                                  variant="light"
+                                  size="xs"
+                                  ml={6}
+                                >
+                                  Soon
+                                </Badge>
+                              )}
+                            </Text>
+                          ) : (
+                            <Text size="sm" c="dimmed" fs="italic">
+                              TBD
+                            </Text>
+                          )}
+                        </Group>
                       </Group>
                     </Stack>
                   </Card>
