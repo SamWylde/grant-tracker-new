@@ -1,0 +1,126 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables');
+}
+
+interface SavedGrantRequest {
+  org_id: string;
+  user_id: string;
+  external_id: string;
+  title: string;
+  agency?: string;
+  aln?: string;
+  open_date?: string;
+  close_date?: string;
+}
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  // Initialize Supabase client
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  try {
+    switch (req.method) {
+      case 'GET': {
+        // List saved grants for an organization
+        const { org_id } = req.query;
+
+        if (!org_id || typeof org_id !== 'string') {
+          return res.status(400).json({ error: 'org_id is required' });
+        }
+
+        const { data, error } = await supabase
+          .from('org_grants_saved')
+          .select('*')
+          .eq('org_id', org_id)
+          .order('saved_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching saved grants:', error);
+          return res.status(500).json({ error: 'Failed to fetch saved grants' });
+        }
+
+        return res.status(200).json({ grants: data });
+      }
+
+      case 'POST': {
+        // Save a new grant
+        const grantData = req.body as SavedGrantRequest;
+
+        if (!grantData.org_id || !grantData.user_id || !grantData.external_id || !grantData.title) {
+          return res.status(400).json({
+            error: 'Missing required fields: org_id, user_id, external_id, title'
+          });
+        }
+
+        const { data, error } = await supabase
+          .from('org_grants_saved')
+          .insert({
+            org_id: grantData.org_id,
+            user_id: grantData.user_id,
+            external_source: 'grants.gov',
+            external_id: grantData.external_id,
+            title: grantData.title,
+            agency: grantData.agency || null,
+            aln: grantData.aln || null,
+            open_date: grantData.open_date || null,
+            close_date: grantData.close_date || null,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          // Check for unique constraint violation (already saved)
+          if (error.code === '23505') {
+            return res.status(409).json({ error: 'Grant already saved' });
+          }
+          console.error('Error saving grant:', error);
+          return res.status(500).json({ error: 'Failed to save grant' });
+        }
+
+        return res.status(201).json({ grant: data });
+      }
+
+      case 'DELETE': {
+        // Delete a saved grant by ID
+        const { id } = req.query;
+
+        if (!id || typeof id !== 'string') {
+          return res.status(400).json({ error: 'id is required' });
+        }
+
+        const { error } = await supabase
+          .from('org_grants_saved')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          console.error('Error deleting saved grant:', error);
+          return res.status(500).json({ error: 'Failed to delete saved grant' });
+        }
+
+        return res.status(200).json({ message: 'Grant removed from pipeline' });
+      }
+
+      default:
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+  } catch (error) {
+    console.error('Error in saved grants API:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
