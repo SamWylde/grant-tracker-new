@@ -8,6 +8,7 @@ import {
   Checkbox,
   Container,
   Divider,
+  Drawer,
   Group,
   Loader,
   NumberInput,
@@ -29,6 +30,7 @@ import {
   IconCalendar,
   IconExternalLink,
   IconFilter,
+  IconInfoCircle,
   IconRocket,
   IconSearch,
 } from "@tabler/icons-react";
@@ -59,6 +61,8 @@ export function DiscoverPage() {
   const [statusForecasted, setStatusForecasted] = useState(true);
   const [dueInDays, setDueInDays] = useState<number | string>("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [detailsDrawerOpen, setDetailsDrawerOpen] = useState(false);
+  const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
 
   const [debouncedKeyword] = useDebouncedValue(keyword, 500);
 
@@ -124,6 +128,27 @@ export function DiscoverPage() {
   const savedGrantIds = new Set(
     savedGrants?.grants.map((g) => g.external_id) || []
   );
+
+  // Fetch grant details
+  const { data: grantDetails, isLoading: isLoadingDetails } = useQuery({
+    queryKey: ["grantDetails", selectedGrantId],
+    queryFn: async () => {
+      if (!selectedGrantId) return null;
+
+      const response = await fetch("/api/grants/details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunityId: selectedGrantId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch grant details");
+      }
+
+      return response.json();
+    },
+    enabled: !!selectedGrantId && detailsDrawerOpen,
+  });
 
   // Filter by due date client-side
   const filteredGrants =
@@ -244,7 +269,7 @@ export function DiscoverPage() {
                 </Text>
               </Stack>
             </Group>
-            <Button variant="light" color="grape">
+            <Button variant="light" color="grape" component={Link} to="/saved">
               View Saved ({savedGrants?.grants.length || 0})
             </Button>
           </Group>
@@ -474,27 +499,43 @@ export function DiscoverPage() {
                           </Group>
                         </Stack>
 
-                        {/* Save button */}
-                        <Tooltip
-                          label={isSaved ? "Saved to pipeline" : "Save to pipeline"}
-                          position="left"
-                        >
-                          <Button
-                            variant={isSaved ? "filled" : "light"}
-                            color="grape"
-                            size="sm"
-                            leftSection={
-                              isSaved ? (
-                                <IconBookmarkFilled size={16} />
-                              ) : (
-                                <IconBookmark size={16} />
-                              )
-                            }
-                            onClick={() => handleSaveToggle(grant, isSaved)}
+                        {/* Action buttons */}
+                        <Group gap="xs">
+                          <Tooltip label="View full details" position="left">
+                            <Button
+                              variant="subtle"
+                              color="gray"
+                              size="sm"
+                              leftSection={<IconInfoCircle size={16} />}
+                              onClick={() => {
+                                setSelectedGrantId(grant.id);
+                                setDetailsDrawerOpen(true);
+                              }}
+                            >
+                              Details
+                            </Button>
+                          </Tooltip>
+                          <Tooltip
+                            label={isSaved ? "Saved to pipeline" : "Save to pipeline"}
+                            position="left"
                           >
-                            {isSaved ? "Saved" : "Save"}
-                          </Button>
-                        </Tooltip>
+                            <Button
+                              variant={isSaved ? "filled" : "light"}
+                              color="grape"
+                              size="sm"
+                              leftSection={
+                                isSaved ? (
+                                  <IconBookmarkFilled size={16} />
+                                ) : (
+                                  <IconBookmark size={16} />
+                                )
+                              }
+                              onClick={() => handleSaveToggle(grant, isSaved)}
+                            >
+                              {isSaved ? "Saved" : "Save"}
+                            </Button>
+                          </Tooltip>
+                        </Group>
                       </Group>
 
                       <Divider />
@@ -560,6 +601,152 @@ export function DiscoverPage() {
           )}
         </Stack>
       </Container>
+
+      {/* Grant Details Drawer */}
+      <Drawer
+        opened={detailsDrawerOpen}
+        onClose={() => {
+          setDetailsDrawerOpen(false);
+          setSelectedGrantId(null);
+        }}
+        title="Grant Details"
+        position="right"
+        size="xl"
+        padding="lg"
+      >
+        {isLoadingDetails ? (
+          <Group justify="center" py="xl">
+            <Loader />
+            <Text>Loading details...</Text>
+          </Group>
+        ) : grantDetails ? (
+          <Stack gap="md">
+            {/* Synopsis/Description */}
+            {grantDetails.synopsis?.synopsisDesc && (
+              <Box>
+                <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="xs">
+                  Description
+                </Text>
+                <Text style={{ whiteSpace: "pre-wrap" }}>
+                  {grantDetails.synopsis.synopsisDesc}
+                </Text>
+              </Box>
+            )}
+
+            {/* Award Information */}
+            {grantDetails.award && (
+              <Box>
+                <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="xs">
+                  Award Information
+                </Text>
+                <Stack gap="xs">
+                  {grantDetails.award.awardCeiling && (
+                    <Group gap="xs">
+                      <Text size="sm" fw={500}>
+                        Award Ceiling:
+                      </Text>
+                      <Text size="sm">
+                        ${Number(grantDetails.award.awardCeiling).toLocaleString()}
+                      </Text>
+                    </Group>
+                  )}
+                  {grantDetails.award.awardFloor && (
+                    <Group gap="xs">
+                      <Text size="sm" fw={500}>
+                        Award Floor:
+                      </Text>
+                      <Text size="sm">
+                        ${Number(grantDetails.award.awardFloor).toLocaleString()}
+                      </Text>
+                    </Group>
+                  )}
+                  {grantDetails.award.estimatedTotalProgram && (
+                    <Group gap="xs">
+                      <Text size="sm" fw={500}>
+                        Estimated Total Program Funding:
+                      </Text>
+                      <Text size="sm">
+                        ${Number(grantDetails.award.estimatedTotalProgram).toLocaleString()}
+                      </Text>
+                    </Group>
+                  )}
+                  {grantDetails.award.expectedNumberOfAwards && (
+                    <Group gap="xs">
+                      <Text size="sm" fw={500}>
+                        Expected Number of Awards:
+                      </Text>
+                      <Text size="sm">
+                        {grantDetails.award.expectedNumberOfAwards}
+                      </Text>
+                    </Group>
+                  )}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Eligibility */}
+            {grantDetails.eligibility && (
+              <Box>
+                <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="xs">
+                  Eligibility
+                </Text>
+                <Stack gap="xs">
+                  {grantDetails.eligibility.applicantEligibilityDesc && (
+                    <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                      {grantDetails.eligibility.applicantEligibilityDesc}
+                    </Text>
+                  )}
+                  {grantDetails.eligibility.applicantTypes && (
+                    <Group gap={4} mt="xs">
+                      {grantDetails.eligibility.applicantTypes.map((type: string, idx: number) => (
+                        <Badge key={idx} size="sm" variant="light">
+                          {type}
+                        </Badge>
+                      ))}
+                    </Group>
+                  )}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Additional Information */}
+            {grantDetails.additionalInfo && (
+              <Box>
+                <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="xs">
+                  Additional Information
+                </Text>
+                <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                  {grantDetails.additionalInfo}
+                </Text>
+              </Box>
+            )}
+
+            {/* Contact Information */}
+            {grantDetails.contact && (
+              <Box>
+                <Text fw={600} size="sm" tt="uppercase" c="dimmed" mb="xs">
+                  Contact Information
+                </Text>
+                <Stack gap="xs">
+                  {grantDetails.contact.name && (
+                    <Text size="sm">{grantDetails.contact.name}</Text>
+                  )}
+                  {grantDetails.contact.email && (
+                    <Anchor href={`mailto:${grantDetails.contact.email}`} size="sm">
+                      {grantDetails.contact.email}
+                    </Anchor>
+                  )}
+                  {grantDetails.contact.phone && (
+                    <Text size="sm">{grantDetails.contact.phone}</Text>
+                  )}
+                </Stack>
+              </Box>
+            )}
+          </Stack>
+        ) : (
+          <Text c="dimmed">No details available</Text>
+        )}
+      </Drawer>
     </Box>
   );
 }
