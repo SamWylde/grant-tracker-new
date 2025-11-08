@@ -435,7 +435,7 @@ export function DiscoverPage() {
                 const isClosingSoon =
                   grant.closeDate &&
                   dayjs(grant.closeDate).diff(dayjs(), "day") <= 30;
-                const grantsGovUrl = `https://www.grants.gov/search-results-detail/${grant.number}`;
+                const grantsGovUrl = `https://www.grants.gov/search-results-detail/${grant.id}`;
 
                 return (
                   <Card key={grant.id} padding="lg" withBorder radius="md" shadow="sm">
