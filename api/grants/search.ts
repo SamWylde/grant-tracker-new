@@ -131,7 +131,6 @@ export default async function handler(
 
     // Log the parsed data structure for debugging
     console.log('Parsed Grants.gov data keys:', Object.keys(data));
-    console.log('Full response:', JSON.stringify(data, null, 2));
 
     // Validate response structure
     if (!data || typeof data !== 'object') {
@@ -143,11 +142,32 @@ export default async function handler(
       });
     }
 
-    if (!data.oppHits || !Array.isArray(data.oppHits)) {
-      console.error('Missing or invalid oppHits in Grants.gov response:', {
-        hasOppHits: !!data.oppHits,
-        isArray: Array.isArray(data.oppHits),
-        dataKeys: Object.keys(data)
+    // Check if Grants.gov returned an error
+    if ('errorcode' in data && data.errorcode) {
+      console.error('Grants.gov API returned error:', {
+        errorcode: data.errorcode,
+        msg: data.msg
+      });
+      return res.status(502).json({
+        error: 'Grants.gov API error',
+        message: (data as any).msg || 'Unknown error from Grants.gov',
+        errorCode: (data as any).errorcode
+      });
+    }
+
+    // Handle nested data structure (actual Grants.gov response format)
+    let searchData: GrantsGovSearchResponse;
+    if ('data' in data && data.data && typeof data.data === 'object') {
+      console.log('Found nested data object, using data.data');
+      searchData = data.data as GrantsGovSearchResponse;
+    } else if ('oppHits' in data) {
+      console.log('Found oppHits at root level');
+      searchData = data as GrantsGovSearchResponse;
+    } else {
+      console.error('Missing oppHits in Grants.gov response:', {
+        dataKeys: Object.keys(data),
+        hasData: 'data' in data,
+        dataType: typeof (data as any).data
       });
       return res.status(502).json({
         error: 'Invalid response structure from Grants.gov',
@@ -156,14 +176,30 @@ export default async function handler(
       });
     }
 
+    // Validate the actual search data
+    if (!searchData.oppHits || !Array.isArray(searchData.oppHits)) {
+      console.error('Invalid oppHits in search data:', {
+        hasOppHits: !!searchData.oppHits,
+        isArray: Array.isArray(searchData.oppHits),
+        searchDataKeys: Object.keys(searchData)
+      });
+      return res.status(502).json({
+        error: 'Invalid search data structure',
+        message: 'Missing oppHits array in search data',
+        debug: `Search data keys: ${Object.keys(searchData).join(', ')}`
+      });
+    }
+
+    console.log(`Found ${searchData.oppHits.length} opportunities`);
+
     // Normalize the response
-    const normalizedGrants = data.oppHits.map(normalizeOpportunity);
+    const normalizedGrants = searchData.oppHits.map(normalizeOpportunity);
 
     // Return normalized response
     const responseData = {
       grants: normalizedGrants,
-      totalCount: data.hitCount,
-      startRecord: data.startRecord,
+      totalCount: searchData.hitCount,
+      startRecord: searchData.startRecord,
       pageSize: rows,
     };
 
