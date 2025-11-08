@@ -129,6 +129,33 @@ export default async function handler(
       });
     }
 
+    // Log the parsed data structure for debugging
+    console.log('Parsed Grants.gov data keys:', Object.keys(data));
+    console.log('Full response:', JSON.stringify(data, null, 2));
+
+    // Validate response structure
+    if (!data || typeof data !== 'object') {
+      console.error('Invalid data structure from Grants.gov:', data);
+      return res.status(502).json({
+        error: 'Invalid response from Grants.gov',
+        message: 'Response is not a valid object',
+        debug: JSON.stringify(data).substring(0, 200)
+      });
+    }
+
+    if (!data.oppHits || !Array.isArray(data.oppHits)) {
+      console.error('Missing or invalid oppHits in Grants.gov response:', {
+        hasOppHits: !!data.oppHits,
+        isArray: Array.isArray(data.oppHits),
+        dataKeys: Object.keys(data)
+      });
+      return res.status(502).json({
+        error: 'Invalid response structure from Grants.gov',
+        message: 'Response missing oppHits array',
+        debug: `Response keys: ${Object.keys(data).join(', ')}`
+      });
+    }
+
     // Normalize the response
     const normalizedGrants = data.oppHits.map(normalizeOpportunity);
 

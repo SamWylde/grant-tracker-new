@@ -61,7 +61,14 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 4. Set up the database:
 
-Run the migration in `supabase/migrations/20250108_create_org_grants_saved.sql` in your Supabase SQL editor to create the `org_grants_saved` table with RLS policies.
+**IMPORTANT**: You must run this migration before the app will work!
+
+Go to your Supabase project → SQL Editor, then copy and paste the contents of `supabase/migrations/20250108_create_org_grants_saved.sql` and execute it. This creates the `org_grants_saved` table with RLS policies.
+
+To verify the table was created, run:
+```sql
+SELECT * FROM public.org_grants_saved LIMIT 1;
+```
 
 5. Start the development server:
 ```bash
