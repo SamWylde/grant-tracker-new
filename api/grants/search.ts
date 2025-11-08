@@ -80,25 +80,54 @@ export default async function handler(
     if (agencies) grantsGovRequest.agencies = agencies;
     if (aln) grantsGovRequest.aln = aln;
 
-    // Call Grants.gov API
-    const response = await fetch('https://api.grants.gov/v1/api/search2', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(grantsGovRequest),
-      signal: AbortSignal.timeout(25000), // 25s timeout
-    });
+    // Log the request for debugging
+    console.log('Grants.gov request:', JSON.stringify(grantsGovRequest, null, 2));
+
+    // Call Grants.gov API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    let response;
+    try {
+      response = await fetch('https://api.grants.gov/v1/api/search2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(grantsGovRequest),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
-      console.error('Grants.gov API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Grants.gov API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
       return res.status(response.status).json({
         error: 'Failed to fetch from Grants.gov',
         details: response.statusText,
+        debug: errorText.substring(0, 200)
       });
     }
 
-    const data: GrantsGovSearchResponse = await response.json();
+    const responseText = await response.text();
+    console.log('Grants.gov response (first 500 chars):', responseText.substring(0, 500));
+
+    let data: GrantsGovSearchResponse;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse Grants.gov response:', parseError);
+      return res.status(502).json({
+        error: 'Invalid response from Grants.gov',
+        message: 'Failed to parse API response'
+      });
+    }
 
     // Normalize the response
     const normalizedGrants = data.oppHits.map(normalizeOpportunity);
