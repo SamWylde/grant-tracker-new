@@ -146,7 +146,7 @@ export default async function handler(
     if ('errorcode' in data && data.errorcode) {
       console.error('Grants.gov API returned error:', {
         errorcode: data.errorcode,
-        msg: data.msg
+        msg: (data as any).msg
       });
       return res.status(502).json({
         error: 'Grants.gov API error',
