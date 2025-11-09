@@ -44,11 +44,11 @@ export function NoOrganization() {
         .select()
         .single();
 
-      if (orgError) throw orgError;
+      if (orgError || !org) throw orgError || new Error('Failed to create organization');
 
       // Add user as admin
       const { error: memberError } = await supabase.from('org_members').insert({
-        org_id: org!.id,
+        org_id: (org as any).id,
         user_id: user.id,
         role: 'admin',
       } as any);

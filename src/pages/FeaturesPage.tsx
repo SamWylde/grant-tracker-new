@@ -16,6 +16,8 @@ import {
   Text,
   ThemeIcon,
   Title,
+  Accordion,
+  Paper,
 } from '@mantine/core';
 import {
   IconRocket,
@@ -31,6 +33,8 @@ import {
   IconBrandSlack,
   IconMail,
   IconCode,
+  IconChecklist,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -486,6 +490,220 @@ export function FeaturesPage() {
               </Text>
             </Card>
           </SimpleGrid>
+        </Stack>
+      </Container>
+
+      {/* Product Roadmap */}
+      <Container size="lg" py={{ base: 60, md: 80 }}>
+        <Stack gap="xl">
+          <Stack gap="sm" align="center">
+            <Badge size="lg" variant="light" color="grape">
+              Product Roadmap
+            </Badge>
+            <Title order={2} ta="center">
+              Our development plan
+            </Title>
+            <Text size="lg" c="dimmed" ta="center" maw={640}>
+              Transparent roadmap showing current features and what's coming next. Items marked with priority (P0 = Critical, P1 = High, P2 = Nice-to-have).
+            </Text>
+          </Stack>
+
+          <Accordion variant="separated" radius="md">
+            {/* Core Features - In Progress */}
+            <Accordion.Item value="core">
+              <Accordion.Control icon={<IconChecklist size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Authentication & Organizations</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Email/password auth via Supabase ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Magic link sign-in ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Organization creation & switcher ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Roles: Admin, Contributor (RBAC) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Invite members by email (In Progress)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> 2FA (TOTP) (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> SSO/SAML (Google/Microsoft) (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="discovery">
+              <Accordion.Control icon={<IconSearch size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Discovery & Search</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Grants.gov API integration ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Advanced filters (category, amount, location, deadline) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Save/track grants ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Grant detail views ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Quick search (cmd/ctrl+K) (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Saved searches & email alerts (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> State portals integration (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Recommendation engine (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="workflow">
+              <Accordion.Control icon={<IconChecklist size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Tracking & Workflow</Text>
+                  <Badge color="orange" variant="light">In Progress</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Pipeline board: Researching → Drafting → Submitted → Awarded ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Per-grant timeline with multiple deadlines ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Assign owner & priority (In Progress)</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Tasks with checklist templates (In Progress)</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Notes/comments with @mentions (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> File links (Google Drive/OneDrive/Dropbox) (Q1 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Approvals & stage gates (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="reminders">
+              <Accordion.Control icon={<IconBell size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Reminders & Calendar</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Email reminders (30/14/7/3/1 days) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Daily digest email ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> ICS calendar feed ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Google Calendar sync (In Progress)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Outlook Calendar sync (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> SMS reminders (Twilio) (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Slack/Teams reminders (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="analytics">
+              <Accordion.Control icon={<IconChartBar size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Reporting & Analytics</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Dashboard: submissions, win rate, $ requested/awarded ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Deadline success rate tracking ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Time-to-submit metrics ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> CSV export (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Scheduled email reports (Future)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Funder history analytics (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="integrations">
+              <Accordion.Control icon={<IconCode size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Integrations</Text>
+                  <Badge color="orange" variant="light">In Progress</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Google Drive file picker (Q1 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Slack app & alerts (Q1 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Zapier/Make triggers (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Microsoft Teams & OneDrive (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Webhooks for key events (Future)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Notion/Trello/Asana sync (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="billing">
+              <Accordion.Control icon={<IconCreditCard size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Billing & Plans</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Stripe integration ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Free/Starter/Pro plans ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Trial handling ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Coupons & association discounts (Q1 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Annual billing with discount (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Tax/VAT support (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="ai">
+              <Accordion.Control icon={<IconRocket size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>AI-Assisted Features</Text>
+                  <Badge color="grape" variant="light">Coming Soon</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> NOFO summarizer (key dates, eligibility, amounts) (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Deadline extractor from PDF/HTML (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Draft task/checklist generator (Future)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Proposal outline assistant (Future)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Semantic search over saved grants (Future)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="security">
+              <Accordion.Control icon={<IconShieldCheck size={20} />}>
+                <Group justify="space-between">
+                  <Text fw={600}>Security & Compliance</Text>
+                  <Badge color="green" variant="light">Live</Badge>
+                </Group>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <List spacing="xs" size="sm">
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Row-level security (RLS) for all tables ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Encrypted secrets & key rotation ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Automated backups & point-in-time recovery ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Audit log (who did what/when) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Data retention & org export (GDPR/CCPA) (Q1 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Access logs & anomaly alerts (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> SOC-2 compliance (2025 H2)</List.Item>
+                </List>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+
+          <Paper p="md" withBorder bg="var(--mantine-color-blue-0)">
+            <Stack gap="sm">
+              <Text fw={600} size="lg">Priority Guide</Text>
+              <Group gap="md">
+                <Badge color="green">P0</Badge>
+                <Text size="sm">Critical - Must have for core functionality</Text>
+              </Group>
+              <Group gap="md">
+                <Badge color="blue">P1</Badge>
+                <Text size="sm">High - Important for user experience</Text>
+              </Group>
+              <Group gap="md">
+                <Badge color="gray">P2</Badge>
+                <Text size="sm">Nice-to-have - Future enhancements</Text>
+              </Group>
+            </Stack>
+          </Paper>
         </Stack>
       </Container>
 
