@@ -63,8 +63,8 @@ export function HomePage() {
                 <Anchor size="sm" c="dark" component={Link} to="/discover">
                   Discover Grants
                 </Anchor>
-                <Anchor size="sm" c="dark" component={Link} to="/">
-                  Product
+                <Anchor size="sm" c="dark" component={Link} to="/features">
+                  Features
                 </Anchor>
                 <Anchor size="sm" c="dark" component={Link} to="/pricing">
                   Pricing
@@ -72,7 +72,9 @@ export function HomePage() {
                 <Button variant="light" color="grape" component={Link} to="/signin">
                   Sign in
                 </Button>
-                <Button color="grape">Book demo</Button>
+                <Button color="grape" component={Link} to="/signin">
+                  Get started
+                </Button>
               </Group>
 
               {/* Mobile Menu Button */}
@@ -105,11 +107,11 @@ export function HomePage() {
                 </Anchor>
                 <Anchor
                   component={Link}
-                  to="/"
+                  to="/features"
                   c="dark"
                   onClick={() => setMobileMenuOpened(false)}
                 >
-                  Product
+                  Features
                 </Anchor>
                 <Anchor
                   component={Link}
@@ -130,8 +132,14 @@ export function HomePage() {
                 >
                   Sign in
                 </Button>
-                <Button color="grape" fullWidth onClick={() => setMobileMenuOpened(false)}>
-                  Book demo
+                <Button
+                  color="grape"
+                  component={Link}
+                  to="/signin"
+                  fullWidth
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Get started
                 </Button>
               </Stack>
             </Drawer>
@@ -162,7 +170,7 @@ export function HomePage() {
                 focus on crafting standout proposals instead of chasing spreadsheets.
               </Text>
               <Group gap="md">
-                <Button size="lg" color="grape">
+                <Button size="lg" color="grape" component={Link} to="/signin">
                   Start free trial
                 </Button>
                 <Button size="lg" variant="default" component={Link} to="/discover">
@@ -385,11 +393,11 @@ export function HomePage() {
               and data migration support from our specialist team.
             </Text>
             <Group gap="md" wrap="wrap" justify="center">
-              <Button size="lg" color="grape">
-                Talk to sales
+              <Button size="lg" color="grape" component={Link} to="/signin">
+                Get started
               </Button>
-              <Button size="lg" variant="default">
-                Explore product overview
+              <Button size="lg" variant="default" component={Link} to="/features">
+                Explore features
               </Button>
             </Group>
           </Stack>

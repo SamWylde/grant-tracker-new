@@ -9,6 +9,7 @@ import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { HomePage } from "./pages/HomePage";
 import SignInPage from "./pages/SignInPage";
 import { PricingPage } from "./pages/PricingPage";
+import { FeaturesPage } from "./pages/FeaturesPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
 import { MetricsPage } from "./pages/MetricsPage";
@@ -44,6 +45,7 @@ export default function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/signin" element={<SignInPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/discover" element={<DiscoverPage />} />
                 <Route path="/saved" element={<SavedGrantsPage />} />
                 <Route path="/metrics" element={<MetricsPage />} />
