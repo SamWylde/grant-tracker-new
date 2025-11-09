@@ -53,6 +53,7 @@ import { FitScoreBadge } from "../components/FitScoreBadge";
 import { QuickAddGrantModal } from "../components/QuickAddGrantModal";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useSavedGrantIds } from "../hooks/useSavedGrants";
 
 // Enable relative time plugin for dayjs
 dayjs.extend(relativeTime);
@@ -152,20 +153,24 @@ export function DiscoverPage() {
     enabled: oppStatuses !== "", // Only run if at least one status is selected
   });
 
-  // Fetch saved grants
-  const { data: savedGrants } = useQuery<{ grants: Array<{ external_id: string }> }>({
-    queryKey: ["savedGrants", currentOrg?.id],
-    queryFn: async () => {
-      if (!currentOrg?.id) return { grants: [] };
-      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
-      if (!response.ok) throw new Error("Failed to fetch saved grants");
-      return response.json();
-    },
-  });
+  // Fetch saved grants using shared hook
+  const {
+    savedGrantIds,
+    savedGrants,
+    error: savedGrantsError,
+  } = useSavedGrantIds();
 
-  const savedGrantIds = new Set(
-    savedGrants?.grants.map((g) => g.external_id) || []
-  );
+  // Show error notification for saved grants failures (non-blocking)
+  useEffect(() => {
+    if (savedGrantsError) {
+      notifications.show({
+        title: 'Warning',
+        message: 'Failed to load saved grants status. You can still browse and save grants.',
+        color: 'orange',
+        autoClose: 5000,
+      });
+    }
+  }, [savedGrantsError]);
 
   // Fetch grant details
   const {

@@ -203,7 +203,7 @@ export function GrantHubImportPage() {
           <Stack gap="sm">
             <Title order={1}>Import from GrantHub</Title>
             <Text c="dimmed" size="lg">
-              Migrate your grant data from GrantHub/GrantHub Pro to Grantcue
+              Migrate your grant data from GrantHub/GrantHub Pro to GrantQue
             </Text>
           </Stack>
 

@@ -23,6 +23,7 @@ import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
+import { useSavedGrants } from "../hooks/useSavedGrants";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -58,16 +59,8 @@ export function PipelinePage() {
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
 
-  // Fetch saved grants
-  const { data, isLoading } = useQuery<{ grants: SavedGrant[] }>({
-    queryKey: ["savedGrants", currentOrg?.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/saved?org_id=${currentOrg?.id}`);
-      if (!response.ok) throw new Error("Failed to fetch saved grants");
-      return response.json();
-    },
-    enabled: !!currentOrg?.id,
-  });
+  // Fetch saved grants using shared hook
+  const { data, isLoading, error } = useSavedGrants();
 
   // Update grant status mutation
   const updateStatusMutation = useMutation({
@@ -178,6 +171,17 @@ export function PipelinePage() {
                 <Loader size="lg" />
                 <Text>Loading pipeline...</Text>
               </Group>
+            </Card>
+          ) : error ? (
+            <Card padding="xl" withBorder>
+              <Stack align="center" gap="md">
+                <Text c="red" fw={600}>
+                  Error loading grants
+                </Text>
+                <Text c="dimmed" ta="center">
+                  {error instanceof Error ? error.message : "An error occurred"}
+                </Text>
+              </Stack>
             </Card>
           ) : (
             <ScrollArea>
