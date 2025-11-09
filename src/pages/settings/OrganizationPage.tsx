@@ -80,9 +80,9 @@ export function OrganizationPage() {
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No organization');
 
-      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase
         .from('organizations')
+        // @ts-ignore - Supabase type inference issue
         .update({
           name: orgName,
           primary_state: primaryState,

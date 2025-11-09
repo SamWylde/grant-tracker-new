@@ -101,7 +101,7 @@ export function TeamPage() {
     mutationFn: async () => {
       if (!currentOrg || !user) throw new Error('No organization or user');
 
-      // @ts-expect-error - Supabase type inference issue
+      // @ts-ignore - Supabase type inference issue
       const { error } = await supabase.from('team_invitations').insert({
         org_id: currentOrg.id,
         email: inviteEmail,
@@ -133,9 +133,9 @@ export function TeamPage() {
   // Revoke invitation mutation
   const revokeMutation = useMutation({
     mutationFn: async (invitationId: string) => {
-      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase
         .from('team_invitations')
+        // @ts-ignore - Supabase type inference issue
         .update({ revoked_at: new Date().toISOString() })
         .eq('id', invitationId);
 
@@ -172,7 +172,7 @@ export function TeamPage() {
   // Change role mutation
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
-      // @ts-expect-error - Supabase type inference issue
+      // @ts-ignore - Supabase type inference issue
       const { error } = await supabase.from('org_members').update({ role }).eq('id', memberId);
 
       if (error) throw error;

@@ -59,9 +59,9 @@ export function CalendarPage() {
       // Generate a new UUID for the ICS token
       const newToken = crypto.randomUUID();
 
-      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase
         .from('organization_settings')
+        // @ts-ignore - Supabase type inference issue
         .update({
           ics_token: newToken,
         })

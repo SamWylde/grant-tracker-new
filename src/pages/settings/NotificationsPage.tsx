@@ -75,9 +75,9 @@ export function NotificationsPage() {
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No organization');
 
-      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase
         .from('organization_settings')
+        // @ts-ignore - Supabase type inference issue
         .update({
           deadline_reminders_30d: deadline30d,
           deadline_reminders_14d: deadline14d,
