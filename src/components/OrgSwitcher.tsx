@@ -19,14 +19,16 @@ export function OrgSwitcher() {
       if (!user) throw new Error('User not authenticated');
 
       // Create the organization
-      const { data: org, error: orgError } = await supabase
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert({ name: orgName } as any)
         .select()
         .single();
 
       if (orgError) throw orgError;
-      if (!org) throw new Error('Failed to create organization');
+      if (!orgData) throw new Error('Failed to create organization');
+
+      const org = orgData as any;
 
       // Add the user as admin
       const { error: memberError } = await supabase
