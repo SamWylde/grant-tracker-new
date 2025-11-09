@@ -58,7 +58,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (orgToSet) {
         const membership = memberships?.find((m: any) => m.org_id === orgToSet?.id);
         setCurrentOrg(orgToSet);
-        const role = membership?.role;
+        const role = (membership as any)?.role;
         setUserRole(role ? (role as 'admin' | 'contributor') : null);
       }
     } catch (error) {

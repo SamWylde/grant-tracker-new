@@ -80,13 +80,15 @@ export function OrganizationPage() {
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No organization');
 
+      const updateData: any = {
+        name: orgName,
+        primary_state: primaryState,
+        focus_areas: focusAreas,
+      };
+
       const { error } = await supabase
         .from('organizations')
-        .update({
-          name: orgName,
-          primary_state: primaryState,
-          focus_areas: focusAreas,
-        })
+        .update(updateData)
         .eq('id', currentOrg.id);
 
       if (error) throw error;
