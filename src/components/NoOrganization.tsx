@@ -40,7 +40,7 @@ export function NoOrganization() {
             .replace(/^-|-$/g, '') +
             '-' +
             Math.random().toString(36).substring(2, 8),
-        })
+        } as any)
         .select()
         .single();
 
@@ -48,10 +48,10 @@ export function NoOrganization() {
 
       // Add user as admin
       const { error: memberError } = await supabase.from('org_members').insert({
-        org_id: org.id,
+        org_id: org!.id,
         user_id: user.id,
         role: 'admin',
-      });
+      } as any);
 
       if (memberError) throw memberError;
 
