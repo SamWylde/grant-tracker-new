@@ -58,7 +58,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (orgToSet) {
         const membership = memberships?.find((m: any) => m.org_id === orgToSet?.id);
         setCurrentOrg(orgToSet);
-        setUserRole((membership?.role as any) as 'admin' | 'contributor' | null);
+        const role = membership?.role;
+        setUserRole(role ? (role as 'admin' | 'contributor') : null);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);

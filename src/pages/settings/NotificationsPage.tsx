@@ -85,7 +85,7 @@ export function NotificationsPage() {
           deadline_reminders_1d: deadline1d,
           deadline_reminders_0d: deadline0d,
           daily_task_emails: dailyTaskEmails,
-        } as any)
+        })
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
@@ -110,14 +110,15 @@ export function NotificationsPage() {
 
   // Track form changes
   useEffect(() => {
+    const settings = orgSettings as any;
     const hasChanges =
-      deadline30d !== (orgSettings?.deadline_reminders_30d ?? true) ||
-      deadline14d !== (orgSettings?.deadline_reminders_14d ?? true) ||
-      deadline7d !== (orgSettings?.deadline_reminders_7d ?? true) ||
-      deadline3d !== (orgSettings?.deadline_reminders_3d ?? true) ||
-      deadline1d !== (orgSettings?.deadline_reminders_1d ?? true) ||
-      deadline0d !== (orgSettings?.deadline_reminders_0d ?? true) ||
-      dailyTaskEmails !== (orgSettings?.daily_task_emails ?? true);
+      deadline30d !== (settings?.deadline_reminders_30d ?? true) ||
+      deadline14d !== (settings?.deadline_reminders_14d ?? true) ||
+      deadline7d !== (settings?.deadline_reminders_7d ?? true) ||
+      deadline3d !== (settings?.deadline_reminders_3d ?? true) ||
+      deadline1d !== (settings?.deadline_reminders_1d ?? true) ||
+      deadline0d !== (settings?.deadline_reminders_0d ?? true) ||
+      dailyTaskEmails !== (settings?.daily_task_emails ?? true);
 
     setIsDirty(hasChanges);
   }, [deadline30d, deadline14d, deadline7d, deadline3d, deadline1d, deadline0d, dailyTaskEmails, orgSettings]);

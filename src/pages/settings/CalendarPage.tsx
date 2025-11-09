@@ -63,7 +63,7 @@ export function CalendarPage() {
         .from('organization_settings')
         .update({
           ics_token: newToken,
-        } as any)
+        })
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
@@ -101,7 +101,7 @@ export function CalendarPage() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       notifications.show({
         title: 'Coming Soon',
         message: 'Google Calendar integration will be available soon!',
@@ -121,10 +121,10 @@ export function CalendarPage() {
   }
 
   // Generate ICS feed URL
-  const icsToken = orgSettings?.ics_token || 'loading';
+  const icsToken = (orgSettings as any)?.ics_token || 'loading';
   const icsUrl = `${window.location.origin}/api/calendar/${currentOrg.id}/${icsToken}.ics`;
 
-  const isGoogleConnected = orgSettings?.google_calendar_connected || false;
+  const isGoogleConnected = (orgSettings as any)?.google_calendar_connected || false;
 
   return (
     <ProtectedRoute>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import {
   Stack,
   Title,
@@ -86,7 +86,7 @@ export function OrganizationPage() {
           name: orgName,
           primary_state: primaryState,
           focus_areas: focusAreas,
-        } as any)
+        })
         .eq('id', currentOrg.id);
 
       if (error) throw error;

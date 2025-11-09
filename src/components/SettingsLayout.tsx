@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -23,6 +23,7 @@ interface SettingsLayoutProps {
 
 export function SettingsLayout({ children }: SettingsLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
 
   const tabs = [
@@ -86,8 +87,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                 <Tabs.Tab
                   key={tab.value}
                   value={tab.value}
-                  component={Link as any}
-                  to={tab.path}
+                  onClick={() => navigate(tab.path)}
                   leftSection={<tab.icon size={16} />}
                 >
                   <Text size="sm" visibleFrom="sm">
