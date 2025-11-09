@@ -29,6 +29,14 @@ A grant discovery and tracking platform that helps organizations find and manage
 - **Deadline Indicators**: Color-coded visual indicators for approaching and overdue deadlines
 - **Assignment**: Assign grants to team members for accountability
 - **Stage Counts**: Real-time count of grants in each pipeline stage
+- **Grant Detail Drawer**: Click any grant card to open detailed view with tasks and notes
+- **Task Management**: Break down each grant into actionable subtasks with progress tracking
+- **Default Task Templates**: Auto-created task list (Research, Narrative, Budget, Documents, Letters, Submission)
+- **Task Checklist**: Mark tasks complete with visual progress indicator
+- **Task Types**: Categorize tasks (research, budget, narrative, letters, documents, submission, custom)
+- **Task Due Dates**: Set deadlines for individual tasks
+- **Task Status**: Track task state (pending, in_progress, completed, blocked)
+- **Task Assignments**: Assign specific tasks to team members (coming soon)
 
 ### Organization & Team Management
 - **Multi-Organization Support**: Switch between multiple organizations with persistent context
@@ -116,6 +124,7 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250112_add_search_features.sql` - Creates recent_searches, saved_views, and grant_interactions tables
 - `supabase/migrations/20250113_add_eligibility_profile.sql` - Adds eligibility profile fields to organizations table and grant recommendations view
 - `supabase/migrations/20250114_add_pipeline_fields.sql` - Adds pipeline status, priority, and assignment fields to saved grants
+- `supabase/migrations/20250115_add_grant_tasks.sql` - Creates grant_tasks table for actionable task breakdown with auto-created templates
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
 
@@ -183,7 +192,8 @@ grant-tracker-new/
 │   ├── saved/
 │   │   └── [id]/
 │   │       └── status.ts    # Update grant status/priority/assignment
-│   ├── saved.ts             # CRUD for saved grants
+│   ├── saved.ts             # CRUD for saved grants (auto-creates default tasks)
+│   ├── tasks.ts             # CRUD for grant tasks
 │   ├── views.ts             # CRUD for saved filter views
 │   ├── recent-searches.ts   # Recent search history tracking
 │   ├── webhooks.ts          # CRUD for custom webhooks
@@ -196,7 +206,9 @@ grant-tracker-new/
 │   │   ├── SettingsLayout.tsx # Settings page layout with tabs
 │   │   ├── ProtectedRoute.tsx # Route guard with permission checks
 │   │   ├── QuickSearchModal.tsx # cmd/ctrl+K quick search modal
-│   │   └── SavedViewsPanel.tsx  # Saved filter views panel
+│   │   ├── SavedViewsPanel.tsx  # Saved filter views panel
+│   │   ├── GrantDetailDrawer.tsx # Grant details with tasks and notes
+│   │   └── TaskList.tsx     # Task management component with progress tracking
 │   ├── contexts/
 │   │   ├── AuthContext.tsx  # Supabase authentication context
 │   │   └── OrganizationContext.tsx # Multi-org state management
@@ -233,7 +245,8 @@ grant-tracker-new/
 │       ├── add_integrations.sql
 │       ├── 20250112_add_search_features.sql
 │       ├── 20250113_add_eligibility_profile.sql
-│       └── 20250114_add_pipeline_fields.sql
+│       ├── 20250114_add_pipeline_fields.sql
+│       └── 20250115_add_grant_tasks.sql
 ├── vercel.json              # Vercel deployment config
 └── package.json
 ```
@@ -424,6 +437,76 @@ Get recent search history for a user.
 #### `POST /api/recent-searches`
 
 Record a new search (deduplicates and increments count for existing searches).
+
+### Grant Tasks
+
+#### `GET /api/tasks?grant_id={uuid}&org_id={uuid}`
+
+Get all tasks for a specific grant, ordered by position.
+
+**Response:**
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "grant_id": "uuid",
+      "org_id": "uuid",
+      "title": "Research grant requirements",
+      "description": "Review eligibility, requirements, and evaluation criteria",
+      "task_type": "research",
+      "status": "completed",
+      "assigned_to": "user-uuid",
+      "due_date": "2025-01-20T00:00:00Z",
+      "completed_at": "2025-01-15T10:30:00Z",
+      "position": 1,
+      "is_required": true,
+      "notes": "Reviewed all eligibility criteria"
+    }
+  ]
+}
+```
+
+#### `POST /api/tasks`
+
+Create a new task for a grant.
+
+**Request body:**
+```json
+{
+  "grant_id": "uuid",
+  "org_id": "uuid",
+  "created_by": "uuid",
+  "title": "Custom task title",
+  "description": "Optional description",
+  "task_type": "custom",
+  "status": "pending",
+  "due_date": "2025-02-01T00:00:00Z",
+  "is_required": false
+}
+```
+
+**Task types:** `research`, `budget`, `narrative`, `letters`, `documents`, `submission`, `custom`
+
+**Task statuses:** `pending`, `in_progress`, `completed`, `blocked`
+
+#### `PATCH /api/tasks?id={uuid}`
+
+Update an existing task (e.g., mark as completed, change due date).
+
+**Request body:**
+```json
+{
+  "status": "completed",
+  "notes": "Task completed successfully"
+}
+```
+
+#### `DELETE /api/tasks?id={uuid}`
+
+Delete a task.
+
+**Note:** When a grant is saved, 6 default tasks are automatically created via the `create_default_grant_tasks()` database function.
 
 ### Webhooks
 
@@ -711,6 +794,39 @@ User interactions with grants for recommendation engine training.
 
 **RLS**: Users can view/insert interactions for their organization only.
 
+#### `grant_tasks`
+Task breakdown for grant application workflow management.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| grant_id | uuid | Reference to org_grants_saved |
+| org_id | uuid | Organization ID |
+| title | text | Task title |
+| description | text | Task description |
+| task_type | text | Task category (research, budget, narrative, letters, documents, submission, custom) |
+| status | text | Task status (pending, in_progress, completed, blocked) |
+| assigned_to | uuid | User assigned to task |
+| due_date | timestamptz | Task due date |
+| completed_at | timestamptz | When task was completed (auto-set by trigger) |
+| completed_by | uuid | User who completed task (auto-set by trigger) |
+| position | integer | Display order position |
+| is_required | boolean | Whether task is required for submission |
+| notes | text | Internal notes |
+| created_by | uuid | User who created task |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp (auto-updated by trigger) |
+
+**RLS**: Users can view/insert/update/delete tasks for grants in their organization.
+
+**Default Tasks**: When a grant is saved, 6 default tasks are automatically created via `create_default_grant_tasks(grant_id, org_id, user_id)` function:
+1. Research grant requirements (research)
+2. Draft project narrative (narrative)
+3. Prepare budget (budget)
+4. Gather supporting documents (documents)
+5. Obtain letters of support (letters)
+6. Submit application (submission)
+
 ### Integration Tables
 
 #### `integrations`
@@ -883,6 +999,13 @@ The `/api` directory will be automatically deployed as serverless functions.
 - ✅ Visual deadline indicators (color-coded)
 - ✅ Stage counts and visual grouping
 - ✅ Notes field for internal tracking
+- ✅ Grant detail drawer with tabs (Tasks, Notes)
+- ✅ Task management system with CRUD operations
+- ✅ Auto-created default task templates (6 tasks per grant)
+- ✅ Task progress tracking with completion percentage
+- ✅ Task types and status tracking
+- ✅ Task due dates and completion timestamps
+- ✅ Required vs optional task flags
 
 **Calendar & Integrations**
 - ✅ ICS calendar feed with unique tokens
@@ -921,9 +1044,12 @@ The `/api` directory will be automatically deployed as serverless functions.
 
 **Workflow Automation**
 - Workflow automation rules (auto-move grants based on criteria)
-- Task assignment and collaboration features
+- Task assignment to specific users with notifications
+- Task comments and collaboration
+- Task dependencies and blockers
 - Grant application templates
 - Document management and file uploads
+- Bulk task operations (complete multiple, reorder, duplicate)
 
 **Analytics & Insights**
 - Analytics and reporting dashboards

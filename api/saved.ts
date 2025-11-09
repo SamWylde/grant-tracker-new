@@ -90,6 +90,23 @@ export default async function handler(
           return res.status(500).json({ error: 'Failed to save grant' });
         }
 
+        // Create default tasks for the grant
+        try {
+          const { error: tasksError } = await supabase.rpc('create_default_grant_tasks', {
+            p_grant_id: data.id,
+            p_org_id: grantData.org_id,
+            p_user_id: grantData.user_id,
+          });
+
+          if (tasksError) {
+            console.error('Error creating default tasks:', tasksError);
+            // Don't fail the request if task creation fails, just log it
+          }
+        } catch (taskErr) {
+          console.error('Exception creating default tasks:', taskErr);
+          // Continue even if task creation fails
+        }
+
         return res.status(201).json({ grant: data });
       }
 

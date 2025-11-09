@@ -22,6 +22,7 @@ import {
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { useOrganization } from "../contexts/OrganizationContext";
+import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -55,6 +56,7 @@ export function PipelinePage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
 
   // Fetch saved grants
   const { data, isLoading } = useQuery<{ grants: SavedGrant[] }>({
@@ -223,8 +225,9 @@ export function PipelinePage() {
                               draggable
                               onDragStart={(e) => handleDragStart(e, grant.id)}
                               onDragEnd={handleDragEnd}
+                              onClick={() => setSelectedGrant(grant)}
                               style={{
-                                cursor: "grab",
+                                cursor: "pointer",
                                 opacity: draggedItem === grant.id ? 0.5 : 1,
                                 transition: "all 0.2s",
                               }}
@@ -303,6 +306,13 @@ export function PipelinePage() {
           )}
         </Stack>
       </Container>
+
+      {/* Grant Detail Drawer */}
+      <GrantDetailDrawer
+        grant={selectedGrant}
+        opened={!!selectedGrant}
+        onClose={() => setSelectedGrant(null)}
+      />
     </Box>
   );
 }
