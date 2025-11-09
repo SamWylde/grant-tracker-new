@@ -10,7 +10,6 @@ import {
   Select,
   Button,
   Group,
-  Table,
   Badge,
   ActionIcon,
   SimpleGrid,
@@ -18,7 +17,7 @@ import {
   Avatar,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconRefresh, IconX, IconUserEdit } from '@tabler/icons-react';
+import { IconTrash, IconX, IconUserEdit } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -79,7 +78,7 @@ export function TeamPage() {
   });
 
   // Load pending invitations
-  const { data: invitations, isLoading: invitationsLoading } = useQuery({
+  const { data: invitations } = useQuery({
     queryKey: ['teamInvitations', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return [];
@@ -107,7 +106,7 @@ export function TeamPage() {
         email: inviteEmail,
         role: inviteRole,
         invited_by: user.id,
-      });
+      } as any);
 
       if (error) throw error;
     },
@@ -135,7 +134,7 @@ export function TeamPage() {
     mutationFn: async (invitationId: string) => {
       const { error } = await supabase
         .from('team_invitations')
-        .update({ revoked_at: new Date().toISOString() })
+        .update({ revoked_at: new Date().toISOString() } as any)
         .eq('id', invitationId);
 
       if (error) throw error;
@@ -171,7 +170,7 @@ export function TeamPage() {
   // Change role mutation
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
-      const { error } = await supabase.from('org_members').update({ role }).eq('id', memberId);
+      const { error } = await supabase.from('org_members').update({ role } as any).eq('id', memberId);
 
       if (error) throw error;
     },

@@ -66,7 +66,7 @@ export function ProfilePage() {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error; // Ignore not found error
-      return data;
+      return data as any;
     },
     enabled: !!user,
   });
@@ -84,7 +84,7 @@ export function ProfilePage() {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      return data as any;
     },
     enabled: !!user,
   });
@@ -113,7 +113,7 @@ export function ProfilePage() {
           id: user.id,
           full_name: fullName,
           timezone,
-        });
+        } as any);
 
       if (profileError) throw profileError;
 
@@ -124,7 +124,7 @@ export function ProfilePage() {
           user_id: user.id,
           weekly_summary_emails: weeklySummary,
           product_updates: productUpdates,
-        });
+        } as any);
 
       if (preferencesError) throw preferencesError;
     },
