@@ -129,20 +129,18 @@ export function DangerZonePage() {
       if (!currentOrg || !transferUserId || !user) throw new Error('Missing data');
 
       // Update current owner to contributor
-      const contributorUpdate: any = { role: 'contributor' };
-      const { error: demoteError } = await supabase
+      const { error: demoteError } = await (supabase as any)
         .from('org_members')
-        .update(contributorUpdate)
+        .update({ role: 'contributor' })
         .eq('org_id', currentOrg.id)
         .eq('user_id', user.id);
 
       if (demoteError) throw demoteError;
 
       // Update new owner to admin
-      const adminUpdate: any = { role: 'admin' };
-      const { error: promoteError } = await supabase
+      const { error: promoteError } = await (supabase as any)
         .from('org_members')
-        .update(adminUpdate)
+        .update({ role: 'admin' })
         .eq('org_id', currentOrg.id)
         .eq('user_id', transferUserId);
 
