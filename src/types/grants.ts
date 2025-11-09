@@ -61,6 +61,26 @@ export interface SavedGrant {
   saved_at: string;
 }
 
+// Grant detail (from Grants.gov API)
+export interface GrantDetail {
+  id: string;
+  number: string;
+  title: string;
+  agency: string;
+  description: string;
+  postDate: string | null;
+  closeDate: string | null;
+  eligibility: string | null;
+  fundingInstrument: string | null;
+  category: string | null;
+  estimatedFunding: string | null;
+  awardCeiling: string | null;
+  awardFloor: string | null;
+  expectedAwards: string | null;
+  costSharing: string | null;
+  grantsGovUrl: string | null;
+}
+
 // Filter options
 export interface SearchFilters {
   keyword?: string;

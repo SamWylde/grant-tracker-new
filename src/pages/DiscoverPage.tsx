@@ -1,6 +1,7 @@
 import "@mantine/core/styles.css";
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Box,
   Button,
@@ -10,9 +11,11 @@ import {
   Divider,
   Group,
   Loader,
+  Modal,
   NumberInput,
   Pagination,
   Paper,
+  ScrollArea,
   Select,
   Stack,
   Text,
@@ -26,6 +29,8 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconCalendar,
+  IconExternalLink,
+  IconFileText,
   IconFilter,
   IconRocket,
   IconSearch,
@@ -33,10 +38,11 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FEDERAL_AGENCIES,
   FUNDING_CATEGORIES,
+  type GrantDetail,
   type NormalizedGrant,
   type SearchResponse,
 } from "../types/grants";
@@ -48,6 +54,7 @@ const MOCK_USER_ID = "00000000-0000-0000-0000-000000000002";
 
 export function DiscoverPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Filter state
   const [keyword, setKeyword] = useState("");
@@ -57,6 +64,10 @@ export function DiscoverPage() {
   const [statusForecasted, setStatusForecasted] = useState(true);
   const [dueInDays, setDueInDays] = useState<number | string>("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Details modal state
+  const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
   const [debouncedKeyword] = useDebouncedValue(keyword, 500);
 
@@ -122,6 +133,28 @@ export function DiscoverPage() {
   const savedGrantIds = new Set(
     savedGrants?.grants.map((g) => g.external_id) || []
   );
+
+  // Fetch grant details
+  const { data: grantDetails, isLoading: detailsLoading } = useQuery<GrantDetail>({
+    queryKey: ["grantDetails", selectedGrantId],
+    queryFn: async () => {
+      if (!selectedGrantId) throw new Error("No grant ID selected");
+
+      const response = await fetch(`/api/grants/details?id=${encodeURIComponent(selectedGrantId)}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch grant details");
+      }
+      return response.json();
+    },
+    enabled: !!selectedGrantId && detailsModalOpen,
+  });
+
+  // Handler to open details modal
+  const handleViewDetails = (grantId: string) => {
+    setSelectedGrantId(grantId);
+    setDetailsModalOpen(true);
+  };
 
   // Filter by due date client-side
   const filteredGrants =
@@ -242,7 +275,17 @@ export function DiscoverPage() {
                 </Text>
               </Stack>
             </Group>
-            <Button variant="light" color="grape">
+            <Button
+              variant="light"
+              color="grape"
+              onClick={() => {
+                notifications.show({
+                  title: "Coming soon",
+                  message: "Saved grants page is under construction",
+                  color: "blue",
+                });
+              }}
+            >
               View Saved ({savedGrants?.grants.length || 0})
             </Button>
           </Group>
@@ -402,9 +445,20 @@ export function DiscoverPage() {
                     <Stack gap="sm">
                       <Group justify="space-between" align="flex-start">
                         <Stack gap={4} style={{ flex: 1 }}>
-                          <Text fw={600} size="lg">
-                            {grant.title}
-                          </Text>
+                          <Anchor
+                            href={`https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grant.number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            fw={600}
+                            size="lg"
+                            c="dark"
+                            style={{ textDecoration: "none" }}
+                          >
+                            <Group gap="xs">
+                              {grant.title}
+                              <IconExternalLink size={16} />
+                            </Group>
+                          </Anchor>
                           <Group gap="xs">
                             <Text size="sm" c="dimmed">
                               {grant.agency}
@@ -421,18 +475,30 @@ export function DiscoverPage() {
                             )}
                           </Group>
                         </Stack>
-                        <ActionIcon
-                          variant={isSaved ? "filled" : "light"}
-                          color="grape"
-                          size="lg"
-                          onClick={() => handleSaveToggle(grant, isSaved)}
-                        >
-                          {isSaved ? (
-                            <IconBookmarkFilled size={20} />
-                          ) : (
-                            <IconBookmark size={20} />
-                          )}
-                        </ActionIcon>
+                        <Group gap="xs">
+                          <ActionIcon
+                            variant="light"
+                            color="blue"
+                            size="lg"
+                            onClick={() => handleViewDetails(grant.number)}
+                            title="View details"
+                          >
+                            <IconFileText size={20} />
+                          </ActionIcon>
+                          <ActionIcon
+                            variant={isSaved ? "filled" : "light"}
+                            color="grape"
+                            size="lg"
+                            onClick={() => handleSaveToggle(grant, isSaved)}
+                            title={isSaved ? "Remove from pipeline" : "Save to pipeline"}
+                          >
+                            {isSaved ? (
+                              <IconBookmarkFilled size={20} />
+                            ) : (
+                              <IconBookmark size={20} />
+                            )}
+                          </ActionIcon>
+                        </Group>
                       </Group>
 
                       <Group gap="md">
@@ -481,6 +547,189 @@ export function DiscoverPage() {
           )}
         </Stack>
       </Container>
+
+      {/* Grant Details Modal */}
+      <Modal
+        opened={detailsModalOpen}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedGrantId(null);
+        }}
+        title={grantDetails?.title || "Grant Details"}
+        size="xl"
+      >
+        {detailsLoading ? (
+          <Group justify="center" py="xl">
+            <Loader size="lg" />
+            <Text>Loading grant details...</Text>
+          </Group>
+        ) : grantDetails ? (
+          <ScrollArea h={600}>
+            <Stack gap="lg">
+              {/* Header */}
+              <Stack gap="xs">
+                <Title order={3}>{grantDetails.title}</Title>
+                <Group gap="xs">
+                  <Badge color="grape" variant="light">
+                    {grantDetails.number}
+                  </Badge>
+                  <Text size="sm" c="dimmed">
+                    {grantDetails.agency}
+                  </Text>
+                </Group>
+              </Stack>
+
+              <Divider />
+
+              {/* Description */}
+              {grantDetails.description && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Description
+                  </Text>
+                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                    {grantDetails.description}
+                  </Text>
+                </Stack>
+              )}
+
+              {/* Key Dates */}
+              <Stack gap="xs">
+                <Text fw={600} size="sm">
+                  Key Dates
+                </Text>
+                <Group gap="lg">
+                  {grantDetails.postDate && (
+                    <div>
+                      <Text size="xs" c="dimmed">
+                        Posted
+                      </Text>
+                      <Text size="sm">
+                        {dayjs(grantDetails.postDate).format("MMM D, YYYY")}
+                      </Text>
+                    </div>
+                  )}
+                  {grantDetails.closeDate && (
+                    <div>
+                      <Text size="xs" c="dimmed">
+                        Closes
+                      </Text>
+                      <Text size="sm" fw={600} c="orange">
+                        {dayjs(grantDetails.closeDate).format("MMM D, YYYY")}
+                      </Text>
+                    </div>
+                  )}
+                </Group>
+              </Stack>
+
+              {/* Funding Information */}
+              {(grantDetails.estimatedFunding ||
+                grantDetails.awardCeiling ||
+                grantDetails.awardFloor ||
+                grantDetails.expectedAwards) && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Funding Information
+                  </Text>
+                  <Group gap="lg">
+                    {grantDetails.estimatedFunding && (
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Total Program Funding
+                        </Text>
+                        <Text size="sm">{grantDetails.estimatedFunding}</Text>
+                      </div>
+                    )}
+                    {grantDetails.expectedAwards && (
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Expected Awards
+                        </Text>
+                        <Text size="sm">{grantDetails.expectedAwards}</Text>
+                      </div>
+                    )}
+                    {grantDetails.awardFloor && (
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Award Floor
+                        </Text>
+                        <Text size="sm">{grantDetails.awardFloor}</Text>
+                      </div>
+                    )}
+                    {grantDetails.awardCeiling && (
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Award Ceiling
+                        </Text>
+                        <Text size="sm">{grantDetails.awardCeiling}</Text>
+                      </div>
+                    )}
+                  </Group>
+                </Stack>
+              )}
+
+              {/* Eligibility */}
+              {grantDetails.eligibility && (
+                <Stack gap="xs">
+                  <Text fw={600} size="sm">
+                    Eligible Applicants
+                  </Text>
+                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                    {grantDetails.eligibility}
+                  </Text>
+                </Stack>
+              )}
+
+              {/* Additional Details */}
+              <Stack gap="xs">
+                {grantDetails.category && (
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      Category
+                    </Text>
+                    <Text size="sm">{grantDetails.category}</Text>
+                  </Group>
+                )}
+                {grantDetails.fundingInstrument && (
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      Funding Instrument
+                    </Text>
+                    <Text size="sm">{grantDetails.fundingInstrument}</Text>
+                  </Group>
+                )}
+                {grantDetails.costSharing && (
+                  <Group justify="space-between">
+                    <Text size="sm" c="dimmed">
+                      Cost Sharing Required
+                    </Text>
+                    <Text size="sm">{grantDetails.costSharing}</Text>
+                  </Group>
+                )}
+              </Stack>
+
+              {/* External Link */}
+              <Divider />
+              <Group justify="flex-end">
+                <Button
+                  component="a"
+                  href={grantDetails.grantsGovUrl || `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grantDetails.number}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  rightSection={<IconExternalLink size={16} />}
+                  variant="light"
+                >
+                  View on Grants.gov
+                </Button>
+              </Group>
+            </Stack>
+          </ScrollArea>
+        ) : (
+          <Text c="dimmed" ta="center" py="xl">
+            Failed to load grant details
+          </Text>
+        )}
+      </Modal>
     </Box>
   );
 }
