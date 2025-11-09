@@ -59,13 +59,11 @@ export function CalendarPage() {
       // Generate a new UUID for the ICS token
       const newToken = crypto.randomUUID();
 
-      const updateData: any = {
-        ics_token: newToken,
-      };
-
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('organization_settings')
-        .update(updateData)
+        .update({
+          ics_token: newToken,
+        }) as any)
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;

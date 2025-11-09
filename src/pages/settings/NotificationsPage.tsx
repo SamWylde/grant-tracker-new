@@ -75,19 +75,17 @@ export function NotificationsPage() {
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No organization');
 
-      const updateData: any = {
-        deadline_reminders_30d: deadline30d,
-        deadline_reminders_14d: deadline14d,
-        deadline_reminders_7d: deadline7d,
-        deadline_reminders_3d: deadline3d,
-        deadline_reminders_1d: deadline1d,
-        deadline_reminders_0d: deadline0d,
-        daily_task_emails: dailyTaskEmails,
-      };
-
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('organization_settings')
-        .update(updateData)
+        .update({
+          deadline_reminders_30d: deadline30d,
+          deadline_reminders_14d: deadline14d,
+          deadline_reminders_7d: deadline7d,
+          deadline_reminders_3d: deadline3d,
+          deadline_reminders_1d: deadline1d,
+          deadline_reminders_0d: deadline0d,
+          daily_task_emails: dailyTaskEmails,
+        }) as any)
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
