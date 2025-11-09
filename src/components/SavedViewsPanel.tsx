@@ -11,7 +11,6 @@ import {
   Text,
   TextInput,
   Textarea,
-  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -20,11 +19,9 @@ import {
   IconCheck,
   IconDots,
   IconShare,
-  IconStar,
   IconTrash,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import dayjs from "dayjs";
 import { useState } from "react";
 
 interface SavedView {

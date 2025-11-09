@@ -213,7 +213,7 @@ export function FeaturesPage() {
                 Grant Discovery
               </Title>
               <Text c="dimmed" mb="md">
-                Search and filter thousands of federal grants from Grants.gov in real-time.
+                Search and filter thousands of federal grants from Grants.gov with advanced search capabilities.
               </Text>
               <List
                 spacing="xs"
@@ -224,10 +224,10 @@ export function FeaturesPage() {
                   </ThemeIcon>
                 }
               >
-                <List.Item>Keyword and category search</List.Item>
-                <List.Item>Filter by agency and status</List.Item>
-                <List.Item>Due date filtering</List.Item>
-                <List.Item>Grant details and eligibility</List.Item>
+                <List.Item>Quick search with cmd/ctrl+K</List.Item>
+                <List.Item>Smart filters and sorting</List.Item>
+                <List.Item>Saved views and recent searches</List.Item>
+                <List.Item>Enhanced grant detail modal</List.Item>
               </List>
             </Card>
 
@@ -540,13 +540,19 @@ export function FeaturesPage() {
               <Accordion.Panel>
                 <List spacing="xs" size="sm">
                   <List.Item><Badge size="sm" color="green">P0</Badge> Grants.gov API integration ✓</List.Item>
-                  <List.Item><Badge size="sm" color="green">P0</Badge> Advanced filters (category, amount, location, deadline) ✓</List.Item>
-                  <List.Item><Badge size="sm" color="green">P0</Badge> Save/track grants ✓</List.Item>
-                  <List.Item><Badge size="sm" color="green">P0</Badge> Grant detail views ✓</List.Item>
-                  <List.Item><Badge size="sm" color="blue">P1</Badge> Quick search (cmd/ctrl+K) (Planned)</List.Item>
-                  <List.Item><Badge size="sm" color="blue">P1</Badge> Saved searches & email alerts (Planned)</List.Item>
-                  <List.Item><Badge size="sm" color="blue">P1</Badge> State portals integration (Q2 2025)</List.Item>
-                  <List.Item><Badge size="sm" color="gray">P2</Badge> Recommendation engine (Future)</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Advanced filters (category, agency, status, due ≤ X days) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Multi-sort (Relevance, Due Soon, Newest) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Enhanced grant cards with hover effects ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Grant detail modal with HTML parsing ✓</List.Item>
+                  <List.Item><Badge size="sm" color="green">P0</Badge> Save/track grants from results ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Quick search modal (cmd/ctrl+K) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Recent searches tracking ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Saved views (shareable within org) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="blue">P1</Badge> Email alerts for saved searches (Planned)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Eligibility profile auto-filtering ✓</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> Grant interactions tracking (for recommendations) ✓</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> ML-based recommendation engine (Q2 2025)</List.Item>
+                  <List.Item><Badge size="sm" color="gray">P2</Badge> State portals integration (Q2 2025)</List.Item>
                 </List>
               </Accordion.Panel>
             </Accordion.Item>

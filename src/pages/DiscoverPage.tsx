@@ -1,6 +1,5 @@
 import "@mantine/core/styles.css";
 import {
-  ActionIcon,
   Anchor,
   Badge,
   Box,
@@ -60,6 +59,23 @@ const MOCK_USER_ID = "00000000-0000-0000-0000-000000000002";
 
 export function DiscoverPage() {
   const queryClient = useQueryClient();
+
+  // Utility function to strip HTML tags and decode entities
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+
+    // Create a temporary div to use browser's HTML parsing
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    // Get text content (this automatically decodes entities and strips tags)
+    let text = tmp.textContent || tmp.innerText || '';
+
+    // Clean up extra whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
+  };
 
   // Filter state
   const [keyword, setKeyword] = useState("");
@@ -783,7 +799,7 @@ export function DiscoverPage() {
                     Description
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.description}
+                    {stripHtml(grantDetails.description)}
                   </Text>
                 </Stack>
               )}
@@ -870,7 +886,7 @@ export function DiscoverPage() {
                     Eligible Applicants
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.eligibility}
+                    {stripHtml(grantDetails.eligibility)}
                   </Text>
                 </Stack>
               )}

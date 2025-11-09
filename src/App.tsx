@@ -12,6 +12,7 @@ import { PricingPage } from "./pages/PricingPage";
 import { FeaturesPage } from "./pages/FeaturesPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
+import { PipelinePage } from "./pages/PipelinePage";
 import { MetricsPage } from "./pages/MetricsPage";
 import {
   ProfilePage,
@@ -48,6 +49,7 @@ export default function App() {
                 <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/discover" element={<DiscoverPage />} />
                 <Route path="/saved" element={<SavedGrantsPage />} />
+                <Route path="/pipeline" element={<PipelinePage />} />
                 <Route path="/metrics" element={<MetricsPage />} />
 
                 {/* Settings Routes */}

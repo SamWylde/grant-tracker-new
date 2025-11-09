@@ -72,6 +72,15 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               </Anchor>
               <Anchor
                 component={Link}
+                to="/pipeline"
+                c={isActive('/pipeline') ? 'grape' : 'dark'}
+                fw={isActive('/pipeline') ? 600 : 400}
+                underline="never"
+              >
+                Pipeline
+              </Anchor>
+              <Anchor
+                component={Link}
                 to="/metrics"
                 c={isActive('/metrics') ? 'grape' : 'dark'}
                 fw={isActive('/metrics') ? 600 : 400}
@@ -141,6 +150,16 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 onClick={() => setMobileMenuOpened(false)}
               >
                 Saved Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/pipeline"
+                c={isActive('/pipeline') ? 'grape' : 'dark'}
+                fw={isActive('/pipeline') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Pipeline
               </Anchor>
               <Anchor
                 component={Link}
