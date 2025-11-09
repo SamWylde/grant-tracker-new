@@ -51,7 +51,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
 
           {/* Desktop Navigation Links */}
           {user && (
-            <Group gap="lg" visibleFrom="sm">
+            <Group gap="lg" visibleFrom="md">
               <Anchor
                 component={Link}
                 to="/discover"
@@ -85,7 +85,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
           {/* Right side - Org Switcher + User Menu (only if logged in) */}
           {user && (
             <Group gap="md">
-              <Group gap="md" visibleFrom="sm">
+              <Group gap="md" visibleFrom="md">
                 <OrgSwitcher />
                 <UserMenu />
               </Group>
@@ -94,7 +94,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               <Burger
                 opened={mobileMenuOpened}
                 onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
-                hiddenFrom="sm"
+                hiddenFrom="md"
                 size="sm"
               />
             </Group>
