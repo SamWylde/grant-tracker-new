@@ -31,7 +31,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
       }}
     >
       <Container size="xl">
-        <Group justify="space-between">
+        <Group justify="space-between" wrap="nowrap">
           {/* Logo/Branding */}
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
             <Group gap={6}>
@@ -49,9 +49,9 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             </Group>
           </Link>
 
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links - centered */}
           {user && (
-            <Group gap="lg" visibleFrom="md">
+            <Group gap="lg" visibleFrom="md" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
               <Anchor
                 component={Link}
                 to="/discover"
@@ -82,22 +82,23 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             </Group>
           )}
 
-          {/* Right side - Org Switcher + User Menu (only if logged in) */}
+          {/* Right side - Desktop: Org + User, Mobile: Burger */}
           {user && (
-            <Group gap="md">
+            <>
+              {/* Desktop: OrgSwitcher + UserMenu */}
               <Group gap="md" visibleFrom="md">
                 <OrgSwitcher />
                 <UserMenu />
               </Group>
 
-              {/* Mobile Menu Button */}
+              {/* Mobile: Burger Button */}
               <Burger
                 opened={mobileMenuOpened}
                 onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
                 hiddenFrom="md"
                 size="sm"
               />
-            </Group>
+            </>
           )}
         </Group>
 
