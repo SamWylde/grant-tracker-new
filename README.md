@@ -4,26 +4,41 @@ A grant discovery and tracking platform that helps organizations find and manage
 
 ## Features
 
-### Grant Discovery
+### Grant Discovery & Details
 - **Search & Discover**: Search federal grants by keyword, category, agency, and status
 - **Smart Filters**: Filter by funding category, agency, opportunity status, and due date
+- **Grant Details**: View comprehensive grant information including description, eligibility, funding amounts, and deadlines
 - **Save to Pipeline**: Save interesting opportunities to your organization's pipeline
-- **Real-time Data**: Live data from Grants.gov Search2 API (no authentication required)
+- **Real-time Data**: Live data from Grants.gov Search2 API and fetchOpportunity API
+
+### Authentication & Access
+- **Secure Sign-In**: Email/password authentication via Supabase Auth
+- **User Profiles**: Manage personal profile information and preferences
+- **Protected Routes**: Role-based access control for sensitive features
 
 ### Organization & Team Management
 - **Multi-Organization Support**: Switch between multiple organizations with persistent context
 - **Team Collaboration**: Invite team members with role-based permissions (Admin/Contributor)
-- **User Profiles**: Manage personal profile information and preferences
 - **Organization Settings**: Configure organization name, primary state, and focus areas
+- **Admin Controls**: Admin-only features for sensitive operations
 
-### Notifications & Integrations
+### Calendar & Integrations
+- **ICS Calendar Feed**: Subscribe to grant deadlines in any calendar app (Google Calendar, Outlook, Apple Calendar)
+- **Microsoft Teams**: Connect Teams channels for deadline notifications via incoming webhooks
+- **Custom Webhooks**: Configure custom webhook endpoints to receive grant events
+- **Webhook Events**: grant.saved, grant.deadline_approaching, grant.deadline_passed, grant.updated
+- **Google Calendar**: OAuth integration (coming soon)
+- **Slack**: OAuth integration (coming soon)
+
+### Notifications & Reminders
 - **Email Reminders**: Customizable deadline reminder cadence (30d, 14d, 7d, 3d, 1d, day-of)
-- **ICS Calendar Feed**: Subscribe to grant deadlines in any calendar app
-- **Google Calendar Integration**: Real-time sync with Google Calendar (coming soon)
+- **Daily Task Emails**: Optional daily summary emails
+- **User Preferences**: Control email notification preferences
 
-### Settings & Preferences
+### Settings & Management
 - **7 Settings Pages**: Profile, Organization, Team, Notifications, Calendar & Integrations, Billing, Danger Zone
 - **Responsive Design**: Built with Mantine UI for a modern, mobile-friendly experience
+- **Mobile Navigation**: Burger menu with drawer navigation on mobile devices
 - **Role-Based Access**: Admin-only controls for sensitive settings
 
 ## Tech Stack
@@ -35,6 +50,7 @@ A grant discovery and tracking platform that helps organizations find and manage
 - **Backend**: Vercel Serverless Functions
 - **Database**: Supabase (PostgreSQL with RLS)
 - **Dates**: dayjs
+- **Authentication**: Supabase Auth
 
 ## Getting Started
 
@@ -81,15 +97,62 @@ Run the migrations in your Supabase SQL editor:
 
 - `supabase/migrations/20250108_create_org_grants_saved.sql` - Creates the saved grants table
 - `supabase/migrations/20250108_create_settings_and_org_schema.sql` - Creates organizations, user profiles, team members, invitations, preferences, and settings tables with RLS policies
+- `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: The settings schema migration is idempotent and can be run multiple times safely.
 
-5. Start the development server:
+5. Create your first admin user:
+
+After creating a user in Supabase Auth dashboard, run the SQL setup script (see Database Setup section below).
+
+6. Start the development server:
 ```bash
 yarn dev
 ```
 
 Visit `http://localhost:5173` to see the app.
+
+## Database Setup
+
+### Creating Your First Admin User
+
+1. Go to Supabase Dashboard → Authentication → Users
+2. Click "Add user" → "Create new user"
+3. Enter email and password, check "Auto Confirm User"
+4. Copy the generated UUID
+5. Run this SQL in Supabase SQL Editor:
+
+```sql
+-- Replace 'YOUR_USER_UUID' with the actual UUID from step 4
+DO $$
+DECLARE
+  user_uuid uuid := 'YOUR_USER_UUID';
+  org_uuid uuid := '00000000-0000-0000-0000-000000000001';
+BEGIN
+  -- Create organization
+  INSERT INTO organizations (id, name, slug, created_at, updated_at)
+  VALUES (
+    org_uuid,
+    'My Organization',
+    'my-org',
+    now(),
+    now()
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now();
+
+  -- Create user profile
+  INSERT INTO user_profiles (id, full_name, created_at, updated_at)
+  VALUES (user_uuid, 'Admin User', now(), now())
+  ON CONFLICT (id) DO UPDATE
+  SET full_name = EXCLUDED.full_name, updated_at = now();
+
+  -- Add user to organization as admin
+  INSERT INTO org_members (org_id, user_id, role, joined_at)
+  VALUES (org_uuid, user_uuid, 'admin', now())
+  ON CONFLICT (org_id, user_id) DO UPDATE SET role = 'admin';
+END $$;
+```
 
 ## Project Structure
 
@@ -97,11 +160,14 @@ Visit `http://localhost:5173` to see the app.
 grant-tracker-new/
 ├── api/                      # Vercel serverless functions
 │   ├── grants/
-│   │   └── search.ts        # Proxy to Grants.gov Search2 API
-│   └── saved.ts             # CRUD for saved grants
+│   │   ├── search.ts        # Proxy to Grants.gov Search2 API
+│   │   └── details.ts       # Proxy to Grants.gov fetchOpportunity API
+│   ├── saved.ts             # CRUD for saved grants
+│   ├── webhooks.ts          # CRUD for custom webhooks
+│   └── integrations.ts      # CRUD for integrations (Teams, Slack, etc.)
 ├── src/
 │   ├── components/
-│   │   ├── AppHeader.tsx    # Global header with org switcher & user menu
+│   │   ├── AppHeader.tsx    # Global header with navigation & user menu
 │   │   ├── OrgSwitcher.tsx  # Organization selector dropdown
 │   │   ├── UserMenu.tsx     # User profile dropdown menu
 │   │   ├── SettingsLayout.tsx # Settings page layout with tabs
@@ -115,8 +181,10 @@ grant-tracker-new/
 │   │   ├── supabase.ts      # Supabase client config
 │   │   └── database.types.ts # Database TypeScript types
 │   ├── pages/
-│   │   ├── HomePage.tsx     # Marketing/landing page
+│   │   ├── HomePage.tsx     # Marketing/landing page with mobile nav
+│   │   ├── SignInPage.tsx   # Sign-in page with email/password
 │   │   ├── DiscoverPage.tsx # Grant search & discovery
+│   │   ├── SavedGrantsPage.tsx # Saved grants pipeline
 │   │   └── settings/
 │   │       ├── ProfilePage.tsx        # User profile settings
 │   │       ├── OrganizationPage.tsx   # Organization details
@@ -133,14 +201,17 @@ grant-tracker-new/
 ├── supabase/
 │   └── migrations/
 │       ├── 20250108_create_org_grants_saved.sql
-│       └── 20250108_create_settings_and_org_schema.sql
+│       ├── 20250108_create_settings_and_org_schema.sql
+│       └── add_integrations.sql
 ├── vercel.json              # Vercel deployment config
 └── package.json
 ```
 
 ## API Routes
 
-### `POST /api/grants/search`
+### Grant Discovery
+
+#### `POST /api/grants/search`
 
 Proxies requests to Grants.gov Search2 API with validation and normalization.
 
@@ -166,11 +237,46 @@ Proxies requests to Grants.gov Search2 API with validation and normalization.
 }
 ```
 
-### `GET /api/saved?org_id={uuid}`
+#### `POST /api/grants/details`
+
+Fetch full grant details from Grants.gov fetchOpportunity API.
+
+**Request body:**
+```json
+{
+  "id": "50283"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "50283",
+  "number": "PD-09-5761",
+  "title": "Grant Title",
+  "agency": "Agency Name",
+  "description": "Full description...",
+  "eligibility": "Unrestricted",
+  "fundingInstrument": "Grant",
+  "category": "Science and Technology",
+  "estimatedFunding": "$1,000,000",
+  "awardCeiling": "$100,000",
+  "awardFloor": "$50,000",
+  "expectedAwards": "10",
+  "costSharing": "No",
+  "postDate": "Nov 18, 2009",
+  "closeDate": "Supplement Accepted Anytime",
+  "grantsGovUrl": "https://www.grants.gov/search-results-detail/50283"
+}
+```
+
+### Saved Grants
+
+#### `GET /api/saved?org_id={uuid}`
 
 Get all saved grants for an organization.
 
-### `POST /api/saved`
+#### `POST /api/saved`
 
 Save a grant to the pipeline.
 
@@ -188,9 +294,94 @@ Save a grant to the pipeline.
 }
 ```
 
-### `DELETE /api/saved?id={uuid}`
+#### `DELETE /api/saved?id={uuid}`
 
 Remove a saved grant from the pipeline.
+
+### Webhooks
+
+#### `GET /api/webhooks?org_id={uuid}`
+
+List all webhooks for an organization.
+
+**Response:**
+```json
+{
+  "webhooks": [
+    {
+      "id": "uuid",
+      "org_id": "uuid",
+      "name": "My Webhook",
+      "url": "https://example.com/webhook",
+      "events": ["grant.saved", "grant.deadline_approaching"],
+      "is_active": true,
+      "created_at": "2025-01-09T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### `POST /api/webhooks`
+
+Create a new webhook. **Admin only**.
+
+**Request body:**
+```json
+{
+  "org_id": "uuid",
+  "name": "My Webhook",
+  "url": "https://example.com/webhook",
+  "secret": "optional-signing-secret",
+  "events": ["grant.saved", "grant.deadline_approaching"]
+}
+```
+
+#### `PATCH /api/webhooks?id={uuid}`
+
+Update an existing webhook. **Admin only**.
+
+#### `DELETE /api/webhooks?id={uuid}`
+
+Delete a webhook. **Admin only**.
+
+### Integrations
+
+#### `GET /api/integrations?org_id={uuid}`
+
+List all integrations for an organization.
+
+**Response:**
+```json
+{
+  "integrations": [
+    {
+      "id": "uuid",
+      "org_id": "uuid",
+      "integration_type": "microsoft_teams",
+      "webhook_url": "https://...webhook.office.com/...",
+      "is_active": true,
+      "connected_at": "2025-01-09T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### `POST /api/integrations`
+
+Connect a new integration. **Admin only**.
+
+**Request body (Microsoft Teams):**
+```json
+{
+  "org_id": "uuid",
+  "integration_type": "microsoft_teams",
+  "webhook_url": "https://yourorg.webhook.office.com/webhookb2/..."
+}
+```
+
+#### `DELETE /api/integrations?org_id={uuid}&integration_type={type}`
+
+Disconnect an integration. **Admin only**.
 
 ## Database Schema
 
@@ -315,6 +506,117 @@ Saved grant opportunities.
 
 **RLS**: Users can view/insert/delete grants for their organization only.
 
+### Integration Tables
+
+#### `integrations`
+OAuth-based integrations (Slack, Teams, Google Calendar).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| org_id | uuid | Organization ID |
+| integration_type | text | 'slack', 'microsoft_teams', 'google_calendar' |
+| access_token | text | OAuth access token |
+| refresh_token | text | OAuth refresh token |
+| token_expires_at | timestamptz | Token expiration |
+| webhook_url | text | For Teams incoming webhooks |
+| channel_id | text | For Slack channel ID |
+| channel_name | text | For Slack channel name |
+| connected_by | uuid | User who connected |
+| connected_at | timestamptz | Connection timestamp |
+| settings | jsonb | Additional settings |
+| is_active | boolean | Active status |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp |
+
+**Unique constraint**: (org_id, integration_type)
+
+**RLS**: Users can view integrations for their organizations. Only admins can manage.
+
+#### `webhooks`
+Custom webhook configurations.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| org_id | uuid | Organization ID |
+| name | text | Webhook name |
+| url | text | Webhook endpoint URL |
+| secret | text | Optional signing secret |
+| events | text[] | Subscribed events |
+| is_active | boolean | Active status |
+| created_by | uuid | User who created |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp |
+| last_triggered_at | timestamptz | Last delivery timestamp |
+| total_deliveries | integer | Total delivery count |
+| failed_deliveries | integer | Failed delivery count |
+
+**RLS**: Users can view webhooks for their organizations. Only admins can manage.
+
+#### `webhook_deliveries`
+Webhook delivery log.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| webhook_id | uuid | Webhook ID |
+| event_type | text | Event type |
+| payload | jsonb | Event payload |
+| response_status | integer | HTTP response status |
+| response_body | text | HTTP response body |
+| delivered_at | timestamptz | Delivery timestamp |
+| error_message | text | Error message if failed |
+
+**RLS**: Users can view deliveries for their organization's webhooks.
+
+## Webhook Events
+
+Webhooks can subscribe to the following events:
+
+### `grant.saved`
+Triggered when a grant is added to the organization's saved pipeline.
+
+**Payload:**
+```json
+{
+  "event": "grant.saved",
+  "timestamp": "2025-01-09T12:00:00Z",
+  "data": {
+    "grant_id": "uuid",
+    "external_id": "50283",
+    "title": "Grant Title",
+    "agency": "Agency Name",
+    "close_date": "2025-03-01",
+    "saved_by": "user@example.com"
+  }
+}
+```
+
+### `grant.deadline_approaching`
+Triggered when a grant deadline is approaching (configured days before).
+
+**Payload:**
+```json
+{
+  "event": "grant.deadline_approaching",
+  "timestamp": "2025-01-09T12:00:00Z",
+  "data": {
+    "grant_id": "uuid",
+    "title": "Grant Title",
+    "agency": "Agency Name",
+    "close_date": "2025-01-16",
+    "days_until_deadline": 7
+  }
+}
+```
+
+### `grant.deadline_passed`
+Triggered when a grant deadline has passed.
+
+### `grant.updated`
+Triggered when grant information is updated.
+
 ## Deployment
 
 ### Vercel
@@ -337,47 +639,74 @@ vercel
 
 The `/api` directory will be automatically deployed as serverless functions.
 
-## Development Notes
+## Features Implemented
 
-### v1 Features Implemented
+### v1 Complete Features
+
+**Authentication & Authorization**
+- ✅ Email/password sign-in
+- ✅ Supabase Auth integration
+- ✅ Protected routes with permission checks
+- ✅ Role-based access control (Admin/Contributor)
 
 **Grant Discovery**
-- Search and filtering with Grants.gov API integration
-- Save/unsave grants to organization pipeline
-- Client-side sorting by close date
+- ✅ Search and filtering with Grants.gov API integration
+- ✅ Grant details modal with comprehensive information
+- ✅ Save/unsave grants to organization pipeline
+- ✅ Client-side sorting by close date
+- ✅ Proper error handling with fallback links
 
-**Authentication & Organizations**
-- Supabase authentication with AuthContext
-- Multi-organization support with org switching
-- Role-based permissions (Admin vs Contributor)
-- Team member management and invitations
+**Organizations & Teams**
+- ✅ Multi-organization support with org switching
+- ✅ Team member management and invitations
+- ✅ Organization detail management
+- ✅ User profile management
+
+**Calendar & Integrations**
+- ✅ ICS calendar feed with unique tokens
+- ✅ Microsoft Teams webhook integration
+- ✅ Custom webhooks with CRUD operations
+- ✅ Webhook event subscription management
+- ✅ Integration status tracking
 
 **Settings & Preferences**
-- 7 settings pages (Profile, Organization, Team, Notifications, Calendar, Billing, Danger Zone)
-- Customizable email reminder cadence
-- ICS calendar feed with unique tokens
-- User profile and organization detail management
+- ✅ 7 settings pages (Profile, Organization, Team, Notifications, Calendar, Billing, Danger Zone)
+- ✅ Customizable email reminder cadence
+- ✅ User preference management
+- ✅ Admin-only controls
+
+**UI/UX**
+- ✅ Responsive design with Mantine UI
+- ✅ Mobile navigation with burger menu
+- ✅ Desktop navigation with active states
+- ✅ Loading states and error handling
+- ✅ Toast notifications for user feedback
 
 **Security**
-- Row Level Security (RLS) on all database tables
-- Permission-based access control
-- Protected routes with role checks
+- ✅ Row Level Security (RLS) on all database tables
+- ✅ Admin-only API endpoints
+- ✅ Bearer token authentication
+- ✅ URL validation for webhooks
 
 ### Future Enhancements
 
-- Grant detail drawer with full opportunity data
-- Saved grants dashboard and management page
-- Actual email notification delivery (backend workers)
 - Google Calendar OAuth integration
+- Slack OAuth integration
+- Actual email notification delivery (backend workers)
 - Real billing integration (Stripe)
 - Pipeline stages and workflow automation
 - Analytics and reporting dashboards
 - Export data functionality (CSV, JSON)
+- Webhook delivery retry logic
+- Webhook signature verification
 
 ## API Reference
 
 - [Grants.gov Search2 API](https://grants.gov/api/common/search2)
+- [Grants.gov fetchOpportunity API](https://grants.gov/api/common/fetchOpportunity)
 - [Grants.gov API Guide](https://grants.gov/api/api-guide)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Mantine UI](https://mantine.dev)
 
 ## License
 
