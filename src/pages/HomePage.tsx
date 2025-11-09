@@ -63,7 +63,7 @@ export function HomePage() {
                 <Anchor size="sm" c="dark">
                   Pricing
                 </Anchor>
-                <Button variant="light" color="grape">
+                <Button variant="light" color="grape" component={Link} to="/signin">
                   Sign in
                 </Button>
                 <Button color="grape">Book demo</Button>
