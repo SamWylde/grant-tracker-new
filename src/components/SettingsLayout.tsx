@@ -86,7 +86,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
                 <Tabs.Tab
                   key={tab.value}
                   value={tab.value}
-                  component={Link}
+                  component={Link as any}
                   to={tab.path}
                   leftSection={<tab.icon size={16} />}
                 >

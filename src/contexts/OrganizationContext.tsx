@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 
 type Organization = Database['public']['Tables']['organizations']['Row'];
-type OrgMember = Database['public']['Tables']['org_members']['Row'];
 
 interface OrganizationContextType {
   currentOrg: Organization | null;
@@ -59,7 +58,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (orgToSet) {
         const membership = memberships?.find((m: any) => m.org_id === orgToSet?.id);
         setCurrentOrg(orgToSet);
-        setUserRole(membership?.role as 'admin' | 'contributor' | null);
+        setUserRole((membership?.role as any) as 'admin' | 'contributor' | null);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
@@ -84,10 +83,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .from('org_members')
         .select('role')
         .eq('org_id', orgId)
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id || '')
         .single()
         .then(({ data }) => {
-          setUserRole(data?.role as 'admin' | 'contributor' | null);
+          setUserRole((data as any)?.role as 'admin' | 'contributor' | null);
         });
     }
   };

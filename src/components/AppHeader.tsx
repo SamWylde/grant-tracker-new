@@ -28,19 +28,21 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
       <Container size="xl">
         <Group justify="space-between">
           {/* Logo/Branding */}
-          <Group gap={6} component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <ThemeIcon variant="light" color="grape" size={38} radius="xl">
-              <IconRocket size={20} />
-            </ThemeIcon>
-            <Stack gap={0}>
-              <Text fw={700}>GrantTracker</Text>
-              {subtitle && (
-                <Text size="xs" c="dimmed">
-                  {subtitle}
-                </Text>
-              )}
-            </Stack>
-          </Group>
+          <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Group gap={6}>
+              <ThemeIcon variant="light" color="grape" size={38} radius="xl">
+                <IconRocket size={20} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text fw={700}>GrantTracker</Text>
+                {subtitle && (
+                  <Text size="xs" c="dimmed">
+                    {subtitle}
+                  </Text>
+                )}
+              </Stack>
+            </Group>
+          </Link>
 
           {/* Right side - Org Switcher + User Menu (only if logged in) */}
           {user && (

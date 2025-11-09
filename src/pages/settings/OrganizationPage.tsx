@@ -17,7 +17,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { SettingsLayout } from '../../components/SettingsLayout';
-import { ProtectedRoute, AccessDenied } from '../../components/ProtectedRoute';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
@@ -55,7 +55,7 @@ const FOCUS_AREAS = [
 export function OrganizationPage() {
   const { currentOrg, refreshOrgs } = useOrganization();
   const { hasPermission, isAdmin } = usePermission();
-  const queryClient = useQueryClient();
+  
 
   // Form state
   const [orgName, setOrgName] = useState('');
@@ -86,7 +86,7 @@ export function OrganizationPage() {
           name: orgName,
           primary_state: primaryState,
           focus_areas: focusAreas,
-        })
+        } as any)
         .eq('id', currentOrg.id);
 
       if (error) throw error;

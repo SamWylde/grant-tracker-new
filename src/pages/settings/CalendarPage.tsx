@@ -34,7 +34,7 @@ export function CalendarPage() {
   const [instructionsModal, setInstructionsModal] = useState(false);
 
   // Load organization settings
-  const { data: orgSettings, isLoading } = useQuery({
+  const { data: orgSettings } = useQuery({
     queryKey: ['organizationSettings', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return null;
@@ -63,7 +63,7 @@ export function CalendarPage() {
         .from('organization_settings')
         .update({
           ics_token: newToken,
-        })
+        } as any)
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;

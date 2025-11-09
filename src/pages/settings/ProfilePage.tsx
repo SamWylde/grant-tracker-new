@@ -31,15 +31,7 @@ const TIMEZONES = [
   { value: 'Pacific/Honolulu', label: 'Hawaii-Aleutian Time (HAT)' },
 ];
 
-interface UserProfile {
-  full_name: string;
-  timezone: string;
-}
 
-interface UserPreferences {
-  weekly_summary_emails: boolean;
-  product_updates: boolean;
-}
 
 export function ProfilePage() {
   const { user } = useAuth();

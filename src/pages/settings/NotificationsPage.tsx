@@ -23,7 +23,7 @@ import { supabase } from '../../lib/supabase';
 
 export function NotificationsPage() {
   const { currentOrg } = useOrganization();
-  const { hasPermission, isAdmin } = usePermission();
+  const { isAdmin } = usePermission();
   const queryClient = useQueryClient();
 
   // Form state
@@ -60,13 +60,13 @@ export function NotificationsPage() {
   // Initialize form when settings load
   useEffect(() => {
     if (orgSettings) {
-      setDeadline30d(orgSettings.deadline_reminders_30d ?? true);
-      setDeadline14d(orgSettings.deadline_reminders_14d ?? true);
-      setDeadline7d(orgSettings.deadline_reminders_7d ?? true);
-      setDeadline3d(orgSettings.deadline_reminders_3d ?? true);
-      setDeadline1d(orgSettings.deadline_reminders_1d ?? true);
-      setDeadline0d(orgSettings.deadline_reminders_0d ?? true);
-      setDailyTaskEmails(orgSettings.daily_task_emails ?? true);
+      setDeadline30d((orgSettings as any)?.deadline_reminders_30d ?? true);
+      setDeadline14d((orgSettings as any)?.deadline_reminders_14d ?? true);
+      setDeadline7d((orgSettings as any)?.deadline_reminders_7d ?? true);
+      setDeadline3d((orgSettings as any)?.deadline_reminders_3d ?? true);
+      setDeadline1d((orgSettings as any)?.deadline_reminders_1d ?? true);
+      setDeadline0d((orgSettings as any)?.deadline_reminders_0d ?? true);
+      setDailyTaskEmails((orgSettings as any)?.daily_task_emails ?? true);
     }
   }, [orgSettings]);
 
@@ -85,7 +85,7 @@ export function NotificationsPage() {
           deadline_reminders_1d: deadline1d,
           deadline_reminders_0d: deadline0d,
           daily_task_emails: dailyTaskEmails,
-        })
+        } as any)
         .eq('org_id', currentOrg.id);
 
       if (error) throw error;
