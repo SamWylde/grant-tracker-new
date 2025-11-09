@@ -14,6 +14,8 @@ import {
   Avatar,
   SimpleGrid,
   Badge,
+  NumberInput,
+  Checkbox,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { SettingsLayout } from '../../components/SettingsLayout';
@@ -62,6 +64,13 @@ export function OrganizationPage() {
   const [primaryState, setPrimaryState] = useState<string | null>(null);
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
 
+  // Eligibility profile state
+  const [orgSize, setOrgSize] = useState<string | null>(null);
+  const [budgetRange, setBudgetRange] = useState<string | null>(null);
+  const [minGrantAmount, setMinGrantAmount] = useState<number | string>('');
+  const [maxGrantAmount, setMaxGrantAmount] = useState<number | string>('');
+  const [autoFilterEnabled, setAutoFilterEnabled] = useState(false);
+
   const [isDirty, setIsDirty] = useState(false);
 
   const canEdit = hasPermission('edit_org');
@@ -72,6 +81,11 @@ export function OrganizationPage() {
       setOrgName(currentOrg.name || '');
       setPrimaryState(currentOrg.primary_state || null);
       setFocusAreas(currentOrg.focus_areas || []);
+      setOrgSize((currentOrg as any).org_size || null);
+      setBudgetRange((currentOrg as any).annual_budget_range || null);
+      setMinGrantAmount((currentOrg as any).min_grant_amount || '');
+      setMaxGrantAmount((currentOrg as any).max_grant_amount || '');
+      setAutoFilterEnabled((currentOrg as any).auto_filter_enabled || false);
     }
   }, [currentOrg]);
 
@@ -87,6 +101,11 @@ export function OrganizationPage() {
           name: orgName,
           primary_state: primaryState,
           focus_areas: focusAreas,
+          org_size: orgSize,
+          annual_budget_range: budgetRange,
+          min_grant_amount: minGrantAmount ? Number(minGrantAmount) : null,
+          max_grant_amount: maxGrantAmount ? Number(maxGrantAmount) : null,
+          auto_filter_enabled: autoFilterEnabled,
         })
         .eq('id', currentOrg.id);
 
@@ -115,10 +134,15 @@ export function OrganizationPage() {
     const hasChanges =
       orgName !== (currentOrg?.name || '') ||
       primaryState !== (currentOrg?.primary_state || null) ||
-      JSON.stringify(focusAreas) !== JSON.stringify(currentOrg?.focus_areas || []);
+      JSON.stringify(focusAreas) !== JSON.stringify(currentOrg?.focus_areas || []) ||
+      orgSize !== ((currentOrg as any)?.org_size || null) ||
+      budgetRange !== ((currentOrg as any)?.annual_budget_range || null) ||
+      minGrantAmount !== ((currentOrg as any)?.min_grant_amount || '') ||
+      maxGrantAmount !== ((currentOrg as any)?.max_grant_amount || '') ||
+      autoFilterEnabled !== ((currentOrg as any)?.auto_filter_enabled || false);
 
     setIsDirty(hasChanges);
-  }, [orgName, primaryState, focusAreas, currentOrg]);
+  }, [orgName, primaryState, focusAreas, orgSize, budgetRange, minGrantAmount, maxGrantAmount, autoFilterEnabled, currentOrg]);
 
   // Get org initials for avatar
   const getInitials = (name: string) => {
@@ -227,6 +251,89 @@ export function OrganizationPage() {
                     clearable
                     disabled={!canEdit}
                     description="Select all that apply to help us personalize grant recommendations"
+                  />
+                </Stack>
+              </Paper>
+
+              {/* Eligibility Profile */}
+              <Paper p="md" withBorder>
+                <Stack gap="md">
+                  <div>
+                    <Title order={3} size="h4" mb="xs">
+                      Grant Eligibility Profile
+                    </Title>
+                    <Text size="sm" c="dimmed">
+                      Help us recommend the most relevant grants for your organization
+                    </Text>
+                  </div>
+
+                  <Divider />
+
+                  <Select
+                    label="Organization Size/Type"
+                    placeholder="Select your organization type"
+                    value={orgSize}
+                    onChange={setOrgSize}
+                    data={[
+                      { value: 'small', label: 'Small Organization (1-10 staff)' },
+                      { value: 'medium', label: 'Medium Organization (11-50 staff)' },
+                      { value: 'large', label: 'Large Organization (50+ staff)' },
+                      { value: 'nonprofit', label: 'Nonprofit Organization' },
+                      { value: 'government', label: 'Government Entity' },
+                      { value: 'educational', label: 'Educational Institution' },
+                    ]}
+                    clearable
+                    disabled={!canEdit}
+                  />
+
+                  <Select
+                    label="Annual Budget Range"
+                    placeholder="Select your annual budget range"
+                    value={budgetRange}
+                    onChange={setBudgetRange}
+                    data={[
+                      { value: '0-100k', label: '$0 - $100,000' },
+                      { value: '100k-500k', label: '$100,000 - $500,000' },
+                      { value: '500k-1m', label: '$500,000 - $1M' },
+                      { value: '1m-5m', label: '$1M - $5M' },
+                      { value: '5m-10m', label: '$5M - $10M' },
+                      { value: '10m+', label: '$10M+' },
+                    ]}
+                    clearable
+                    disabled={!canEdit}
+                  />
+
+                  <Group grow>
+                    <NumberInput
+                      label="Minimum Grant Amount"
+                      placeholder="e.g., 10000"
+                      value={minGrantAmount}
+                      onChange={setMinGrantAmount}
+                      min={0}
+                      prefix="$"
+                      thousandSeparator=","
+                      disabled={!canEdit}
+                      description="Minimum grant size you're interested in"
+                    />
+                    <NumberInput
+                      label="Maximum Grant Amount"
+                      placeholder="e.g., 500000"
+                      value={maxGrantAmount}
+                      onChange={setMaxGrantAmount}
+                      min={0}
+                      prefix="$"
+                      thousandSeparator=","
+                      disabled={!canEdit}
+                      description="Maximum grant size you can manage"
+                    />
+                  </Group>
+
+                  <Checkbox
+                    label="Enable automatic filtering"
+                    description="Automatically filter grants based on your eligibility profile"
+                    checked={autoFilterEnabled}
+                    onChange={(e) => setAutoFilterEnabled(e.currentTarget.checked)}
+                    disabled={!canEdit}
                   />
                 </Stack>
               </Paper>
