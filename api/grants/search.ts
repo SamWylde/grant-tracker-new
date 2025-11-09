@@ -35,8 +35,13 @@ interface NormalizedGrant {
 
 // Normalize a single opportunity
 function normalizeOpportunity(opp: GrantsGovOpportunity): NormalizedGrant {
+  // Ensure we use the numeric ID from Grants.gov, not the opportunity number
+  // The 'id' field is a numeric string like "50283"
+  // The 'number' field is a string like "PD-09-5761" (not usable for details API)
+  const grantId = opp.id || opp.number;
+
   return {
-    id: opp.id || opp.number,
+    id: grantId,
     number: opp.number,
     title: opp.title,
     agency: opp.agencyName,

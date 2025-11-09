@@ -133,7 +133,11 @@ export function DiscoverPage() {
   );
 
   // Fetch grant details
-  const { data: grantDetails, isLoading: detailsLoading } = useQuery<GrantDetail>({
+  const {
+    data: grantDetails,
+    isLoading: detailsLoading,
+    error: detailsError,
+  } = useQuery<GrantDetail>({
     queryKey: ["grantDetails", selectedGrantId],
     queryFn: async () => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
@@ -535,6 +539,25 @@ export function DiscoverPage() {
             <Loader size="lg" />
             <Text>Loading grant details...</Text>
           </Group>
+        ) : detailsError ? (
+          <Stack align="center" gap="md" py="xl">
+            <Text c="red" fw={600}>
+              Error loading grant details
+            </Text>
+            <Text c="dimmed" ta="center" size="sm">
+              {detailsError instanceof Error ? detailsError.message : "An error occurred"}
+            </Text>
+            <Button
+              variant="light"
+              component="a"
+              href={`https://www.grants.gov/search-results-detail/${selectedGrantId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              rightSection={<IconExternalLink size={16} />}
+            >
+              View on Grants.gov
+            </Button>
+          </Stack>
         ) : grantDetails ? (
           <ScrollArea h={600}>
             <Stack gap="lg">
@@ -698,7 +721,7 @@ export function DiscoverPage() {
           </ScrollArea>
         ) : (
           <Text c="dimmed" ta="center" py="xl">
-            Failed to load grant details
+            No details available
           </Text>
         )}
       </Modal>

@@ -1,26 +1,55 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Interface for applicant types array
+interface ApplicantType {
+  id?: string;
+  description?: string;
+}
+
+// Interface for funding instruments array
+interface FundingInstrument {
+  id?: string;
+  description?: string;
+}
+
+// Interface for funding activity categories array
+interface FundingActivityCategory {
+  id?: string;
+  description?: string;
+}
+
+// Nested synopsis object structure
+interface SynopsisDetail {
+  opportunityId?: number | string;
+  version?: number;
+  agencyCode?: string;
+  agencyName?: string;
+  synopsisDesc?: string;
+  responseDateDesc?: string;
+  postingDate?: string;
+  costSharing?: boolean | string;
+  awardCeiling?: string;
+  awardCeilingFormatted?: string;
+  awardFloor?: string;
+  awardFloorFormatted?: string;
+  estimatedFunding?: string;
+  estimatedFundingFormatted?: string;
+  numberOfAwards?: string;
+  lastUpdatedDate?: string;
+  applicantTypes?: ApplicantType[];
+  fundingInstruments?: FundingInstrument[];
+  fundingActivityCategories?: FundingActivityCategory[];
+  [key: string]: any;
+}
+
+// Top-level data object from Grants.gov API
 interface GrantsGovOpportunityDetail {
-  opportunityID: string;
-  opportunityNumber: string;
-  opportunityTitle: string;
-  agencyName: string;
-  agencyCode: string;
-  description: string;
-  costSharingOrMatchingRequirement: string;
-  eligibleApplicants: string;
-  additionalInformationOnEligibility: string;
-  fundingInstrumentType: string;
-  categoryOfFundingActivity: string;
-  expectedNumberOfAwards: string;
-  estimatedTotalProgramFunding: string;
-  awardCeiling: string;
-  awardFloor: string;
-  postDate: string;
-  closeDate: string;
-  archiveDate: string;
-  grantsGovLink: string;
-  lastUpdatedDate: string;
+  id?: number | string;
+  opportunityNumber?: string;
+  opportunityTitle?: string;
+  owningAgencyCode?: string;
+  synopsis?: SynopsisDetail;
+  cfdas?: Array<{ cfdaNumber?: string; programTitle?: string }>;
   [key: string]: any;
 }
 
@@ -51,23 +80,53 @@ interface NormalizedGrantDetail {
 
 // Normalize a grant detail response
 function normalizeGrantDetail(detail: GrantsGovOpportunityDetail): NormalizedGrantDetail {
+  const synopsis = detail.synopsis || {};
+
+  // Extract applicant types as comma-separated string
+  const eligibility = synopsis.applicantTypes
+    ?.map((type) => type.description)
+    .filter(Boolean)
+    .join(', ') || null;
+
+  // Extract funding instruments as comma-separated string
+  const fundingInstrument = synopsis.fundingInstruments
+    ?.map((instr) => instr.description)
+    .filter(Boolean)
+    .join(', ') || null;
+
+  // Extract funding categories as comma-separated string
+  const category = synopsis.fundingActivityCategories
+    ?.map((cat) => cat.description)
+    .filter(Boolean)
+    .join(', ') || null;
+
+  // Handle cost sharing - convert boolean to string
+  const costSharing = synopsis.costSharing !== undefined
+    ? typeof synopsis.costSharing === 'boolean'
+      ? synopsis.costSharing ? 'Yes' : 'No'
+      : String(synopsis.costSharing)
+    : null;
+
+  const opportunityId = String(detail.id || synopsis.opportunityId || '');
+  const opportunityNumber = detail.opportunityNumber || opportunityId;
+
   return {
-    id: detail.opportunityID,
-    number: detail.opportunityNumber,
-    title: detail.opportunityTitle,
-    agency: detail.agencyName,
-    description: detail.description || 'No description available.',
-    postDate: detail.postDate || null,
-    closeDate: detail.closeDate || null,
-    eligibility: detail.eligibleApplicants || null,
-    fundingInstrument: detail.fundingInstrumentType || null,
-    category: detail.categoryOfFundingActivity || null,
-    estimatedFunding: detail.estimatedTotalProgramFunding || null,
-    awardCeiling: detail.awardCeiling || null,
-    awardFloor: detail.awardFloor || null,
-    expectedAwards: detail.expectedNumberOfAwards || null,
-    costSharing: detail.costSharingOrMatchingRequirement || null,
-    grantsGovUrl: detail.grantsGovLink || `https://www.grants.gov/search-results-detail/${detail.opportunityID}`,
+    id: opportunityId,
+    number: opportunityNumber,
+    title: detail.opportunityTitle || 'Untitled Opportunity',
+    agency: synopsis.agencyName || 'Unknown Agency',
+    description: synopsis.synopsisDesc || 'No description available.',
+    postDate: synopsis.postingDate || null,
+    closeDate: synopsis.responseDateDesc || null,
+    eligibility,
+    fundingInstrument,
+    category,
+    estimatedFunding: synopsis.estimatedFundingFormatted || synopsis.estimatedFunding || null,
+    awardCeiling: synopsis.awardCeilingFormatted || synopsis.awardCeiling || null,
+    awardFloor: synopsis.awardFloorFormatted || synopsis.awardFloor || null,
+    expectedAwards: synopsis.numberOfAwards || null,
+    costSharing,
+    grantsGovUrl: `https://www.grants.gov/search-results-detail/${opportunityId}`,
   };
 }
 
@@ -91,7 +150,10 @@ export default async function handler(
     // Convert to number - Grants.gov expects numeric opportunityId
     const opportunityId = Number(id);
     if (Number.isNaN(opportunityId)) {
-      return res.status(400).json({ error: 'Opportunity ID must be numeric' });
+      return res.status(400).json({
+        error: 'Opportunity ID must be numeric',
+        details: `Received ID: "${id}". The Grants.gov details API requires a numeric opportunity ID, not the opportunity number.`
+      });
     }
 
     // Set up timeout with AbortController

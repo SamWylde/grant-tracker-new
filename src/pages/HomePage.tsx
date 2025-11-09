@@ -1,11 +1,14 @@
+import { useState } from "react";
 import {
   Anchor,
   Badge,
   Box,
+  Burger,
   Button,
   Card,
   Container,
   Divider,
+  Drawer,
   Group,
   Image,
   SimpleGrid,
@@ -21,6 +24,7 @@ import { AppHeader } from "../components/AppHeader";
 
 export function HomePage() {
   const { user } = useAuth();
+  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
 
   return (
     <Box bg="var(--mantine-color-gray-0)">
@@ -53,6 +57,8 @@ export function HomePage() {
                   </Text>
                 </Stack>
               </Group>
+
+              {/* Desktop Navigation */}
               <Group gap="sm" visibleFrom="sm">
                 <Anchor size="sm" c="dark" component={Link} to="/discover">
                   Discover Grants
@@ -63,12 +69,62 @@ export function HomePage() {
                 <Anchor size="sm" c="dark">
                   Pricing
                 </Anchor>
-                <Button variant="light" color="grape">
+                <Button variant="light" color="grape" component={Link} to="/signin">
                   Sign in
                 </Button>
                 <Button color="grape">Book demo</Button>
               </Group>
+
+              {/* Mobile Menu Button */}
+              <Burger
+                opened={mobileMenuOpened}
+                onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
+                hiddenFrom="sm"
+                size="sm"
+              />
             </Group>
+
+            {/* Mobile Navigation Drawer */}
+            <Drawer
+              opened={mobileMenuOpened}
+              onClose={() => setMobileMenuOpened(false)}
+              size="xs"
+              padding="md"
+              title="Menu"
+              hiddenFrom="sm"
+              position="right"
+            >
+              <Stack gap="lg">
+                <Anchor
+                  component={Link}
+                  to="/discover"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Discover Grants
+                </Anchor>
+                <Anchor c="dark" onClick={() => setMobileMenuOpened(false)}>
+                  Product
+                </Anchor>
+                <Anchor c="dark" onClick={() => setMobileMenuOpened(false)}>
+                  Pricing
+                </Anchor>
+                <Divider />
+                <Button
+                  variant="light"
+                  color="grape"
+                  component={Link}
+                  to="/signin"
+                  fullWidth
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Sign in
+                </Button>
+                <Button color="grape" fullWidth onClick={() => setMobileMenuOpened(false)}>
+                  Book demo
+                </Button>
+              </Stack>
+            </Drawer>
           </Container>
         </Box>
       )}

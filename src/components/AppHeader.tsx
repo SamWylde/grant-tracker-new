@@ -1,6 +1,7 @@
-import { Box, Container, Group, Stack, Text, ThemeIcon } from '@mantine/core';
+import { useState } from 'react';
+import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon } from '@mantine/core';
 import { IconRocket } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { OrgSwitcher } from './OrgSwitcher';
 import { UserMenu } from './UserMenu';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +12,10 @@ interface AppHeaderProps {
 
 export function AppHeader({ subtitle }: AppHeaderProps) {
   const { user } = useAuth();
+  const location = useLocation();
+  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <Box
@@ -26,7 +31,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
       }}
     >
       <Container size="xl">
-        <Group justify="space-between">
+        <Group justify="space-between" wrap="nowrap">
           {/* Logo/Branding */}
           <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
             <Group gap={6}>
@@ -44,14 +49,103 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             </Group>
           </Link>
 
-          {/* Right side - Org Switcher + User Menu (only if logged in) */}
+          {/* Desktop Navigation Links - centered */}
           {user && (
-            <Group gap="md">
-              <OrgSwitcher />
-              <UserMenu />
+            <Group gap="lg" visibleFrom="md" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+              <Anchor
+                component={Link}
+                to="/discover"
+                c={isActive('/discover') ? 'grape' : 'dark'}
+                fw={isActive('/discover') ? 600 : 400}
+                underline="never"
+              >
+                Discover
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/saved"
+                c={isActive('/saved') ? 'grape' : 'dark'}
+                fw={isActive('/saved') ? 600 : 400}
+                underline="never"
+              >
+                Saved
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/settings/profile"
+                c={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
+                fw={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 600 : 400}
+                underline="never"
+              >
+                Settings
+              </Anchor>
             </Group>
           )}
+
+          {/* Right side - Desktop: Org + User, Mobile: Burger */}
+          {user && (
+            <>
+              {/* Desktop: OrgSwitcher + UserMenu */}
+              <Group gap="md" visibleFrom="md">
+                <OrgSwitcher />
+                <UserMenu />
+              </Group>
+
+              {/* Mobile: Burger Button */}
+              <Burger
+                opened={mobileMenuOpened}
+                onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
+                hiddenFrom="md"
+                size="sm"
+              />
+            </>
+          )}
         </Group>
+
+        {/* Mobile Navigation Drawer */}
+        {user && (
+          <Drawer
+            opened={mobileMenuOpened}
+            onClose={() => setMobileMenuOpened(false)}
+            size="xs"
+            padding="md"
+            title="Menu"
+            position="right"
+          >
+            <Stack gap="lg">
+              <Anchor
+                component={Link}
+                to="/discover"
+                c={isActive('/discover') ? 'grape' : 'dark'}
+                fw={isActive('/discover') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Discover Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/saved"
+                c={isActive('/saved') ? 'grape' : 'dark'}
+                fw={isActive('/saved') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Saved Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/settings/profile"
+                c={location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
+                fw={location.pathname.startsWith('/settings') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Settings
+              </Anchor>
+            </Stack>
+          </Drawer>
+        )}
       </Container>
     </Box>
   );
