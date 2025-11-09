@@ -14,6 +14,7 @@ import {
   IconBuilding,
   IconUsers,
   IconBell,
+  IconBellRinging,
   IconCalendar,
   IconCreditCard,
   IconAlertTriangle,
@@ -56,6 +57,12 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       path: '/settings/notifications',
       label: 'Notifications',
       icon: IconBell,
+    },
+    {
+      value: 'alerts',
+      path: '/settings/alerts',
+      label: 'Alerts',
+      icon: IconBellRinging,
     },
     {
       value: 'calendar',
