@@ -17,6 +17,7 @@ import {
   ThemeIcon,
   Title,
   Accordion,
+  Paper,
 } from '@mantine/core';
 import {
   IconRocket,
@@ -33,6 +34,7 @@ import {
   IconMail,
   IconCode,
   IconChecklist,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
