@@ -32,9 +32,11 @@ import {
   IconFileText,
   IconFilter,
   IconSearch,
+  IconArrowsSort,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -45,6 +47,11 @@ import {
   type SearchResponse,
 } from "../types/grants";
 import { AppHeader } from "../components/AppHeader";
+import { QuickSearchModal, useQuickSearchModal } from "../components/QuickSearchModal";
+import { SavedViewsPanel } from "../components/SavedViewsPanel";
+
+// Enable relative time plugin for dayjs
+dayjs.extend(relativeTime);
 
 const ITEMS_PER_PAGE = 25;
 // Mock org/user for v1 (replace with real auth later)
@@ -61,11 +68,15 @@ export function DiscoverPage() {
   const [statusPosted, setStatusPosted] = useState(true);
   const [statusForecasted, setStatusForecasted] = useState(true);
   const [dueInDays, setDueInDays] = useState<number | string>("");
+  const [sortBy, setSortBy] = useState<string>("due_soon"); // relevance, due_soon, newest
   const [currentPage, setCurrentPage] = useState(1);
 
   // Details modal state
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
+  // Quick search modal
+  const quickSearch = useQuickSearchModal();
 
   const [debouncedKeyword] = useDebouncedValue(keyword, 500);
 
@@ -164,6 +175,52 @@ export function DiscoverPage() {
     setDetailsModalOpen(true);
   };
 
+  // Track search in recent searches
+  const trackSearch = async () => {
+    // Only track if there are any filters applied
+    if (!debouncedKeyword && !category && !agency && !dueInDays) {
+      return;
+    }
+
+    try {
+      await fetch("/api/recent-searches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_id: MOCK_ORG_ID,
+          user_id: MOCK_USER_ID,
+          keyword: debouncedKeyword || null,
+          category: category || null,
+          agency: agency || null,
+          status_posted: statusPosted,
+          status_forecasted: statusForecasted,
+          due_in_days: dueInDays ? Number(dueInDays) : null,
+          sort_by: sortBy,
+        }),
+      });
+    } catch (error) {
+      console.error("Error tracking search:", error);
+    }
+  };
+
+  // Track searches when filters change
+  useEffect(() => {
+    if (data && data.grants.length > 0) {
+      trackSearch();
+    }
+  }, [debouncedKeyword, category, agency, dueInDays, sortBy]);
+
+  // Load a search from quick search modal
+  const handleLoadSearch = (search: any) => {
+    setKeyword(search.keyword || "");
+    setCategory(search.category || null);
+    setAgency(search.agency || null);
+    setStatusPosted(search.status_posted);
+    setStatusForecasted(search.status_forecasted);
+    setDueInDays(search.due_in_days || "");
+    setSortBy(search.sort_by || "due_soon");
+  };
+
   // Filter by due date client-side
   const filteredGrants =
     data?.grants.filter((grant) => {
@@ -174,12 +231,54 @@ export function DiscoverPage() {
       return daysDiff >= 0 && daysDiff <= Number(dueInDays);
     }) || [];
 
-  // Sort by soonest close date
+  // Calculate relevance score for each grant
+  const calculateRelevanceScore = (grant: NormalizedGrant): number => {
+    if (!debouncedKeyword) return 0;
+
+    const searchTerms = debouncedKeyword.toLowerCase().split(" ");
+    let score = 0;
+
+    const title = grant.title.toLowerCase();
+    const agency = grant.agency.toLowerCase();
+
+    searchTerms.forEach((term) => {
+      // Title matches are worth more
+      if (title.includes(term)) score += 3;
+      if (agency.includes(term)) score += 1;
+    });
+
+    return score;
+  };
+
+  // Sort grants based on selected option
   const sortedGrants = [...filteredGrants].sort((a, b) => {
-    if (!a.closeDate && !b.closeDate) return 0;
-    if (!a.closeDate) return 1;
-    if (!b.closeDate) return -1;
-    return dayjs(a.closeDate).valueOf() - dayjs(b.closeDate).valueOf();
+    switch (sortBy) {
+      case "relevance": {
+        const scoreA = calculateRelevanceScore(a);
+        const scoreB = calculateRelevanceScore(b);
+        if (scoreA !== scoreB) return scoreB - scoreA; // Higher score first
+        // Fallback to due date if scores are equal
+        if (!a.closeDate && !b.closeDate) return 0;
+        if (!a.closeDate) return 1;
+        if (!b.closeDate) return -1;
+        return dayjs(a.closeDate).valueOf() - dayjs(b.closeDate).valueOf();
+      }
+      case "newest": {
+        // Sort by open date (newest first)
+        if (!a.openDate && !b.openDate) return 0;
+        if (!a.openDate) return 1;
+        if (!b.openDate) return -1;
+        return dayjs(b.openDate).valueOf() - dayjs(a.openDate).valueOf();
+      }
+      case "due_soon":
+      default: {
+        // Sort by close date (soonest first)
+        if (!a.closeDate && !b.closeDate) return 0;
+        if (!a.closeDate) return 1;
+        if (!b.closeDate) return -1;
+        return dayjs(a.closeDate).valueOf() - dayjs(b.closeDate).valueOf();
+      }
+    }
   });
 
   const totalPages = data ? Math.ceil(data.totalCount / ITEMS_PER_PAGE) : 0;
@@ -280,12 +379,28 @@ export function DiscoverPage() {
 
           <Divider />
 
+          {/* Saved Views */}
+          <SavedViewsPanel
+            orgId={MOCK_ORG_ID}
+            userId={MOCK_USER_ID}
+            currentFilters={{
+              keyword,
+              category,
+              agency,
+              status_posted: statusPosted,
+              status_forecasted: statusForecasted,
+              due_in_days: dueInDays,
+              sort_by: sortBy,
+            }}
+            onLoadView={handleLoadSearch}
+          />
+
           {/* Filters */}
           <Paper p="md" withBorder>
             <Stack gap="md">
               <Group gap="xs">
                 <IconFilter size={20} />
-                <Text fw={600}>Filters</Text>
+                <Text fw={600}>Filters & Sort</Text>
               </Group>
 
               <Group align="flex-end" wrap="wrap">
@@ -329,6 +444,19 @@ export function DiscoverPage() {
                   value={dueInDays}
                   onChange={setDueInDays}
                   min={0}
+                  style={{ minWidth: 180 }}
+                />
+
+                <Select
+                  placeholder="Sort by"
+                  leftSection={<IconArrowsSort size={16} />}
+                  data={[
+                    { value: "due_soon", label: "Due Soon" },
+                    { value: "newest", label: "Newest" },
+                    { value: "relevance", label: "Relevance" },
+                  ]}
+                  value={sortBy}
+                  onChange={(value) => setSortBy(value || "due_soon")}
                   style={{ minWidth: 180 }}
                 />
               </Group>
@@ -409,18 +537,58 @@ export function DiscoverPage() {
 
           {/* Results list */}
           {!isLoading && !error && sortedGrants.length > 0 && (
-            <Stack gap="sm">
+            <Stack gap="md">
               {sortedGrants.map((grant) => {
                 const isSaved = savedGrantIds.has(grant.id);
-                const isClosingSoon =
-                  grant.closeDate &&
-                  dayjs(grant.closeDate).diff(dayjs(), "day") <= 30;
+                const daysUntilClose = grant.closeDate
+                  ? dayjs(grant.closeDate).diff(dayjs(), "day")
+                  : null;
+                const isClosingSoon = daysUntilClose !== null && daysUntilClose <= 30;
+                const isOverdue = daysUntilClose !== null && daysUntilClose < 0;
 
                 return (
-                  <Card key={grant.id} padding="md" withBorder>
-                    <Stack gap="sm">
-                      <Group justify="space-between" align="flex-start">
-                        <Stack gap={4} style={{ flex: 1 }}>
+                  <Card
+                    key={grant.id}
+                    padding="lg"
+                    withBorder
+                    style={{
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      border: isSaved ? "2px solid var(--mantine-color-grape-4)" : undefined,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "";
+                      e.currentTarget.style.transform = "";
+                    }}
+                  >
+                    <Stack gap="md">
+                      {/* Header */}
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Stack gap={8} style={{ flex: 1 }}>
+                          <Group gap="xs" wrap="wrap">
+                            <Badge
+                              variant="light"
+                              color={grant.status === "posted" ? "green" : "blue"}
+                              size="sm"
+                            >
+                              {grant.status}
+                            </Badge>
+                            {grant.aln && (
+                              <Badge variant="outline" size="sm" color="gray">
+                                {grant.aln}
+                              </Badge>
+                            )}
+                            {isSaved && (
+                              <Badge variant="filled" size="sm" color="grape">
+                                Saved
+                              </Badge>
+                            )}
+                          </Group>
+
                           <Anchor
                             href={`https://www.grants.gov/search-results-detail/${grant.id}`}
                             target="_blank"
@@ -429,79 +597,111 @@ export function DiscoverPage() {
                             size="lg"
                             c="dark"
                             style={{ textDecoration: "none" }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Group gap="xs">
-                              {grant.title}
-                              <IconExternalLink size={16} />
+                            <Group gap="xs" wrap="nowrap">
+                              <Text lineClamp={2}>{grant.title}</Text>
+                              <IconExternalLink size={16} style={{ flexShrink: 0 }} />
                             </Group>
                           </Anchor>
-                          <Group gap="xs">
-                            <Text size="sm" c="dimmed">
-                              {grant.agency}
-                            </Text>
-                            {grant.aln && (
-                              <>
-                                <Text size="sm" c="dimmed">
-                                  •
-                                </Text>
-                                <Badge variant="light" size="sm">
-                                  ALN: {grant.aln}
-                                </Badge>
-                              </>
-                            )}
-                          </Group>
+
+                          <Text size="sm" c="dimmed" fw={500}>
+                            {grant.agency}
+                          </Text>
                         </Stack>
-                        <Group gap="xs">
-                          <ActionIcon
+
+                        <Group gap="xs" style={{ flexShrink: 0 }}>
+                          <Button
                             variant="light"
                             color="blue"
-                            size="lg"
-                            onClick={() => handleViewDetails(grant.id)}
-                            title="View details"
+                            size="sm"
+                            leftSection={<IconFileText size={16} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(grant.id);
+                            }}
                           >
-                            <IconFileText size={20} />
-                          </ActionIcon>
-                          <ActionIcon
-                            variant={isSaved ? "filled" : "light"}
+                            Details
+                          </Button>
+                          <Button
+                            variant={isSaved ? "filled" : "outline"}
                             color="grape"
-                            size="lg"
-                            onClick={() => handleSaveToggle(grant, isSaved)}
-                            title={isSaved ? "Remove from pipeline" : "Save to pipeline"}
+                            size="sm"
+                            leftSection={
+                              isSaved ? (
+                                <IconBookmarkFilled size={16} />
+                              ) : (
+                                <IconBookmark size={16} />
+                              )
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveToggle(grant, isSaved);
+                            }}
                           >
-                            {isSaved ? (
-                              <IconBookmarkFilled size={20} />
-                            ) : (
-                              <IconBookmark size={20} />
-                            )}
-                          </ActionIcon>
+                            {isSaved ? "Saved" : "Save"}
+                          </Button>
                         </Group>
                       </Group>
 
-                      <Group gap="md">
-                        <Badge
-                          variant="light"
-                          color={grant.status === "posted" ? "green" : "blue"}
-                        >
-                          {grant.status}
-                        </Badge>
+                      <Divider />
+
+                      {/* Dates */}
+                      <Group gap="xl">
                         {grant.openDate && (
-                          <Text size="sm" c="dimmed">
-                            Opened: {dayjs(grant.openDate).format("MMM D, YYYY")}
-                          </Text>
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                              Posted
+                            </Text>
+                            <Text size="sm" fw={500}>
+                              {dayjs(grant.openDate).format("MMM D, YYYY")}
+                            </Text>
+                          </Stack>
                         )}
-                        {grant.closeDate ? (
-                          <Text
-                            size="sm"
-                            fw={isClosingSoon ? 600 : 400}
-                            c={isClosingSoon ? "orange" : "dimmed"}
-                          >
-                            Due: {dayjs(grant.closeDate).format("MMM D, YYYY")}
+                        <Stack gap={4}>
+                          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                            {isOverdue ? "Closed" : "Closes"}
                           </Text>
-                        ) : (
-                          <Text size="sm" c="dimmed">
-                            Due: TBD
-                          </Text>
-                        )}
+                          {grant.closeDate ? (
+                            <Group gap="xs">
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c={
+                                  isOverdue
+                                    ? "red"
+                                    : isClosingSoon
+                                      ? "orange"
+                                      : "dark"
+                                }
+                              >
+                                {dayjs(grant.closeDate).format("MMM D, YYYY")}
+                              </Text>
+                              {daysUntilClose !== null && !isOverdue && (
+                                <Badge
+                                  size="sm"
+                                  color={isClosingSoon ? "orange" : "gray"}
+                                  variant="light"
+                                >
+                                  {daysUntilClose === 0
+                                    ? "Today"
+                                    : daysUntilClose === 1
+                                      ? "Tomorrow"
+                                      : `${daysUntilClose} days`}
+                                </Badge>
+                              )}
+                              {isOverdue && (
+                                <Badge size="sm" color="red" variant="light">
+                                  Overdue
+                                </Badge>
+                              )}
+                            </Group>
+                          ) : (
+                            <Text size="sm" c="dimmed">
+                              TBD
+                            </Text>
+                          )}
+                        </Stack>
                       </Group>
                     </Stack>
                   </Card>
@@ -725,6 +925,15 @@ export function DiscoverPage() {
           </Text>
         )}
       </Modal>
+
+      {/* Quick Search Modal */}
+      <QuickSearchModal
+        opened={quickSearch.opened}
+        onClose={quickSearch.close}
+        orgId={MOCK_ORG_ID}
+        userId={MOCK_USER_ID}
+        onSearchSelect={handleLoadSearch}
+      />
     </Box>
   );
 }
