@@ -67,7 +67,7 @@ function normalizeGrantDetail(detail: GrantsGovOpportunityDetail): NormalizedGra
     awardFloor: detail.awardFloor || null,
     expectedAwards: detail.expectedNumberOfAwards || null,
     costSharing: detail.costSharingOrMatchingRequirement || null,
-    grantsGovUrl: detail.grantsGovLink || `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${detail.opportunityNumber}`,
+    grantsGovUrl: detail.grantsGovLink || `https://www.grants.gov/search-results-detail/${detail.opportunityID}`,
   };
 }
 

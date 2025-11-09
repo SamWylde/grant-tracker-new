@@ -417,7 +417,7 @@ export function DiscoverPage() {
                       <Group justify="space-between" align="flex-start">
                         <Stack gap={4} style={{ flex: 1 }}>
                           <Anchor
-                            href={`https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grant.number}`}
+                            href={`https://www.grants.gov/search-results-detail/${grant.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             fw={600}
@@ -451,7 +451,7 @@ export function DiscoverPage() {
                             variant="light"
                             color="blue"
                             size="lg"
-                            onClick={() => handleViewDetails(grant.number)}
+                            onClick={() => handleViewDetails(grant.id)}
                             title="View details"
                           >
                             <IconFileText size={20} />
@@ -684,7 +684,7 @@ export function DiscoverPage() {
               <Group justify="flex-end">
                 <Button
                   component="a"
-                  href={grantDetails.grantsGovUrl || `https://www.grants.gov/web/grants/view-opportunity.html?oppId=${grantDetails.number}`}
+                  href={grantDetails.grantsGovUrl || `https://www.grants.gov/search-results-detail/${grantDetails.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   rightSection={<IconExternalLink size={16} />}
