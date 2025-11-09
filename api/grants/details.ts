@@ -75,17 +75,23 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Only allow GET
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
 
   try {
-    const { id } = req.query;
+    const { id } = req.body || {};
 
     // Validate ID
-    if (!id || typeof id !== 'string') {
+    if (!id) {
       return res.status(400).json({ error: 'Opportunity ID is required' });
+    }
+
+    // Convert to number - Grants.gov expects numeric opportunityId
+    const opportunityId = Number(id);
+    if (Number.isNaN(opportunityId)) {
+      return res.status(400).json({ error: 'Opportunity ID must be numeric' });
     }
 
     // Set up timeout with AbortController
@@ -93,14 +99,15 @@ export default async function handler(
     const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
     try {
-      // Call Grants.gov API for opportunity details
+      // Call Grants.gov fetchOpportunity API (POST with JSON body)
       const response = await fetch(
-        `https://api.grants.gov/v1/api/opportunity/${encodeURIComponent(id)}`,
+        'https://api.grants.gov/v1/api/fetchOpportunity',
         {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ opportunityId }),
           signal: controller.signal,
         }
       );
@@ -108,7 +115,8 @@ export default async function handler(
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.error('Grants.gov API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Grants.gov API error:', response.status, response.statusText, errorText);
         return res.status(response.status).json({
           error: 'Failed to fetch grant details from Grants.gov',
           details: response.statusText,

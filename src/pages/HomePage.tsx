@@ -16,52 +16,62 @@ import {
 } from "@mantine/core";
 import { IconChartBar, IconClock, IconRocket, IconUsers } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { AppHeader } from "../components/AppHeader";
 
 export function HomePage() {
+  const { user } = useAuth();
+
   return (
     <Box bg="var(--mantine-color-gray-0)">
-      <Box
-        component="header"
-        px="md"
-        py="lg"
-        style={{
-          backdropFilter: "blur(18px)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <Container size="lg">
-          <Group justify="space-between">
-            <Group gap={6}>
-              <ThemeIcon variant="light" color="grape" size={38} radius="xl">
-                <IconRocket size={20} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fw={700}>GrantTracker</Text>
-                <Text size="xs" c="dimmed">
-                  Funding visibility for every team
-                </Text>
-              </Stack>
+      {user ? (
+        // If user is logged in, show AppHeader
+        <AppHeader subtitle="Grant Discovery & Management" />
+      ) : (
+        // If user is not logged in, show marketing header
+        <Box
+          component="header"
+          px="md"
+          py="lg"
+          style={{
+            backdropFilter: "blur(18px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+          }}
+        >
+          <Container size="lg">
+            <Group justify="space-between">
+              <Group gap={6}>
+                <ThemeIcon variant="light" color="grape" size={38} radius="xl">
+                  <IconRocket size={20} />
+                </ThemeIcon>
+                <Stack gap={0}>
+                  <Text fw={700}>GrantTracker</Text>
+                  <Text size="xs" c="dimmed">
+                    Funding visibility for every team
+                  </Text>
+                </Stack>
+              </Group>
+              <Group gap="sm" visibleFrom="sm">
+                <Anchor size="sm" c="dark" component={Link} to="/discover">
+                  Discover Grants
+                </Anchor>
+                <Anchor size="sm" c="dark">
+                  Product
+                </Anchor>
+                <Anchor size="sm" c="dark">
+                  Pricing
+                </Anchor>
+                <Button variant="light" color="grape">
+                  Sign in
+                </Button>
+                <Button color="grape">Book demo</Button>
+              </Group>
             </Group>
-            <Group gap="sm" visibleFrom="sm">
-              <Anchor size="sm" c="dark" component={Link} to="/discover">
-                Discover Grants
-              </Anchor>
-              <Anchor size="sm" c="dark">
-                Product
-              </Anchor>
-              <Anchor size="sm" c="dark">
-                Pricing
-              </Anchor>
-              <Button variant="light" color="grape">
-                Sign in
-              </Button>
-              <Button color="grape">Book demo</Button>
-            </Group>
-          </Group>
-        </Container>
-      </Box>
+          </Container>
+        </Box>
+      )}
 
       <Box
         component="section"

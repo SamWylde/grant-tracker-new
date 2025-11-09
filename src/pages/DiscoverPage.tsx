@@ -36,6 +36,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   FEDERAL_AGENCIES,
   FUNDING_CATEGORIES,
@@ -137,7 +138,13 @@ export function DiscoverPage() {
     queryFn: async () => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
 
-      const response = await fetch(`/api/grants/details?id=${encodeURIComponent(selectedGrantId)}`);
+      const response = await fetch('/api/grants/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: selectedGrantId }),
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to fetch grant details");
@@ -260,13 +267,8 @@ export function DiscoverPage() {
             <Button
               variant="light"
               color="grape"
-              onClick={() => {
-                notifications.show({
-                  title: "Coming soon",
-                  message: "Saved grants page is under construction",
-                  color: "blue",
-                });
-              }}
+              component={Link}
+              to="/saved"
             >
               View Saved ({savedGrants?.grants.length || 0})
             </Button>
