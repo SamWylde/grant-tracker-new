@@ -268,6 +268,7 @@ ALTER TABLE public.org_grants_saved ENABLE ROW LEVEL SECURITY;
 -- =====================================================
 
 -- Users can view organizations they're members of
+DROP POLICY IF EXISTS "Users can view their organizations" ON public.organizations;
 CREATE POLICY "Users can view their organizations"
   ON public.organizations
   FOR SELECT
@@ -278,6 +279,7 @@ CREATE POLICY "Users can view their organizations"
   );
 
 -- Admins can update their organizations
+DROP POLICY IF EXISTS "Admins can update their organizations" ON public.organizations;
 CREATE POLICY "Admins can update their organizations"
   ON public.organizations
   FOR UPDATE
@@ -289,12 +291,14 @@ CREATE POLICY "Admins can update their organizations"
   );
 
 -- Anyone can create an organization (they become admin automatically)
+DROP POLICY IF EXISTS "Anyone can create organizations" ON public.organizations;
 CREATE POLICY "Anyone can create organizations"
   ON public.organizations
   FOR INSERT
   WITH CHECK (true);
 
 -- Admins can delete their organizations
+DROP POLICY IF EXISTS "Admins can delete their organizations" ON public.organizations;
 CREATE POLICY "Admins can delete their organizations"
   ON public.organizations
   FOR DELETE
@@ -310,18 +314,21 @@ CREATE POLICY "Admins can delete their organizations"
 -- =====================================================
 
 -- Users can view all user profiles (for team listings)
+DROP POLICY IF EXISTS "Users can view all profiles" ON public.user_profiles;
 CREATE POLICY "Users can view all profiles"
   ON public.user_profiles
   FOR SELECT
   USING (true);
 
 -- Users can update their own profile
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
 CREATE POLICY "Users can update own profile"
   ON public.user_profiles
   FOR UPDATE
   USING (id = auth.uid());
 
 -- Auto-insert on signup (handled by trigger)
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.user_profiles;
 CREATE POLICY "Users can insert own profile"
   ON public.user_profiles
   FOR INSERT
@@ -332,6 +339,7 @@ CREATE POLICY "Users can insert own profile"
 -- =====================================================
 
 -- Users can view members of their organizations
+DROP POLICY IF EXISTS "Users can view org members" ON public.org_members;
 CREATE POLICY "Users can view org members"
   ON public.org_members
   FOR SELECT
@@ -342,6 +350,7 @@ CREATE POLICY "Users can view org members"
   );
 
 -- Admins can add members
+DROP POLICY IF EXISTS "Admins can add members" ON public.org_members;
 CREATE POLICY "Admins can add members"
   ON public.org_members
   FOR INSERT
@@ -353,6 +362,7 @@ CREATE POLICY "Admins can add members"
   );
 
 -- Admins can update member roles
+DROP POLICY IF EXISTS "Admins can update member roles" ON public.org_members;
 CREATE POLICY "Admins can update member roles"
   ON public.org_members
   FOR UPDATE
@@ -364,6 +374,7 @@ CREATE POLICY "Admins can update member roles"
   );
 
 -- Admins can remove members
+DROP POLICY IF EXISTS "Admins can remove members" ON public.org_members;
 CREATE POLICY "Admins can remove members"
   ON public.org_members
   FOR DELETE
@@ -379,6 +390,7 @@ CREATE POLICY "Admins can remove members"
 -- =====================================================
 
 -- Users can view invitations for their organizations
+DROP POLICY IF EXISTS "Users can view org invitations" ON public.team_invitations;
 CREATE POLICY "Users can view org invitations"
   ON public.team_invitations
   FOR SELECT
@@ -389,6 +401,7 @@ CREATE POLICY "Users can view org invitations"
   );
 
 -- Admins can create invitations
+DROP POLICY IF EXISTS "Admins can create invitations" ON public.team_invitations;
 CREATE POLICY "Admins can create invitations"
   ON public.team_invitations
   FOR INSERT
@@ -400,6 +413,7 @@ CREATE POLICY "Admins can create invitations"
   );
 
 -- Admins can update/revoke invitations
+DROP POLICY IF EXISTS "Admins can update invitations" ON public.team_invitations;
 CREATE POLICY "Admins can update invitations"
   ON public.team_invitations
   FOR UPDATE
@@ -411,6 +425,7 @@ CREATE POLICY "Admins can update invitations"
   );
 
 -- Admins can delete invitations
+DROP POLICY IF EXISTS "Admins can delete invitations" ON public.team_invitations;
 CREATE POLICY "Admins can delete invitations"
   ON public.team_invitations
   FOR DELETE
@@ -426,6 +441,7 @@ CREATE POLICY "Admins can delete invitations"
 -- =====================================================
 
 -- Users can view and update their own preferences
+DROP POLICY IF EXISTS "Users can manage own preferences" ON public.user_preferences;
 CREATE POLICY "Users can manage own preferences"
   ON public.user_preferences
   FOR ALL
@@ -437,6 +453,7 @@ CREATE POLICY "Users can manage own preferences"
 -- =====================================================
 
 -- Members can view their org settings
+DROP POLICY IF EXISTS "Members can view org settings" ON public.organization_settings;
 CREATE POLICY "Members can view org settings"
   ON public.organization_settings
   FOR SELECT
@@ -447,6 +464,7 @@ CREATE POLICY "Members can view org settings"
   );
 
 -- Admins can update org settings
+DROP POLICY IF EXISTS "Admins can update org settings" ON public.organization_settings;
 CREATE POLICY "Admins can update org settings"
   ON public.organization_settings
   FOR UPDATE
@@ -458,6 +476,7 @@ CREATE POLICY "Admins can update org settings"
   );
 
 -- Auto-insert on org creation (handled by trigger)
+DROP POLICY IF EXISTS "Auto-insert org settings" ON public.organization_settings;
 CREATE POLICY "Auto-insert org settings"
   ON public.organization_settings
   FOR INSERT
@@ -468,6 +487,7 @@ CREATE POLICY "Auto-insert org settings"
 -- =====================================================
 
 -- Members can view grants for their organizations
+DROP POLICY IF EXISTS "Members can view org grants" ON public.org_grants_saved;
 CREATE POLICY "Members can view org grants"
   ON public.org_grants_saved
   FOR SELECT
@@ -478,6 +498,7 @@ CREATE POLICY "Members can view org grants"
   );
 
 -- Members can save grants for their organizations
+DROP POLICY IF EXISTS "Members can save grants" ON public.org_grants_saved;
 CREATE POLICY "Members can save grants"
   ON public.org_grants_saved
   FOR INSERT
@@ -488,6 +509,7 @@ CREATE POLICY "Members can save grants"
   );
 
 -- Members can delete grants from their organizations
+DROP POLICY IF EXISTS "Members can delete grants" ON public.org_grants_saved;
 CREATE POLICY "Members can delete grants"
   ON public.org_grants_saved
   FOR DELETE
