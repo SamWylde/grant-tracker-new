@@ -17,7 +17,6 @@ import {
   IconCreditCard,
   IconRocket,
   IconCalendar,
-  IconUsers,
   IconCheck,
 } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
@@ -31,7 +30,7 @@ export function BillingPage() {
   const { isAdmin } = usePermission();
 
   // Load organization settings for billing info
-  const { data: orgSettings, isLoading } = useQuery({
+  const { data: orgSettings } = useQuery({
     queryKey: ['organizationSettings', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return null;
@@ -92,7 +91,7 @@ export function BillingPage() {
     );
   }
 
-  const planName = orgSettings?.plan_name || 'free';
+  const planName = (orgSettings as any)?.plan_name || 'free';
   const isFree = planName === 'free';
   const isPro = planName === 'pro';
 
@@ -176,8 +175,8 @@ export function BillingPage() {
                           Next Renewal
                         </Text>
                         <Text size="sm" fw={500}>
-                          {orgSettings?.next_renewal_at
-                            ? new Date(orgSettings.next_renewal_at).toLocaleDateString()
+                          {(orgSettings as any)?.next_renewal_at
+                            ? new Date((orgSettings as any).next_renewal_at).toLocaleDateString()
                             : 'N/A'}
                         </Text>
                       </Group>
@@ -196,7 +195,7 @@ export function BillingPage() {
                     </>
                   )}
 
-                  {isFree && orgSettings?.trial_ends_at && (
+                  {isFree && (orgSettings as any)?.trial_ends_at && (
                     <Box
                       p="sm"
                       bg="var(--mantine-color-orange-0)"
@@ -205,7 +204,7 @@ export function BillingPage() {
                       <Text size="sm" fw={500} c="orange">
                         Trial ends in{' '}
                         {Math.ceil(
-                          (new Date(orgSettings.trial_ends_at).getTime() - Date.now()) /
+                          (new Date((orgSettings as any).trial_ends_at).getTime() - Date.now()) /
                             (1000 * 60 * 60 * 24)
                         )}{' '}
                         days

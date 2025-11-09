@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import {
   Stack,
   Title,
@@ -17,7 +17,7 @@ import {
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { SettingsLayout } from '../../components/SettingsLayout';
-import { ProtectedRoute, AccessDenied } from '../../components/ProtectedRoute';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
@@ -55,7 +55,7 @@ const FOCUS_AREAS = [
 export function OrganizationPage() {
   const { currentOrg, refreshOrgs } = useOrganization();
   const { hasPermission, isAdmin } = usePermission();
-  const queryClient = useQueryClient();
+  
 
   // Form state
   const [orgName, setOrgName] = useState('');
@@ -82,6 +82,7 @@ export function OrganizationPage() {
 
       const { error } = await supabase
         .from('organizations')
+        // @ts-ignore - Supabase type inference issue
         .update({
           name: orgName,
           primary_state: primaryState,

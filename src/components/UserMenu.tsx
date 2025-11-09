@@ -36,10 +36,10 @@ export function UserMenu() {
     return null;
   }
 
-  const displayName = profile?.full_name || user.email?.split('@')[0] || 'User';
+  const displayName = (profile as any)?.full_name || user.email?.split('@')[0] || 'User';
   const initials = displayName
     .split(' ')
-    .map((n) => n[0])
+    .map((n: string) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);

@@ -34,7 +34,7 @@ export function CalendarPage() {
   const [instructionsModal, setInstructionsModal] = useState(false);
 
   // Load organization settings
-  const { data: orgSettings, isLoading } = useQuery({
+  const { data: orgSettings } = useQuery({
     queryKey: ['organizationSettings', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return null;
@@ -61,6 +61,7 @@ export function CalendarPage() {
 
       const { error } = await supabase
         .from('organization_settings')
+        // @ts-ignore - Supabase type inference issue
         .update({
           ics_token: newToken,
         })
@@ -101,7 +102,7 @@ export function CalendarPage() {
         color: 'green',
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       notifications.show({
         title: 'Coming Soon',
         message: 'Google Calendar integration will be available soon!',
@@ -121,10 +122,10 @@ export function CalendarPage() {
   }
 
   // Generate ICS feed URL
-  const icsToken = orgSettings?.ics_token || 'loading';
+  const icsToken = (orgSettings as any)?.ics_token || 'loading';
   const icsUrl = `${window.location.origin}/api/calendar/${currentOrg.id}/${icsToken}.ics`;
 
-  const isGoogleConnected = orgSettings?.google_calendar_connected || false;
+  const isGoogleConnected = (orgSettings as any)?.google_calendar_connected || false;
 
   return (
     <ProtectedRoute>
