@@ -101,12 +101,12 @@ export function TeamPage() {
     mutationFn: async () => {
       if (!currentOrg || !user) throw new Error('No organization or user');
 
-      const { error } = await (supabase.from('team_invitations').insert({
+      const { error } = await supabase.from('team_invitations').insert({
         org_id: currentOrg.id,
         email: inviteEmail,
         role: inviteRole,
         invited_by: user.id,
-      }) as any);
+      } as any);
 
       if (error) throw error;
     },
@@ -132,9 +132,9 @@ export function TeamPage() {
   // Revoke invitation mutation
   const revokeMutation = useMutation({
     mutationFn: async (invitationId: string) => {
-      const { error } = await (supabase
+      const { error } = await supabase
         .from('team_invitations')
-        .update({ revoked_at: new Date().toISOString() }) as any)
+        .update({ revoked_at: new Date().toISOString() } as any)
         .eq('id', invitationId);
 
       if (error) throw error;
@@ -170,7 +170,7 @@ export function TeamPage() {
   // Change role mutation
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
-      const { error } = await (supabase.from('org_members').update({ role }) as any).eq('id', memberId);
+      const { error } = await supabase.from('org_members').update({ role } as any).eq('id', memberId);
 
       if (error) throw error;
     },
