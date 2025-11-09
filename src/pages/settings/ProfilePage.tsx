@@ -289,7 +289,7 @@ export function ProfilePage() {
                 <Stack gap="sm">
                   <Title order={4}>About Your Profile</Title>
                   <Text size="sm">
-                    Your profile information is used throughout GrantQue to personalize your
+                    Your profile information is used throughout GrantCue to personalize your
                     experience. Your timezone ensures deadlines and notifications are displayed in
                     your local time.
                   </Text>

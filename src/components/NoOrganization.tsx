@@ -84,7 +84,7 @@ export function NoOrganization() {
           </ThemeIcon>
 
           <Stack gap="sm" align="center">
-            <Title order={2}>Welcome to GrantQue!</Title>
+            <Title order={2}>Welcome to GrantCue!</Title>
             <Text ta="center" c="dimmed">
               To get started, you'll need to create an organization. Organizations help you manage grants and
               collaborate with your team.

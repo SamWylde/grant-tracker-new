@@ -43,10 +43,10 @@ export function GrantHubMigrationPage() {
               GrantHub End-of-Life Notice
             </Badge>
             <Title order={1} ta="center" size={48}>
-              Migrate from GrantHub to GrantQue
+              Migrate from GrantHub to GrantCue
             </Title>
             <Text size="xl" ta="center" c="dimmed" maw={700}>
-              Foundant is discontinuing GrantHub. Switch to GrantQue today for a modern,
+              Foundant is discontinuing GrantHub. Switch to GrantCue today for a modern,
               affordable alternative with all the features you need.
             </Text>
             <Group mt="md">
@@ -72,7 +72,7 @@ export function GrantHubMigrationPage() {
           {/* Why Switch Section */}
           <Stack gap="md">
             <Title order={2} ta="center">
-              Why GrantQue?
+              Why GrantCue?
             </Title>
             <Text ta="center" c="dimmed" size="lg" maw={700} mx="auto">
               Built specifically for nonprofits switching from GrantHub
@@ -151,11 +151,11 @@ export function GrantHubMigrationPage() {
 
               <Timeline.Item
                 bullet={<IconUpload size={16} />}
-                title="Import to GrantQue"
+                title="Import to GrantCue"
                 color="grape"
               >
                 <Text size="sm" c="dimmed" mt={4}>
-                  Sign up for GrantQue, go to the import page, and upload your CSV file. We'll
+                  Sign up for GrantCue, go to the import page, and upload your CSV file. We'll
                   automatically map and import your data.
                 </Text>
               </Timeline.Item>
@@ -189,7 +189,7 @@ export function GrantHubMigrationPage() {
           {/* Feature Comparison */}
           <Stack gap="md">
             <Title order={2} ta="center">
-              What You Get with GrantQue
+              What You Get with GrantCue
             </Title>
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" mt="md">
               <Paper p="md" withBorder>
@@ -250,7 +250,7 @@ export function GrantHubMigrationPage() {
                 Ready to Make the Switch?
               </Title>
               <Text ta="center" size="lg" c="dimmed" maw={600}>
-                Join nonprofits already using GrantQue to manage their grant pipelines more
+                Join nonprofits already using GrantCue to manage their grant pipelines more
                 effectively.
               </Text>
               <Group mt="md">

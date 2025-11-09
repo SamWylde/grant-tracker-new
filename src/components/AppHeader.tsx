@@ -39,7 +39,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 <IconRocket size={20} />
               </ThemeIcon>
               <Stack gap={0}>
-                <Text fw={700}>GrantQue</Text>
+                <Text fw={700}>GrantCue</Text>
                 {subtitle && (
                   <Text size="xs" c="dimmed">
                     {subtitle}

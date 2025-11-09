@@ -66,7 +66,7 @@ export function FeaturesPage() {
               </ThemeIcon>
               <Stack gap={0}>
                 <Text fw={700} component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                  GrantQue
+                  GrantCue
                 </Text>
                 <Text size="xs" c="dimmed">
                   Funding visibility for every team
@@ -184,7 +184,7 @@ export function FeaturesPage() {
               Powerful features for grant management
             </Title>
             <Text size="lg" c="dimmed" maw={640}>
-              From discovery to submission, GrantQue gives your team the tools to streamline the entire grant
+              From discovery to submission, GrantCue gives your team the tools to streamline the entire grant
               lifecycle.
             </Text>
           </Stack>
@@ -381,7 +381,7 @@ export function FeaturesPage() {
                 Works with your favorite tools
               </Title>
               <Text size="lg" c="dimmed" ta="center" maw={640}>
-                GrantQue integrates seamlessly with the tools you already use every day.
+                GrantCue integrates seamlessly with the tools you already use every day.
               </Text>
             </Stack>
 
@@ -731,7 +731,7 @@ export function FeaturesPage() {
                 Start tracking grants today
               </Title>
               <Text ta="center" c="dimmed" maw={520}>
-                Join organizations that are already streamlining their grant management with GrantQue.
+                Join organizations that are already streamlining their grant management with GrantCue.
               </Text>
               <Group gap="md" wrap="wrap" justify="center">
                 <Button size="lg" color="grape" component={Link} to="/signin">
@@ -752,7 +752,7 @@ export function FeaturesPage() {
           <Group justify="space-between" align="center">
             <Stack gap={0}>
               <Text fw={700} c="white">
-                GrantQue
+                GrantCue
               </Text>
               <Text size="sm" c="dimmed">
                 Purpose-built funding operations for ambitious teams.

@@ -658,7 +658,7 @@ export function CalendarPage() {
                   <Title order={4}>About Webhooks</Title>
                   <Text size="sm">
                     Webhooks allow you to receive real-time notifications when events occur in
-                    GrantQue. Configure custom endpoints to integrate with your own systems.
+                    GrantCue. Configure custom endpoints to integrate with your own systems.
                   </Text>
                   <Text size="sm">
                     <strong>Events:</strong> grant.saved, grant.deadline_approaching,

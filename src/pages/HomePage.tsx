@@ -51,7 +51,7 @@ export function HomePage() {
                   <IconRocket size={20} />
                 </ThemeIcon>
                 <Stack gap={0}>
-                  <Text fw={700}>GrantQue</Text>
+                  <Text fw={700}>GrantCue</Text>
                   <Text size="xs" c="dimmed">
                     Funding visibility for every team
                   </Text>
@@ -166,7 +166,7 @@ export function HomePage() {
                 All your grant opportunities in one intuitive workspace
               </Title>
               <Text fz="lg" c="dimmed">
-                GrantQue centralizes deadlines, tasks, and collaborator updates so your team can
+                GrantCue centralizes deadlines, tasks, and collaborator updates so your team can
                 focus on crafting standout proposals instead of chasing spreadsheets.
               </Text>
               <Group gap="md">
@@ -262,7 +262,7 @@ export function HomePage() {
         <Stack gap={60}>
           <Stack gap="sm" align="center">
             <Badge size="lg" variant="light" color="grape">
-              Why teams choose GrantQue
+              Why teams choose GrantCue
             </Badge>
             <Title order={2} ta="center">
               Built for collaborative, deadline-driven work
@@ -325,7 +325,7 @@ export function HomePage() {
                 Success spotlight
               </Badge>
               <Title order={2}>
-                "GrantQue reduced our review cycles from weeks to days."
+                "GrantCue reduced our review cycles from weeks to days."
               </Title>
               <Text size="lg" c="dimmed">
                 The City Forward Foundation consolidated eight spreadsheets and brought 120 partners
@@ -389,7 +389,7 @@ export function HomePage() {
               Bring unparalleled clarity to your grant strategy
             </Title>
             <Text ta="center" c="dimmed" maw={520}>
-              Launch GrantQue across your organization in under two weeks with guided onboarding
+              Launch GrantCue across your organization in under two weeks with guided onboarding
               and data migration support from our specialist team.
             </Text>
             <Group gap="md" wrap="wrap" justify="center">
@@ -409,7 +409,7 @@ export function HomePage() {
           <Group justify="space-between" align="center">
             <Stack gap={0}>
               <Text fw={700} c="white">
-                GrantQue
+                GrantCue
               </Text>
               <Text size="sm" c="dimmed">
                 Purpose-built funding operations for ambitious teams.
