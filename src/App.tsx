@@ -4,8 +4,19 @@ import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./contexts/AuthContext";
+import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { HomePage } from "./pages/HomePage";
 import { DiscoverPage } from "./pages/DiscoverPage";
+import {
+  ProfilePage,
+  OrganizationPage,
+  TeamPage,
+  NotificationsPage,
+  CalendarPage,
+  BillingPage,
+  DangerZonePage,
+} from "./pages/settings";
 import { theme } from "./theme";
 
 const queryClient = new QueryClient({
@@ -22,12 +33,25 @@ export default function App() {
     <MantineProvider theme={theme} defaultColorScheme="light">
       <Notifications position="top-right" />
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/discover" element={<DiscoverPage />} />
-          </Routes>
-        </BrowserRouter>
+        <AuthProvider>
+          <OrganizationProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/discover" element={<DiscoverPage />} />
+
+                {/* Settings Routes */}
+                <Route path="/settings/profile" element={<ProfilePage />} />
+                <Route path="/settings/org" element={<OrganizationPage />} />
+                <Route path="/settings/team" element={<TeamPage />} />
+                <Route path="/settings/notifications" element={<NotificationsPage />} />
+                <Route path="/settings/calendar" element={<CalendarPage />} />
+                <Route path="/settings/billing" element={<BillingPage />} />
+                <Route path="/settings/danger" element={<DangerZonePage />} />
+              </Routes>
+            </BrowserRouter>
+          </OrganizationProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </MantineProvider>
   );
