@@ -123,29 +123,44 @@ export function DangerZonePage() {
     },
   });
 
-  // Transfer ownership mutation (stub for V1)
+  // Transfer ownership mutation
   const transferMutation = useMutation({
     mutationFn: async () => {
-      if (!currentOrg || !transferUserId) throw new Error('Missing data');
+      if (!currentOrg || !transferUserId || !user) throw new Error('Missing data');
 
-      // In production, this would transfer ownership
-      // For V1, we'll just show a message
-      throw new Error('Transfer ownership feature coming soon');
+      // Update current owner to contributor
+      const { error: demoteError } = await supabase
+        .from('org_members')
+        .update({ role: 'contributor' })
+        .eq('org_id', currentOrg.id)
+        .eq('user_id', user.id);
+
+      if (demoteError) throw demoteError;
+
+      // Update new owner to admin
+      const { error: promoteError } = await supabase
+        .from('org_members')
+        .update({ role: 'admin' })
+        .eq('org_id', currentOrg.id)
+        .eq('user_id', transferUserId);
+
+      if (promoteError) throw promoteError;
     },
     onSuccess: () => {
       refreshOrgs();
       setTransferModal(false);
+      setTransferUserId(null);
       notifications.show({
         title: 'Ownership transferred',
-        message: 'Organization ownership has been transferred.',
+        message: 'Organization ownership has been transferred successfully.',
         color: 'green',
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       notifications.show({
-        title: 'Coming Soon',
-        message: 'Transfer ownership feature will be available soon!',
-        color: 'blue',
+        title: 'Error',
+        message: error.message || 'Failed to transfer ownership',
+        color: 'red',
       });
     },
   });

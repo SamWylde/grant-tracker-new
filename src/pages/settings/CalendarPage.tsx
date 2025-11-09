@@ -442,11 +442,41 @@ export function CalendarPage() {
                     </Badge>
                   </Group>
 
-                  <Alert icon={<IconAlertCircle size={16} />} color="blue">
-                    <Text size="sm">
-                      Google Calendar integration requires OAuth setup and is coming soon.
-                    </Text>
-                  </Alert>
+                  {isGoogleConnected ? (
+                    <>
+                      <Text size="sm" c="dimmed">
+                        Google Calendar is connected. Grant deadlines will automatically sync to your calendar.
+                      </Text>
+                      {isAdmin && (
+                        <Button
+                          variant="light"
+                          color="red"
+                          onClick={() => disconnectMutation.mutate('google_calendar')}
+                          loading={disconnectMutation.isPending}
+                        >
+                          Disconnect
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {isAdmin ? (
+                        <Button
+                          variant="light"
+                          color="blue"
+                          onClick={() => {
+                            window.location.href = `/api/oauth/google/authorize?org_id=${currentOrg.id}`;
+                          }}
+                        >
+                          Connect Google Calendar
+                        </Button>
+                      ) : (
+                        <Text size="sm" c="orange" fw={500}>
+                          Only admins can connect Google Calendar
+                        </Text>
+                      )}
+                    </>
+                  )}
                 </Stack>
               </Paper>
 
@@ -484,14 +514,46 @@ export function CalendarPage() {
                         </div>
                       </Group>
                       <Badge color={slackIntegration ? 'green' : 'gray'} variant="outline">
-                        {slackIntegration ? 'Connected' : 'OAuth Required'}
+                        {slackIntegration ? 'Connected' : 'Not Connected'}
                       </Badge>
                     </Group>
-                    <Alert icon={<IconAlertCircle size={16} />} color="blue">
-                      <Text size="sm">
-                        Slack integration requires OAuth setup and is coming soon.
-                      </Text>
-                    </Alert>
+
+                    {slackIntegration ? (
+                      <>
+                        <Text size="sm" c="dimmed">
+                          Connected to <strong>#{slackIntegration.channel_name}</strong>. Grant notifications will be sent to this channel.
+                        </Text>
+                        {isAdmin && (
+                          <Button
+                            variant="light"
+                            color="red"
+                            onClick={() => disconnectMutation.mutate('slack')}
+                            loading={disconnectMutation.isPending}
+                          >
+                            Disconnect
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {isAdmin ? (
+                          <Button
+                            variant="light"
+                            color="violet"
+                            leftSection={<IconBrandSlack size={16} />}
+                            onClick={() => {
+                              window.location.href = `/api/oauth/slack/authorize?org_id=${currentOrg.id}`;
+                            }}
+                          >
+                            Connect Slack
+                          </Button>
+                        ) : (
+                          <Text size="sm" c="orange" fw={500}>
+                            Only admins can connect Slack
+                          </Text>
+                        )}
+                      </>
+                    )}
                   </Stack>
                 </Paper>
 
