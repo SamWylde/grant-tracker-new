@@ -64,6 +64,26 @@ export default async function handler(
           });
         }
 
+        // Helper to convert MM/DD/YYYY to ISO format
+        const convertToISO = (dateStr: string | undefined | null): string | null => {
+          if (!dateStr) return null;
+          try {
+            // If already in ISO format, return as-is
+            if (dateStr.includes('T') || dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+              return dateStr;
+            }
+            // Convert MM/DD/YYYY to YYYY-MM-DD
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+              const [month, day, year] = parts;
+              return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+            return dateStr; // Return as-is if format is unexpected
+          } catch {
+            return dateStr;
+          }
+        };
+
         const { data, error } = await supabase
           .from('org_grants_saved')
           .insert({
@@ -74,8 +94,8 @@ export default async function handler(
             title: grantData.title,
             agency: grantData.agency || null,
             aln: grantData.aln || null,
-            open_date: grantData.open_date || null,
-            close_date: grantData.close_date || null,
+            open_date: convertToISO(grantData.open_date),
+            close_date: convertToISO(grantData.close_date),
             status: 'researching', // Default to researching stage
           })
           .select()
@@ -87,7 +107,12 @@ export default async function handler(
             return res.status(409).json({ error: 'Grant already saved' });
           }
           console.error('Error saving grant:', error);
-          return res.status(500).json({ error: 'Failed to save grant' });
+          return res.status(500).json({
+            error: 'Failed to save grant',
+            details: error.message,
+            code: error.code,
+            hint: error.hint
+          });
         }
 
         // Create default tasks for the grant

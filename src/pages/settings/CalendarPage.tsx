@@ -17,7 +17,6 @@ import {
   TextInput,
   MultiSelect,
   Code,
-  Alert,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -30,7 +29,6 @@ import {
   IconPlus,
   IconTrash,
   IconEdit,
-  IconAlertCircle,
 } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
