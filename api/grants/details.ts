@@ -91,7 +91,10 @@ export default async function handler(
     // Convert to number - Grants.gov expects numeric opportunityId
     const opportunityId = Number(id);
     if (Number.isNaN(opportunityId)) {
-      return res.status(400).json({ error: 'Opportunity ID must be numeric' });
+      return res.status(400).json({
+        error: 'Opportunity ID must be numeric',
+        details: `Received ID: "${id}". The Grants.gov details API requires a numeric opportunity ID, not the opportunity number.`
+      });
     }
 
     // Set up timeout with AbortController
