@@ -18,7 +18,7 @@ import {
   Box,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconCopy, IconCheck, IconRefresh, IconExternalLink, IconBrandGoogle } from '@tabler/icons-react';
+import { IconCopy, IconCheck, IconRefresh, IconExternalLink, IconBrandGoogle, IconBrandSlack, IconWebhook } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -279,39 +279,145 @@ export function CalendarPage() {
                 </Stack>
               </Paper>
 
-              {/* Other Integrations (Placeholder) */}
-              <Paper p="md" withBorder bg="var(--mantine-color-gray-0)">
-                <Stack gap="md">
-                  <Group justify="space-between">
-                    <div>
-                      <Title order={3} size="h4" mb="xs">
-                        Other Integrations
-                      </Title>
-                      <Text size="sm" c="dimmed">
-                        More integrations coming soon
-                      </Text>
-                    </div>
-                    <Badge color="grape" variant="outline">
-                      Coming Soon
-                    </Badge>
-                  </Group>
+              {/* Other Integrations */}
+              <Stack gap="md">
+                <div>
+                  <Title order={3} size="h4" mb="xs">
+                    Other Integrations
+                  </Title>
+                  <Text size="sm" c="dimmed">
+                    Connect additional tools to streamline your workflow
+                  </Text>
+                </div>
 
-                  <Divider />
+                {/* Slack */}
+                <Paper p="md" withBorder bg="var(--mantine-color-gray-0)">
+                  <Stack gap="md">
+                    <Group justify="space-between">
+                      <Group gap="sm">
+                        <ActionIcon size="lg" variant="light" color="violet" disabled>
+                          <IconBrandSlack size={20} />
+                        </ActionIcon>
+                        <div>
+                          <Text fw={600} size="sm">
+                            Slack
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Get notifications for grant deadlines and updates
+                          </Text>
+                        </div>
+                      </Group>
+                      <Badge color="gray" variant="outline">
+                        Coming Soon
+                      </Badge>
+                    </Group>
+                    <Button
+                      variant="light"
+                      color="violet"
+                      leftSection={<IconBrandSlack size={16} />}
+                      disabled
+                    >
+                      Connect Slack
+                    </Button>
+                  </Stack>
+                </Paper>
 
-                  <Box
-                    p="md"
-                    style={{
-                      border: '1px dashed var(--mantine-color-gray-4)',
-                      borderRadius: 'var(--mantine-radius-md)',
-                      opacity: 0.6,
-                    }}
-                  >
-                    <Text size="sm" c="dimmed" ta="center">
-                      Slack, Microsoft Teams, and other integrations coming soon!
-                    </Text>
-                  </Box>
-                </Stack>
-              </Paper>
+                {/* Microsoft Teams */}
+                <Paper p="md" withBorder bg="var(--mantine-color-gray-0)">
+                  <Stack gap="md">
+                    <Group justify="space-between">
+                      <Group gap="sm">
+                        <ActionIcon size="lg" variant="light" color="blue" disabled>
+                          <IconWebhook size={20} />
+                        </ActionIcon>
+                        <div>
+                          <Text fw={600} size="sm">
+                            Microsoft Teams
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Receive deadline reminders in your Teams channels
+                          </Text>
+                        </div>
+                      </Group>
+                      <Badge color="gray" variant="outline">
+                        Coming Soon
+                      </Badge>
+                    </Group>
+                    <Button
+                      variant="light"
+                      color="blue"
+                      leftSection={<IconWebhook size={16} />}
+                      disabled
+                    >
+                      Connect Teams
+                    </Button>
+                  </Stack>
+                </Paper>
+
+                {/* Zapier */}
+                <Paper p="md" withBorder bg="var(--mantine-color-gray-0)">
+                  <Stack gap="md">
+                    <Group justify="space-between">
+                      <Group gap="sm">
+                        <ActionIcon size="lg" variant="light" color="orange" disabled>
+                          <IconWebhook size={20} />
+                        </ActionIcon>
+                        <div>
+                          <Text fw={600} size="sm">
+                            Zapier
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Automate workflows with 5,000+ apps
+                          </Text>
+                        </div>
+                      </Group>
+                      <Badge color="gray" variant="outline">
+                        Coming Soon
+                      </Badge>
+                    </Group>
+                    <Button
+                      variant="light"
+                      color="orange"
+                      leftSection={<IconWebhook size={16} />}
+                      disabled
+                    >
+                      Connect Zapier
+                    </Button>
+                  </Stack>
+                </Paper>
+
+                {/* Webhooks */}
+                <Paper p="md" withBorder bg="var(--mantine-color-gray-0)">
+                  <Stack gap="md">
+                    <Group justify="space-between">
+                      <Group gap="sm">
+                        <ActionIcon size="lg" variant="light" color="gray" disabled>
+                          <IconWebhook size={20} />
+                        </ActionIcon>
+                        <div>
+                          <Text fw={600} size="sm">
+                            Custom Webhooks
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            Send events to your own endpoints
+                          </Text>
+                        </div>
+                      </Group>
+                      <Badge color="gray" variant="outline">
+                        Coming Soon
+                      </Badge>
+                    </Group>
+                    <Button
+                      variant="light"
+                      color="gray"
+                      leftSection={<IconWebhook size={16} />}
+                      disabled
+                    >
+                      Configure Webhooks
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Stack>
             </Stack>
 
             {/* Right Column - Help */}
