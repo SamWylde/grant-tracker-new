@@ -109,7 +109,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             size="xs"
             padding="md"
             title="Menu"
-            hiddenFrom="sm"
             position="right"
           >
             <Stack gap="lg">
