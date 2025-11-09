@@ -28,6 +28,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
 
 interface Task {
   id: string;
@@ -81,6 +82,29 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
     description: "",
     task_type: "custom",
     due_date: "",
+    assigned_to: "",
+  });
+
+  // Fetch team members for assignment
+  const { data: teamMembers } = useQuery({
+    queryKey: ["teamMembers", orgId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("org_members")
+        .select(`
+          user_id,
+          role,
+          user_profiles (
+            id,
+            full_name
+          )
+        `)
+        .eq("org_id", orgId);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
   });
 
   // Fetch tasks
@@ -125,7 +149,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
         color: "green",
       });
       setAddModalOpened(false);
-      setNewTask({ title: "", description: "", task_type: "custom", due_date: "" });
+      setNewTask({ title: "", description: "", task_type: "custom", due_date: "", assigned_to: "" });
     },
     onError: () => {
       notifications.show({
@@ -301,7 +325,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
                   <Group gap={4}>
                     <IconUser size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
                     <Text size="xs" c="dimmed">
-                      Assigned
+                      {teamMembers?.find((m: any) => m.user_id === task.assigned_to)?.user_profiles?.full_name || "Assigned"}
                     </Text>
                   </Group>
                 )}
@@ -389,6 +413,19 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
             value={newTask.due_date}
             onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
           />
+          <Select
+            label="Assign To"
+            placeholder="Select team member"
+            clearable
+            value={newTask.assigned_to}
+            onChange={(value) => setNewTask({ ...newTask, assigned_to: value || "" })}
+            data={
+              teamMembers?.map((m: any) => ({
+                value: m.user_id,
+                label: m.user_profiles?.full_name || "Unknown",
+              })) || []
+            }
+          />
           <Group justify="flex-end" mt="md">
             <Button variant="subtle" onClick={() => setAddModalOpened(false)}>
               Cancel
@@ -467,6 +504,24 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
                 { value: "blocked", label: "Blocked" },
               ]}
             />
+            <Select
+              label="Assign To"
+              placeholder="Select team member"
+              clearable
+              value={editingTask.assigned_to || ""}
+              onChange={(value) =>
+                setEditingTask({
+                  ...editingTask,
+                  assigned_to: value || undefined,
+                })
+              }
+              data={
+                teamMembers?.map((m: any) => ({
+                  value: m.user_id,
+                  label: m.user_profiles?.full_name || "Unknown",
+                })) || []
+              }
+            />
             <Group justify="flex-end" mt="md">
               <Button variant="subtle" onClick={() => setEditingTask(null)}>
                 Cancel
@@ -481,6 +536,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
                       task_type: editingTask.task_type,
                       due_date: editingTask.due_date,
                       status: editingTask.status,
+                      assigned_to: editingTask.assigned_to,
                     },
                   });
                 }}
