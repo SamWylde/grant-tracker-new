@@ -58,7 +58,13 @@ export function SavedGrantsPage() {
     queryFn: async () => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
 
-      const response = await fetch(`/api/grants/details?id=${encodeURIComponent(selectedGrantId)}`);
+      const response = await fetch('/api/grants/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: selectedGrantId }),
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to fetch grant details");
