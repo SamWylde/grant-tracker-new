@@ -80,41 +80,61 @@ export default async function handler(
     if (agencies) grantsGovRequest.agencies = agencies;
     if (aln) grantsGovRequest.aln = aln;
 
-    // Call Grants.gov API
-    const response = await fetch('https://api.grants.gov/v1/api/search2', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(grantsGovRequest),
-      signal: AbortSignal.timeout(25000), // 25s timeout
-    });
+    // Set up timeout with AbortController (compatible with all Node versions)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
-    if (!response.ok) {
-      console.error('Grants.gov API error:', response.status, response.statusText);
-      return res.status(response.status).json({
-        error: 'Failed to fetch from Grants.gov',
-        details: response.statusText,
+    try {
+      // Call Grants.gov API
+      const response = await fetch('https://api.grants.gov/v1/api/search2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(grantsGovRequest),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.error('Grants.gov API error:', response.status, response.statusText);
+        return res.status(response.status).json({
+          error: 'Failed to fetch from Grants.gov',
+          details: response.statusText,
+        });
+      }
+
+      const data: GrantsGovSearchResponse = await response.json();
+
+      // Validate response structure
+      if (!data.oppHits || !Array.isArray(data.oppHits)) {
+        console.error('Invalid Grants.gov response structure:', data);
+        return res.status(500).json({
+          error: 'Invalid response from Grants.gov',
+          details: 'Response missing oppHits array',
+        });
+      }
+
+      // Normalize the response
+      const normalizedGrants = data.oppHits.map(normalizeOpportunity);
+
+      // Return normalized response
+      const responseData = {
+        grants: normalizedGrants,
+        totalCount: data.hitCount || 0,
+        startRecord: data.startRecord || 0,
+        pageSize: rows,
+      };
+
+      // Set cache headers (60 seconds)
+      res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
+
+      return res.status(200).json(responseData);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
     }
-
-    const data: GrantsGovSearchResponse = await response.json();
-
-    // Normalize the response
-    const normalizedGrants = data.oppHits.map(normalizeOpportunity);
-
-    // Return normalized response
-    const responseData = {
-      grants: normalizedGrants,
-      totalCount: data.hitCount,
-      startRecord: data.startRecord,
-      pageSize: rows,
-    };
-
-    // Set cache headers (60 seconds)
-    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
-
-    return res.status(200).json(responseData);
   } catch (error) {
     console.error('Error in grants search:', error);
 
