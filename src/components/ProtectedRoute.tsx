@@ -23,7 +23,7 @@ export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteP
   }
 
   if (requireAuth && !user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/signin" replace />;
   }
 
   return <>{children}</>;

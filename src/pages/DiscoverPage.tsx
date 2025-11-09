@@ -48,17 +48,18 @@ import {
 import { AppHeader } from "../components/AppHeader";
 import { QuickSearchModal, useQuickSearchModal } from "../components/QuickSearchModal";
 import { SavedViewsPanel } from "../components/SavedViewsPanel";
+import { useOrganization } from "../contexts/OrganizationContext";
+import { useAuth } from "../contexts/AuthContext";
 
 // Enable relative time plugin for dayjs
 dayjs.extend(relativeTime);
 
 const ITEMS_PER_PAGE = 25;
-// Mock org/user for v1 (replace with real auth later)
-const MOCK_ORG_ID = "00000000-0000-0000-0000-000000000001";
-const MOCK_USER_ID = "00000000-0000-0000-0000-000000000002";
 
 export function DiscoverPage() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrganization();
+  const { user } = useAuth();
 
   // Utility function to strip HTML tags and decode entities
   const stripHtml = (html: string): string => {
@@ -147,9 +148,10 @@ export function DiscoverPage() {
 
   // Fetch saved grants
   const { data: savedGrants } = useQuery<{ grants: Array<{ external_id: string }> }>({
-    queryKey: ["savedGrants", MOCK_ORG_ID],
+    queryKey: ["savedGrants", currentOrg?.id],
     queryFn: async () => {
-      const response = await fetch(`/api/saved?org_id=${MOCK_ORG_ID}`);
+      if (!currentOrg?.id) return { grants: [] };
+      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
       if (!response.ok) throw new Error("Failed to fetch saved grants");
       return response.json();
     },
@@ -199,12 +201,14 @@ export function DiscoverPage() {
     }
 
     try {
+      if (!currentOrg?.id || !user?.id) return; // Skip if not authenticated
+
       await fetch("/api/recent-searches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          org_id: MOCK_ORG_ID,
-          user_id: MOCK_USER_ID,
+          org_id: currentOrg.id,
+          user_id: user.id,
           keyword: debouncedKeyword || null,
           category: category || null,
           agency: agency || null,
@@ -322,12 +326,21 @@ export function DiscoverPage() {
         });
       } else {
         // Save
+        if (!currentOrg?.id || !user?.id) {
+          notifications.show({
+            title: "Authentication required",
+            message: "Please sign in to save grants",
+            color: "red",
+          });
+          return;
+        }
+
         const response = await fetch("/api/saved", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            org_id: MOCK_ORG_ID,
-            user_id: MOCK_USER_ID,
+            org_id: currentOrg.id,
+            user_id: user.id,
             external_id: grant.id,
             title: grant.title,
             agency: grant.agency,
@@ -397,8 +410,8 @@ export function DiscoverPage() {
 
           {/* Saved Views */}
           <SavedViewsPanel
-            orgId={MOCK_ORG_ID}
-            userId={MOCK_USER_ID}
+            orgId={currentOrg?.id || ""}
+            userId={user?.id || ""}
             currentFilters={{
               keyword,
               category,
@@ -946,8 +959,8 @@ export function DiscoverPage() {
       <QuickSearchModal
         opened={quickSearch.opened}
         onClose={quickSearch.close}
-        orgId={MOCK_ORG_ID}
-        userId={MOCK_USER_ID}
+        orgId={currentOrg?.id || ""}
+        userId={user?.id || ""}
         onSearchSelect={handleLoadSearch}
       />
     </Box>
