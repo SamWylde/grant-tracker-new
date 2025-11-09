@@ -38,7 +38,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   FEDERAL_AGENCIES,
   FUNDING_CATEGORIES,
@@ -54,7 +54,6 @@ const MOCK_USER_ID = "00000000-0000-0000-0000-000000000002";
 
 export function DiscoverPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   // Filter state
   const [keyword, setKeyword] = useState("");
