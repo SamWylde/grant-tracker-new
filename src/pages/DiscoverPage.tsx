@@ -20,7 +20,6 @@ import {
   Stack,
   Text,
   TextInput,
-  ThemeIcon,
   Title,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
@@ -32,7 +31,6 @@ import {
   IconExternalLink,
   IconFileText,
   IconFilter,
-  IconRocket,
   IconSearch,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -46,6 +44,7 @@ import {
   type NormalizedGrant,
   type SearchResponse,
 } from "../types/grants";
+import { AppHeader } from "../components/AppHeader";
 
 const ITEMS_PER_PAGE = 25;
 // Mock org/user for v1 (replace with real auth later)
@@ -247,33 +246,18 @@ export function DiscoverPage() {
   return (
     <Box bg="var(--mantine-color-gray-0)" mih="100vh">
       {/* Header */}
-      <Box
-        component="header"
-        px="md"
-        py="lg"
-        bg="white"
-        style={{
-          borderBottom: "1px solid var(--mantine-color-gray-2)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <Container size="xl">
-          <Group justify="space-between">
-            <Group gap={6}>
-              <ThemeIcon variant="light" color="grape" size={38} radius="xl">
-                <IconRocket size={20} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fw={700} component={Link} to="/" style={{ textDecoration: "none", color: "inherit" }}>
-                  GrantTracker
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Discover Federal Grants
-                </Text>
-              </Stack>
-            </Group>
+      <AppHeader subtitle="Discover Federal Grants" />
+
+      <Container size="xl" py="xl">
+        <Stack gap="lg">
+          {/* Page header */}
+          <Group justify="space-between" align="flex-start">
+            <Stack gap="sm">
+              <Title order={1}>Discover Federal Grant Opportunities</Title>
+              <Text c="dimmed" size="lg">
+                Search and save grant opportunities from Grants.gov to your pipeline
+              </Text>
+            </Stack>
             <Button
               variant="light"
               color="grape"
@@ -288,18 +272,6 @@ export function DiscoverPage() {
               View Saved ({savedGrants?.grants.length || 0})
             </Button>
           </Group>
-        </Container>
-      </Box>
-
-      <Container size="xl" py="xl">
-        <Stack gap="lg">
-          {/* Page header */}
-          <Stack gap="sm">
-            <Title order={1}>Discover Federal Grant Opportunities</Title>
-            <Text c="dimmed" size="lg">
-              Search and save grant opportunities from Grants.gov to your pipeline
-            </Text>
-          </Stack>
 
           <Divider />
 
