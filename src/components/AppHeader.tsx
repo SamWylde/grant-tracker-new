@@ -72,6 +72,15 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               </Anchor>
               <Anchor
                 component={Link}
+                to="/metrics"
+                c={isActive('/metrics') ? 'grape' : 'dark'}
+                fw={isActive('/metrics') ? 600 : 400}
+                underline="never"
+              >
+                Metrics
+              </Anchor>
+              <Anchor
+                component={Link}
                 to="/settings/profile"
                 c={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
                 fw={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 600 : 400}
@@ -132,6 +141,16 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 onClick={() => setMobileMenuOpened(false)}
               >
                 Saved Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/metrics"
+                c={isActive('/metrics') ? 'grape' : 'dark'}
+                fw={isActive('/metrics') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Value Metrics
               </Anchor>
               <Anchor
                 component={Link}

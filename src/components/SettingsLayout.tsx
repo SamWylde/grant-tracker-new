@@ -5,6 +5,9 @@ import {
   Container,
   Text,
   Tabs,
+  Loader,
+  Center,
+  Stack,
 } from '@mantine/core';
 import {
   IconUser,
@@ -16,6 +19,8 @@ import {
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { AppHeader } from './AppHeader';
+import { NoOrganization } from './NoOrganization';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 interface SettingsLayoutProps {
   children: ReactNode;
@@ -25,6 +30,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const { currentOrg, loading } = useOrganization();
 
   const tabs = [
     {
@@ -78,32 +84,56 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       {/* Header */}
       <AppHeader subtitle="Settings" />
 
-      {/* Tab Navigation */}
-      <Box bg="white" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
-        <Container size="xl">
-          <Tabs value={activeTab} variant="outline">
-            <Tabs.List>
-              {tabs.map((tab) => (
-                <Tabs.Tab
-                  key={tab.value}
-                  value={tab.value}
-                  onClick={() => navigate(tab.path)}
-                  leftSection={<tab.icon size={16} />}
-                >
-                  <Text size="sm" visibleFrom="sm">
-                    {tab.label}
-                  </Text>
-                </Tabs.Tab>
-              ))}
-            </Tabs.List>
-          </Tabs>
+      {/* Show loading state */}
+      {loading && (
+        <Container size="xl" py="xl">
+          <Center h={400}>
+            <Stack align="center" gap="md">
+              <Loader size="lg" />
+              <Text c="dimmed">Loading...</Text>
+            </Stack>
+          </Center>
         </Container>
-      </Box>
+      )}
 
-      {/* Main Content */}
-      <Container size="xl" py="xl">
-        {children}
-      </Container>
+      {/* Show no organization state */}
+      {!loading && !currentOrg && (
+        <Container size="xl" py="xl">
+          <NoOrganization />
+        </Container>
+      )}
+
+      {/* Show normal content when org exists */}
+      {!loading && currentOrg && (
+        <>
+          {/* Tab Navigation */}
+          <Box bg="white" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+            <Container size="xl">
+              <Tabs value={activeTab} variant="outline">
+                <Tabs.List>
+                  {tabs.map((tab) => (
+                    <Tabs.Tab
+                      key={tab.value}
+                      value={tab.value}
+                      onClick={() => navigate(tab.path)}
+                      leftSection={<tab.icon size={16} />}
+                    >
+                      <Text size="sm" visibleFrom="sm">
+                        {tab.label}
+                      </Text>
+                    </Tabs.Tab>
+                  ))}
+                </Tabs.List>
+              </Tabs>
+            </Container>
+          </Box>
+
+          {/* Main Content */}
+          <Container size="xl" py="xl">
+            {children}
+          </Container>
+        </>
+      )}
     </Box>
   );
 }
