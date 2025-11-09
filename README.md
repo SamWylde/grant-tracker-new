@@ -1,6 +1,8 @@
-# Grant Tracker - Discover Federal Grants
+# Grantcue - Discover & Manage Federal Grants
 
-A grant discovery and tracking platform that helps organizations find and manage federal grant opportunities from Grants.gov.
+**[grantcue.com](https://grantcue.com)**
+
+A comprehensive grant discovery and workflow management platform that helps organizations find, track, and manage federal grant opportunities from Grants.gov.
 
 ## Features
 
@@ -53,9 +55,10 @@ A grant discovery and tracking platform that helps organizations find and manage
 - **Slack**: OAuth integration (coming soon)
 
 ### Notifications & Reminders
-- **Email Reminders**: Customizable deadline reminder cadence (30d, 14d, 7d, 3d, 1d, day-of)
+- **Email Reminders**: Customizable deadline reminder cadence (30d, 14d, 7d, 3d, 1d, day-of) via Resend
 - **Daily Task Emails**: Optional daily summary emails
 - **User Preferences**: Control email notification preferences
+- **Transactional Emails**: Team invitations, password resets, and notifications
 
 ### Settings & Management
 - **7 Settings Pages**: Profile, Organization, Team, Notifications, Calendar & Integrations, Billing, Danger Zone
@@ -65,15 +68,20 @@ A grant discovery and tracking platform that helps organizations find and manage
 
 ## Tech Stack
 
-- **Frontend**: React 19, TypeScript, Vite
+**Frontend**
+- **Framework**: React 19, TypeScript, Vite
 - **UI Library**: Mantine v8
 - **Routing**: React Router v7
 - **Data Fetching**: TanStack Query v5
 - **Drag & Drop**: @dnd-kit (core, sortable, utilities)
-- **Backend**: Vercel Serverless Functions
-- **Database**: Supabase (PostgreSQL with RLS)
-- **Dates**: dayjs
+- **Date Handling**: dayjs
+
+**Backend & Infrastructure**
+- **Hosting**: Vercel (Serverless Functions + Edge Network)
+- **Database**: Supabase (PostgreSQL with Row Level Security)
 - **Authentication**: Supabase Auth
+- **Email Delivery**: Resend (integrated with Supabase & Vercel)
+- **Domain**: grantcue.com
 
 ## Getting Started
 
@@ -112,6 +120,7 @@ For the API routes (serverless functions), also set:
 ```
 SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+RESEND_API_KEY=your-resend-api-key
 ```
 
 4. Set up the database:
@@ -940,7 +949,16 @@ Triggered when grant information is updated.
 
 ## Deployment
 
-### Vercel
+### Production Setup
+
+**Grantcue** is deployed on Vercel with the following infrastructure:
+
+- **Frontend**: Deployed to Vercel's Edge Network (grantcue.com)
+- **API Routes**: Serverless Functions on Vercel
+- **Database**: Supabase PostgreSQL with automatic backups
+- **Email**: Resend for transactional and notification emails
+
+### Vercel Deployment
 
 1. Install Vercel CLI:
 ```bash
@@ -953,12 +971,19 @@ vercel
 ```
 
 3. Set environment variables in Vercel dashboard:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `SUPABASE_URL`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `VITE_SUPABASE_URL` - Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+   - `SUPABASE_URL` - Supabase project URL (for API routes)
+   - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for API routes)
+   - `RESEND_API_KEY` - Resend API key for email delivery
+
+4. Configure custom domain (grantcue.com) in Vercel dashboard
 
 The `/api` directory will be automatically deployed as serverless functions.
+
+### Database Migrations
+
+Run migrations in your Supabase SQL editor in the order listed in the Getting Started section. Each migration is idempotent and safe to run multiple times.
 
 ## Features Implemented
 
@@ -1016,9 +1041,10 @@ The `/api` directory will be automatically deployed as serverless functions.
 
 **Settings & Preferences**
 - ✅ 7 settings pages (Profile, Organization, Team, Notifications, Calendar, Billing, Danger Zone)
-- ✅ Customizable email reminder cadence
+- ✅ Customizable email reminder cadence (powered by Resend)
 - ✅ User preference management
 - ✅ Admin-only controls
+- ✅ Email notification preferences with granular controls
 
 **UI/UX**
 - ✅ Responsive design with Mantine UI
@@ -1038,7 +1064,7 @@ The `/api` directory will be automatically deployed as serverless functions.
 **Integrations & Notifications**
 - Google Calendar OAuth integration
 - Slack OAuth integration
-- Actual email notification delivery (backend workers)
+- Email notification workers (deadline reminders, daily summaries via Resend)
 - Webhook delivery retry logic
 - Webhook signature verification
 
@@ -1064,13 +1090,25 @@ The `/api` directory will be automatically deployed as serverless functions.
 - State and foundation grant portals integration
 - Grant writing AI assistance
 
-## API Reference
+## API Reference & Documentation
 
+**External APIs**
 - [Grants.gov Search2 API](https://grants.gov/api/common/search2)
 - [Grants.gov fetchOpportunity API](https://grants.gov/api/common/fetchOpportunity)
 - [Grants.gov API Guide](https://grants.gov/api/api-guide)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Mantine UI](https://mantine.dev)
+
+**Platform Stack**
+- [Vercel Documentation](https://vercel.com/docs) - Hosting & Serverless Functions
+- [Supabase Documentation](https://supabase.com/docs) - Database & Authentication
+- [Resend Documentation](https://resend.com/docs) - Email Delivery
+- [Mantine UI](https://mantine.dev) - React Component Library
+- [TanStack Query](https://tanstack.com/query) - Data Fetching & Caching
+
+## About
+
+**Grantcue** helps organizations streamline their grant management workflow - from discovery to submission. Built with modern web technologies and designed for teams.
+
+**Website**: [grantcue.com](https://grantcue.com)
 
 ## License
 
