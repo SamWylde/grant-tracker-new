@@ -8,8 +8,10 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { HomePage } from "./pages/HomePage";
 import SignInPage from "./pages/SignInPage";
+import { PricingPage } from "./pages/PricingPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
+import { MetricsPage } from "./pages/MetricsPage";
 import {
   ProfilePage,
   OrganizationPage,
@@ -41,8 +43,10 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/signin" element={<SignInPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/discover" element={<DiscoverPage />} />
                 <Route path="/saved" element={<SavedGrantsPage />} />
+                <Route path="/metrics" element={<MetricsPage />} />
 
                 {/* Settings Routes */}
                 <Route path="/settings/profile" element={<ProfilePage />} />

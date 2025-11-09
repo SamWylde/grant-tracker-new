@@ -63,10 +63,10 @@ export function HomePage() {
                 <Anchor size="sm" c="dark" component={Link} to="/discover">
                   Discover Grants
                 </Anchor>
-                <Anchor size="sm" c="dark">
+                <Anchor size="sm" c="dark" component={Link} to="/">
                   Product
                 </Anchor>
-                <Anchor size="sm" c="dark">
+                <Anchor size="sm" c="dark" component={Link} to="/pricing">
                   Pricing
                 </Anchor>
                 <Button variant="light" color="grape" component={Link} to="/signin">
@@ -103,10 +103,20 @@ export function HomePage() {
                 >
                   Discover Grants
                 </Anchor>
-                <Anchor c="dark" onClick={() => setMobileMenuOpened(false)}>
+                <Anchor
+                  component={Link}
+                  to="/"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
                   Product
                 </Anchor>
-                <Anchor c="dark" onClick={() => setMobileMenuOpened(false)}>
+                <Anchor
+                  component={Link}
+                  to="/pricing"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
                   Pricing
                 </Anchor>
                 <Divider />
