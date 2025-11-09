@@ -1,6 +1,7 @@
-import { Box, Container, Group, Stack, Text, ThemeIcon } from '@mantine/core';
+import { useState } from 'react';
+import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon } from '@mantine/core';
 import { IconRocket } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { OrgSwitcher } from './OrgSwitcher';
 import { UserMenu } from './UserMenu';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +12,10 @@ interface AppHeaderProps {
 
 export function AppHeader({ subtitle }: AppHeaderProps) {
   const { user } = useAuth();
+  const location = useLocation();
+  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
     <Box
@@ -44,14 +49,103 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             </Group>
           </Link>
 
+          {/* Desktop Navigation Links */}
+          {user && (
+            <Group gap="lg" visibleFrom="sm">
+              <Anchor
+                component={Link}
+                to="/discover"
+                c={isActive('/discover') ? 'grape' : 'dark'}
+                fw={isActive('/discover') ? 600 : 400}
+                underline="never"
+              >
+                Discover
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/saved"
+                c={isActive('/saved') ? 'grape' : 'dark'}
+                fw={isActive('/saved') ? 600 : 400}
+                underline="never"
+              >
+                Saved
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/settings/profile"
+                c={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
+                fw={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 600 : 400}
+                underline="never"
+              >
+                Settings
+              </Anchor>
+            </Group>
+          )}
+
           {/* Right side - Org Switcher + User Menu (only if logged in) */}
           {user && (
             <Group gap="md">
-              <OrgSwitcher />
-              <UserMenu />
+              <Group gap="md" visibleFrom="sm">
+                <OrgSwitcher />
+                <UserMenu />
+              </Group>
+
+              {/* Mobile Menu Button */}
+              <Burger
+                opened={mobileMenuOpened}
+                onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
+                hiddenFrom="sm"
+                size="sm"
+              />
             </Group>
           )}
         </Group>
+
+        {/* Mobile Navigation Drawer */}
+        {user && (
+          <Drawer
+            opened={mobileMenuOpened}
+            onClose={() => setMobileMenuOpened(false)}
+            size="xs"
+            padding="md"
+            title="Menu"
+            hiddenFrom="sm"
+            position="right"
+          >
+            <Stack gap="lg">
+              <Anchor
+                component={Link}
+                to="/discover"
+                c={isActive('/discover') ? 'grape' : 'dark'}
+                fw={isActive('/discover') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Discover Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/saved"
+                c={isActive('/saved') ? 'grape' : 'dark'}
+                fw={isActive('/saved') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Saved Grants
+              </Anchor>
+              <Anchor
+                component={Link}
+                to="/settings/profile"
+                c={location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
+                fw={location.pathname.startsWith('/settings') ? 600 : 400}
+                underline="never"
+                onClick={() => setMobileMenuOpened(false)}
+              >
+                Settings
+              </Anchor>
+            </Stack>
+          </Drawer>
+        )}
       </Container>
     </Box>
   );
