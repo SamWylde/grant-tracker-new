@@ -325,7 +325,10 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
                   <Group gap={4}>
                     <IconUser size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
                     <Text size="xs" c="dimmed">
-                      {teamMembers?.find((m: any) => m.user_id === task.assigned_to)?.user_profiles?.full_name || "Assigned"}
+                      {(() => {
+                        const member = teamMembers?.find((m: any) => m.user_id === task.assigned_to);
+                        return (member as any)?.user_profiles?.full_name || "Assigned";
+                      })()}
                     </Text>
                   </Group>
                 )}
