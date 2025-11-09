@@ -1,8 +1,10 @@
 {
-  "name": "vite-min-template",
+  "name": "grantcue",
+  "description": "Discover and manage federal grants - A comprehensive workflow platform for grant seekers",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "homepage": "https://grantcue.com",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
