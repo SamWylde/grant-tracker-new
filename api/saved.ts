@@ -76,6 +76,7 @@ export default async function handler(
             aln: grantData.aln || null,
             open_date: grantData.open_date || null,
             close_date: grantData.close_date || null,
+            status: 'researching', // Default to researching stage
           })
           .select()
           .single();
