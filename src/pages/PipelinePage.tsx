@@ -6,8 +6,6 @@ import {
   Stack,
   Title,
   Text,
-  Button,
-  Select,
   Badge,
   Card,
   ScrollArea,
@@ -18,11 +16,8 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IconGripVertical,
-  IconUser,
   IconCalendar,
   IconExternalLink,
-  IconFileText,
-  IconFlag,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
