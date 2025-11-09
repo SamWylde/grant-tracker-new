@@ -12,7 +12,7 @@ import {
   Loader,
   ActionIcon,
 } from "@mantine/core";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IconGripVertical,
@@ -23,7 +23,7 @@ import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
-import { useSavedGrants } from "../hooks/useSavedGrants";
+import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -34,24 +34,6 @@ const PIPELINE_STAGES = [
 ] as const;
 
 type PipelineStage = typeof PIPELINE_STAGES[number]["id"];
-
-interface SavedGrant {
-  id: string;
-  org_id: string;
-  user_id: string;
-  external_id: string;
-  title: string;
-  agency: string | null;
-  aln: string | null;
-  open_date: string | null;
-  close_date: string | null;
-  status: PipelineStage;
-  assigned_to: string | null;
-  priority: "low" | "medium" | "high" | "urgent";
-  saved_at: string;
-  stage_updated_at: string | null;
-  notes: string | null;
-}
 
 export function PipelinePage() {
   const queryClient = useQueryClient();

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import {
   Container,
   Stack,
@@ -24,7 +23,6 @@ import {
   IconCheck,
   IconAlertCircle,
   IconFileImport,
-  IconTable,
   IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
@@ -32,7 +30,6 @@ import { AppHeader } from '../components/AppHeader';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
 
 interface ParsedGrant {
   title: string;
@@ -210,7 +207,7 @@ export function GrantHubImportPage() {
           <Divider />
 
           {/* Steps */}
-          <Stepper active={activeStep} breakpoint="sm">
+          <Stepper active={activeStep}>
             <Stepper.Step label="Upload" description="Upload your CSV export">
               <Stack gap="md" mt="lg">
                 <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">

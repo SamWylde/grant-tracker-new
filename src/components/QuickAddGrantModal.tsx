@@ -64,7 +64,13 @@ export function QuickAddGrantModal({ opened, onClose, onSuccess }: QuickAddGrant
 
     try {
       // Fetch grant details from Grants.gov
-      const detailsResponse = await fetch(`/api/grants/details?id=${grantId}`);
+      const detailsResponse = await fetch('/api/grants/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: grantId }),
+      });
 
       if (!detailsResponse.ok) {
         throw new Error('Failed to fetch grant details. Please check the URL and try again.');

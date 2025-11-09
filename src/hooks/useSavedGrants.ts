@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '../contexts/OrganizationContext';
 
-interface SavedGrant {
+export interface SavedGrant {
   id: string;
+  org_id: string;
+  user_id: string;
   external_id: string;
   external_source: string;
   title: string;
@@ -15,6 +17,7 @@ interface SavedGrant {
   assigned_to: string | null;
   notes: string | null;
   saved_at: string;
+  stage_updated_at: string | null;
   created_at: string;
 }
 
