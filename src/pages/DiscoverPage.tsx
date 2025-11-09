@@ -410,8 +410,8 @@ export function DiscoverPage() {
 
           {/* Saved Views */}
           <SavedViewsPanel
-            orgId={MOCK_ORG_ID}
-            userId={MOCK_USER_ID}
+            orgId={currentOrg?.id || ""}
+            userId={user?.id || ""}
             currentFilters={{
               keyword,
               category,
@@ -959,8 +959,8 @@ export function DiscoverPage() {
       <QuickSearchModal
         opened={quickSearch.opened}
         onClose={quickSearch.close}
-        orgId={MOCK_ORG_ID}
-        userId={MOCK_USER_ID}
+        orgId={currentOrg?.id || ""}
+        userId={user?.id || ""}
         onSearchSelect={handleLoadSearch}
       />
     </Box>

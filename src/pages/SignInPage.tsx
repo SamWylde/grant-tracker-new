@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -25,10 +25,11 @@ export default function SignInPage() {
   const { user } = useAuth();
 
   // Redirect if already logged in
-  if (user) {
-    navigate('/discover');
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/discover');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

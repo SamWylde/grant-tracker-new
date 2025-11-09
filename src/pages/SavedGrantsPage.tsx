@@ -31,25 +31,27 @@ import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { type GrantDetail, type SavedGrant } from "../types/grants";
 import { notifications } from "@mantine/notifications";
-
-const MOCK_ORG_ID = "00000000-0000-0000-0000-000000000001";
+import { useOrganization } from "../contexts/OrganizationContext";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrganization();
   const [sortBy, setSortBy] = useState<string>("deadline-asc");
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
   // Fetch saved grants
   const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
-    queryKey: ["savedGrants", MOCK_ORG_ID],
+    queryKey: ["savedGrants", currentOrg?.id],
     queryFn: async () => {
-      const response = await fetch(`/api/saved?orgId=${MOCK_ORG_ID}`);
+      if (!currentOrg?.id) return { grants: [] };
+      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
       if (!response.ok) {
         throw new Error("Failed to fetch saved grants");
       }
       return response.json();
     },
+    enabled: !!currentOrg?.id,
   });
 
   // Fetch grant details
