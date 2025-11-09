@@ -26,13 +26,13 @@ interface Grant {
   id: string;
   external_id: string;
   title: string;
-  agency?: string;
-  aln?: string;
-  open_date?: string;
-  close_date?: string;
+  agency: string | null;
+  aln: string | null;
+  open_date: string | null;
+  close_date: string | null;
   status: string;
-  priority?: string;
-  notes?: string;
+  priority: string | null;
+  notes: string | null;
   org_id: string;
 }
 
