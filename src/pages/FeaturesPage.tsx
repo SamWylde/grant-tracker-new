@@ -29,7 +29,7 @@ import {
   IconSearch,
   IconShieldCheck,
   IconBrandSlack,
-  IconBrandMicrosoft,
+  IconMail,
   IconCode,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
@@ -396,7 +396,7 @@ export function FeaturesPage() {
 
               <Card padding="lg" radius="lg" withBorder ta="center">
                 <ThemeIcon size={64} radius="md" variant="light" color="indigo" mx="auto" mb="md">
-                  <IconBrandMicrosoft size={32} />
+                  <IconMail size={32} />
                 </ThemeIcon>
                 <Text fw={600} mb={4}>
                   Outlook
