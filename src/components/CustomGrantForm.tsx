@@ -9,10 +9,8 @@ import {
   Checkbox,
   Button,
   Group,
-  Text,
   Alert,
 } from '@mantine/core';
-import { DateInput } from '@mantine/dates';
 import { IconAlertCircle, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useOrganization } from '../contexts/OrganizationContext';
@@ -41,8 +39,8 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
   const [expectedAwards, setExpectedAwards] = useState<number | string>('');
   const [fundingCategory, setFundingCategory] = useState<string | null>(null);
   const [costSharingRequired, setCostSharingRequired] = useState(false);
-  const [openDate, setOpenDate] = useState<Date | null>(null);
-  const [closeDate, setCloseDate] = useState<Date | null>(null);
+  const [openDate, setOpenDate] = useState('');
+  const [closeDate, setCloseDate] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [applicationUrl, setApplicationUrl] = useState('');
 
@@ -57,8 +55,8 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
     setExpectedAwards('');
     setFundingCategory(null);
     setCostSharingRequired(false);
-    setOpenDate(null);
-    setCloseDate(null);
+    setOpenDate('');
+    setCloseDate('');
     setSourceUrl('');
     setApplicationUrl('');
     setErrors([]);
@@ -95,8 +93,8 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
         expected_awards: expectedAwards ? Number(expectedAwards) : undefined,
         funding_category: fundingCategory || undefined,
         cost_sharing_required: costSharingRequired,
-        open_date: openDate?.toISOString(),
-        close_date: closeDate?.toISOString(),
+        open_date: openDate || undefined,
+        close_date: closeDate || undefined,
         opportunity_status: 'posted' as const,
         source_url: sourceUrl || undefined,
         application_url: applicationUrl || undefined,
@@ -253,13 +251,20 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
         </Group>
 
         <Group grow>
-          <DateInput label="Open Date" placeholder="Select date" value={openDate} onChange={setOpenDate} />
+          <TextInput
+            label="Open Date"
+            placeholder="YYYY-MM-DD"
+            type="date"
+            value={openDate}
+            onChange={(e) => setOpenDate(e.target.value)}
+          />
 
-          <DateInput
+          <TextInput
             label="Close Date"
-            placeholder="Select date"
+            placeholder="YYYY-MM-DD"
+            type="date"
             value={closeDate}
-            onChange={setCloseDate}
+            onChange={(e) => setCloseDate(e.target.value)}
             required
           />
         </Group>
