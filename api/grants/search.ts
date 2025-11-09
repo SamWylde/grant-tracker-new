@@ -12,9 +12,14 @@ interface GrantsGovOpportunity {
 }
 
 interface GrantsGovSearchResponse {
-  hitCount: number;
-  startRecord: number;
-  oppHits: GrantsGovOpportunity[];
+  errorcode: number;
+  msg: string;
+  token: string;
+  data: {
+    hitCount: number;
+    startRecord: number;
+    oppHits: GrantsGovOpportunity[];
+  };
 }
 
 interface NormalizedGrant {
@@ -105,25 +110,25 @@ export default async function handler(
         });
       }
 
-      const data: GrantsGovSearchResponse = await response.json();
+      const apiResponse: GrantsGovSearchResponse = await response.json();
 
       // Validate response structure
-      if (!data.oppHits || !Array.isArray(data.oppHits)) {
-        console.error('Invalid Grants.gov response structure:', data);
+      if (!apiResponse.data || !apiResponse.data.oppHits || !Array.isArray(apiResponse.data.oppHits)) {
+        console.error('Invalid Grants.gov response structure:', apiResponse);
         return res.status(500).json({
           error: 'Invalid response from Grants.gov',
-          details: 'Response missing oppHits array',
+          details: 'Response missing data.oppHits array',
         });
       }
 
       // Normalize the response
-      const normalizedGrants = data.oppHits.map(normalizeOpportunity);
+      const normalizedGrants = apiResponse.data.oppHits.map(normalizeOpportunity);
 
       // Return normalized response
       const responseData = {
         grants: normalizedGrants,
-        totalCount: data.hitCount || 0,
-        startRecord: data.startRecord || 0,
+        totalCount: apiResponse.data.hitCount || 0,
+        startRecord: apiResponse.data.startRecord || 0,
         pageSize: rows,
       };
 
