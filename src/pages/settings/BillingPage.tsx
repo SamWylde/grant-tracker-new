@@ -11,7 +11,6 @@ import {
   SimpleGrid,
   Badge,
   Progress,
-  Box,
   List,
   Switch,
   ThemeIcon,
