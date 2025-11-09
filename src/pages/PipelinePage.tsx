@@ -101,7 +101,7 @@ export function PipelinePage() {
     setDraggedItem(null);
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string | null) => {
     switch (priority) {
       case "urgent":
         return "red";
@@ -233,7 +233,7 @@ export function PipelinePage() {
                                     <IconGripVertical size={16} />
                                   </ActionIcon>
                                   <Badge size="sm" color={getPriorityColor(grant.priority)} variant="light">
-                                    {grant.priority}
+                                    {grant.priority || "normal"}
                                   </Badge>
                                 </Group>
 
