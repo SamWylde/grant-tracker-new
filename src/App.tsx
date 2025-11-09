@@ -15,11 +15,14 @@ import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { MetricsPage } from "./pages/MetricsPage";
+import { GrantHubImportPage } from "./pages/GrantHubImportPage";
+import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
 import {
   ProfilePage,
   OrganizationPage,
   TeamPage,
   NotificationsPage,
+  AlertsPage,
   CalendarPage,
   BillingPage,
   DangerZonePage,
@@ -49,18 +52,21 @@ export default function App() {
                 <Route path="/signin" element={<SignInPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/granthub-migration" element={<GrantHubMigrationPage />} />
 
                 {/* Protected Routes */}
                 <Route path="/discover" element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} />
                 <Route path="/saved" element={<ProtectedRoute><SavedGrantsPage /></ProtectedRoute>} />
                 <Route path="/pipeline" element={<ProtectedRoute><PipelinePage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
+                <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />
 
                 {/* Protected Settings Routes */}
                 <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/settings/org" element={<ProtectedRoute><OrganizationPage /></ProtectedRoute>} />
                 <Route path="/settings/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
                 <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+                <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />

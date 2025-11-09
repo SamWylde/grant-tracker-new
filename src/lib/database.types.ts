@@ -19,6 +19,15 @@ export interface Database {
           logo_url: string | null
           created_at: string
           updated_at: string
+          org_size: string | null
+          annual_budget_range: string | null
+          primary_locations: string[] | null
+          service_areas: string[] | null
+          focus_categories: string[] | null
+          min_grant_amount: number | null
+          max_grant_amount: number | null
+          eligibility_notes: string | null
+          auto_filter_enabled: boolean
         }
         Insert: {
           id?: string
@@ -29,6 +38,15 @@ export interface Database {
           logo_url?: string | null
           created_at?: string
           updated_at?: string
+          org_size?: string | null
+          annual_budget_range?: string | null
+          primary_locations?: string[] | null
+          service_areas?: string[] | null
+          focus_categories?: string[] | null
+          min_grant_amount?: number | null
+          max_grant_amount?: number | null
+          eligibility_notes?: string | null
+          auto_filter_enabled?: boolean
         }
         Update: {
           id?: string
@@ -39,6 +57,15 @@ export interface Database {
           logo_url?: string | null
           created_at?: string
           updated_at?: string
+          org_size?: string | null
+          annual_budget_range?: string | null
+          primary_locations?: string[] | null
+          service_areas?: string[] | null
+          focus_categories?: string[] | null
+          min_grant_amount?: number | null
+          max_grant_amount?: number | null
+          eligibility_notes?: string | null
+          auto_filter_enabled?: boolean
         }
       }
       user_profiles: {

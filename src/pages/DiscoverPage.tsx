@@ -32,6 +32,7 @@ import {
   IconFilter,
   IconSearch,
   IconArrowsSort,
+  IconPlus,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -48,6 +49,8 @@ import {
 import { AppHeader } from "../components/AppHeader";
 import { QuickSearchModal, useQuickSearchModal } from "../components/QuickSearchModal";
 import { SavedViewsPanel } from "../components/SavedViewsPanel";
+import { FitScoreBadge } from "../components/FitScoreBadge";
+import { QuickAddGrantModal } from "../components/QuickAddGrantModal";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -94,6 +97,9 @@ export function DiscoverPage() {
 
   // Quick search modal
   const quickSearch = useQuickSearchModal();
+
+  // Quick add modal state
+  const [quickAddModalOpen, setQuickAddModalOpen] = useState(false);
 
   const [debouncedKeyword] = useDebouncedValue(keyword, 500);
 
@@ -396,14 +402,24 @@ export function DiscoverPage() {
                 Search and save grant opportunities from Grants.gov to your pipeline
               </Text>
             </Stack>
-            <Button
-              variant="light"
-              color="grape"
-              component={Link}
-              to="/saved"
-            >
-              View Saved ({savedGrants?.grants.length || 0})
-            </Button>
+            <Group>
+              <Button
+                variant="outline"
+                color="grape"
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setQuickAddModalOpen(true)}
+              >
+                Quick Add from URL
+              </Button>
+              <Button
+                variant="light"
+                color="grape"
+                component={Link}
+                to="/saved"
+              >
+                View Saved ({savedGrants?.grants.length || 0})
+              </Button>
+            </Group>
           </Group>
 
           <Divider />
@@ -616,6 +632,9 @@ export function DiscoverPage() {
                                 Saved
                               </Badge>
                             )}
+                            <FitScoreBadge
+                              grantCategory={category || undefined}
+                            />
                           </Group>
 
                           <Anchor
@@ -962,6 +981,15 @@ export function DiscoverPage() {
         orgId={currentOrg?.id || ""}
         userId={user?.id || ""}
         onSearchSelect={handleLoadSearch}
+      />
+
+      {/* Quick Add Grant Modal */}
+      <QuickAddGrantModal
+        opened={quickAddModalOpen}
+        onClose={() => setQuickAddModalOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
+        }}
       />
     </Box>
   );

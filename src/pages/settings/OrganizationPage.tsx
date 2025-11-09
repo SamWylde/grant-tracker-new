@@ -7,6 +7,7 @@ import {
   Divider,
   Paper,
   TextInput,
+  Textarea,
   Select,
   MultiSelect,
   Button,
@@ -23,6 +24,61 @@ import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
+import { FUNDING_CATEGORIES } from '../../types/grants';
+
+// US States with codes
+const US_STATE_OPTIONS = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+];
 
 // US States
 const US_STATES = [
@@ -67,8 +123,12 @@ export function OrganizationPage() {
   // Eligibility profile state
   const [orgSize, setOrgSize] = useState<string | null>(null);
   const [budgetRange, setBudgetRange] = useState<string | null>(null);
+  const [primaryLocations, setPrimaryLocations] = useState<string[]>([]);
+  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+  const [focusCategories, setFocusCategories] = useState<string[]>([]);
   const [minGrantAmount, setMinGrantAmount] = useState<number | string>('');
   const [maxGrantAmount, setMaxGrantAmount] = useState<number | string>('');
+  const [eligibilityNotes, setEligibilityNotes] = useState('');
   const [autoFilterEnabled, setAutoFilterEnabled] = useState(false);
 
   const [isDirty, setIsDirty] = useState(false);
@@ -83,8 +143,12 @@ export function OrganizationPage() {
       setFocusAreas(currentOrg.focus_areas || []);
       setOrgSize((currentOrg as any).org_size || null);
       setBudgetRange((currentOrg as any).annual_budget_range || null);
+      setPrimaryLocations((currentOrg as any).primary_locations || []);
+      setServiceAreas((currentOrg as any).service_areas || []);
+      setFocusCategories((currentOrg as any).focus_categories || []);
       setMinGrantAmount((currentOrg as any).min_grant_amount || '');
       setMaxGrantAmount((currentOrg as any).max_grant_amount || '');
+      setEligibilityNotes((currentOrg as any).eligibility_notes || '');
       setAutoFilterEnabled((currentOrg as any).auto_filter_enabled || false);
     }
   }, [currentOrg]);
@@ -103,8 +167,12 @@ export function OrganizationPage() {
           focus_areas: focusAreas,
           org_size: orgSize,
           annual_budget_range: budgetRange,
+          primary_locations: primaryLocations,
+          service_areas: serviceAreas,
+          focus_categories: focusCategories,
           min_grant_amount: minGrantAmount ? Number(minGrantAmount) : null,
           max_grant_amount: maxGrantAmount ? Number(maxGrantAmount) : null,
+          eligibility_notes: eligibilityNotes,
           auto_filter_enabled: autoFilterEnabled,
         })
         .eq('id', currentOrg.id);
@@ -137,12 +205,16 @@ export function OrganizationPage() {
       JSON.stringify(focusAreas) !== JSON.stringify(currentOrg?.focus_areas || []) ||
       orgSize !== ((currentOrg as any)?.org_size || null) ||
       budgetRange !== ((currentOrg as any)?.annual_budget_range || null) ||
+      JSON.stringify(primaryLocations) !== JSON.stringify((currentOrg as any)?.primary_locations || []) ||
+      JSON.stringify(serviceAreas) !== JSON.stringify((currentOrg as any)?.service_areas || []) ||
+      JSON.stringify(focusCategories) !== JSON.stringify((currentOrg as any)?.focus_categories || []) ||
       minGrantAmount !== ((currentOrg as any)?.min_grant_amount || '') ||
       maxGrantAmount !== ((currentOrg as any)?.max_grant_amount || '') ||
+      eligibilityNotes !== ((currentOrg as any)?.eligibility_notes || '') ||
       autoFilterEnabled !== ((currentOrg as any)?.auto_filter_enabled || false);
 
     setIsDirty(hasChanges);
-  }, [orgName, primaryState, focusAreas, orgSize, budgetRange, minGrantAmount, maxGrantAmount, autoFilterEnabled, currentOrg]);
+  }, [orgName, primaryState, focusAreas, orgSize, budgetRange, primaryLocations, serviceAreas, focusCategories, minGrantAmount, maxGrantAmount, eligibilityNotes, autoFilterEnabled, currentOrg]);
 
   // Get org initials for avatar
   const getInitials = (name: string) => {
@@ -303,6 +375,42 @@ export function OrganizationPage() {
                     disabled={!canEdit}
                   />
 
+                  <MultiSelect
+                    label="Primary Locations"
+                    placeholder="Select states where your organization is located"
+                    value={primaryLocations}
+                    onChange={setPrimaryLocations}
+                    data={US_STATE_OPTIONS}
+                    searchable
+                    clearable
+                    disabled={!canEdit}
+                    description="States where your organization operates (for geographic eligibility)"
+                  />
+
+                  <MultiSelect
+                    label="Service Areas"
+                    placeholder="Select states where you provide services"
+                    value={serviceAreas}
+                    onChange={setServiceAreas}
+                    data={US_STATE_OPTIONS}
+                    searchable
+                    clearable
+                    disabled={!canEdit}
+                    description="Geographic areas where you deliver services (can be different from your location)"
+                  />
+
+                  <MultiSelect
+                    label="Grant Focus Categories"
+                    placeholder="Select grant categories of interest"
+                    value={focusCategories}
+                    onChange={setFocusCategories}
+                    data={FUNDING_CATEGORIES.map(cat => ({ value: cat.value, label: cat.label }))}
+                    searchable
+                    clearable
+                    disabled={!canEdit}
+                    description="Types of grants you're interested in (used for fit scoring)"
+                  />
+
                   <Group grow>
                     <NumberInput
                       label="Minimum Grant Amount"
@@ -327,6 +435,16 @@ export function OrganizationPage() {
                       description="Maximum grant size you can manage"
                     />
                   </Group>
+
+                  <Textarea
+                    label="Eligibility Notes"
+                    placeholder="Any additional eligibility requirements or context..."
+                    value={eligibilityNotes}
+                    onChange={(e) => setEligibilityNotes(e.target.value)}
+                    minRows={3}
+                    disabled={!canEdit}
+                    description="Additional context about your eligibility (e.g., certifications, special requirements)"
+                  />
 
                   <Checkbox
                     label="Enable automatic filtering"
