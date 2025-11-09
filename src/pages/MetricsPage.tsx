@@ -14,6 +14,8 @@ import {
   ThemeIcon,
   Divider,
   Alert,
+  Skeleton,
+  Button,
 } from '@mantine/core';
 import {
   IconTrophy,
@@ -23,6 +25,7 @@ import {
   IconTrendingUp,
   IconCalendarCheck,
   IconAlertCircle,
+  IconRefresh,
   IconChartBar,
 } from '@tabler/icons-react';
 import { AppHeader } from '../components/AppHeader';
@@ -62,7 +65,7 @@ export function MetricsPage() {
   const { currentOrg } = useOrganization();
   const [timeframe, setTimeframe] = useState<string>('all');
 
-  const { data: metricsData, isLoading } = useQuery<MetricsData>({
+  const { data: metricsData, isLoading, isError, error, refetch } = useQuery<MetricsData>({
     queryKey: ['metrics', currentOrg?.id, timeframe],
     queryFn: async () => {
       if (!currentOrg) throw new Error('No organization selected');
@@ -85,12 +88,14 @@ export function MetricsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch metrics');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch metrics');
       }
 
       return response.json();
     },
     enabled: !!currentOrg,
+    retry: 2,
   });
 
   const summary = metricsData?.summary;
@@ -146,9 +151,55 @@ export function MetricsPage() {
           />
         </Group>
 
-        {isLoading && <Text>Loading metrics...</Text>}
+        {/* Loading State */}
+        {isLoading && (
+          <>
+            <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+              {[1, 2, 3, 4].map((i) => (
+                <Paper key={i} p="lg" withBorder>
+                  <Stack gap="md">
+                    <Group justify="space-between">
+                      <Skeleton height={48} width={48} radius="md" />
+                      <Skeleton height={28} width={60} radius="sm" />
+                    </Group>
+                    <Skeleton height={20} width="60%" />
+                    <Skeleton height={40} width="80%" />
+                    <Center>
+                      <Skeleton height={120} width={120} circle />
+                    </Center>
+                  </Stack>
+                </Paper>
+              ))}
+            </SimpleGrid>
+            <Skeleton height={200} />
+          </>
+        )}
 
-        {!isLoading && summary && (
+        {/* Error State */}
+        {isError && (
+          <Alert
+            icon={<IconAlertCircle size={20} />}
+            title="Failed to load metrics"
+            color="red"
+            variant="light"
+          >
+            <Stack gap="md">
+              <Text size="sm">
+                {error instanceof Error ? error.message : 'An error occurred while loading metrics'}
+              </Text>
+              <Button
+                leftSection={<IconRefresh size={16} />}
+                onClick={() => refetch()}
+                variant="light"
+                size="sm"
+              >
+                Retry
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+
+        {!isLoading && !isError && summary && (
           <>
             {/* Key Metrics Cards */}
             <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
@@ -469,7 +520,7 @@ export function MetricsPage() {
           </>
         )}
 
-        {!isLoading && !summary && (
+        {!isLoading && !isError && !summary && (
           <Paper p="xl" withBorder>
             <Center>
               <Stack align="center" gap="md">

@@ -11,6 +11,7 @@ import {
   ScrollArea,
   Loader,
   ActionIcon,
+  Menu,
 } from "@mantine/core";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -18,6 +19,8 @@ import {
   IconGripVertical,
   IconCalendar,
   IconExternalLink,
+  IconArrowRight,
+  IconDots,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
@@ -44,7 +47,7 @@ export function PipelinePage() {
   // Fetch saved grants using shared hook
   const { data, isLoading, error } = useSavedGrants();
 
-  // Update grant status mutation
+  // Update grant status mutation with optimistic updates
   const updateStatusMutation = useMutation({
     mutationFn: async ({ grantId, newStatus }: { grantId: string; newStatus: PipelineStage }) => {
       const response = await fetch(`/api/saved/${grantId}/status`, {
@@ -55,6 +58,27 @@ export function PipelinePage() {
       if (!response.ok) throw new Error("Failed to update grant status");
       return response.json();
     },
+    onMutate: async ({ grantId, newStatus }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["savedGrants"] });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(["savedGrants"]);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(["savedGrants"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          grants: old.grants.map((grant: SavedGrant) =>
+            grant.id === grantId ? { ...grant, status: newStatus } : grant
+          ),
+        };
+      });
+
+      // Return context with previous data for rollback
+      return { previousData };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
       notifications.show({
@@ -63,10 +87,14 @@ export function PipelinePage() {
         color: "green",
       });
     },
-    onError: () => {
+    onError: (_error, _variables, context) => {
+      // Rollback to previous state on error
+      if (context?.previousData) {
+        queryClient.setQueryData(["savedGrants"], context.previousData);
+      }
       notifications.show({
         title: "Error",
-        message: "Failed to update grant status",
+        message: "Failed to update grant status. Changes have been reverted.",
         color: "red",
       });
     },
@@ -212,6 +240,15 @@ export function PipelinePage() {
                               onDragStart={(e) => handleDragStart(e, grant.id)}
                               onDragEnd={handleDragEnd}
                               onClick={() => setSelectedGrant(grant)}
+                              role="button"
+                              tabIndex={0}
+                              aria-label={`${grant.title} - Click to view details or use menu to move`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setSelectedGrant(grant);
+                                }
+                              }}
                               style={{
                                 cursor: "pointer",
                                 opacity: draggedItem === grant.id ? 0.5 : 1,
@@ -229,7 +266,13 @@ export function PipelinePage() {
                               <Stack gap="sm">
                                 {/* Drag Handle & Priority */}
                                 <Group justify="space-between">
-                                  <ActionIcon variant="subtle" color="gray" size="sm" style={{ cursor: "grab" }}>
+                                  <ActionIcon
+                                    variant="subtle"
+                                    color="gray"
+                                    size="sm"
+                                    style={{ cursor: "grab" }}
+                                    aria-label="Drag to move grant"
+                                  >
                                     <IconGripVertical size={16} />
                                   </ActionIcon>
                                   <Badge size="sm" color={getPriorityColor(grant.priority)} variant="light">
@@ -267,7 +310,7 @@ export function PipelinePage() {
                                 )}
 
                                 {/* Actions */}
-                                <Group gap="xs" mt="xs">
+                                <Group gap="xs" mt="xs" justify="space-between">
                                   <ActionIcon
                                     variant="subtle"
                                     size="sm"
@@ -275,9 +318,42 @@ export function PipelinePage() {
                                     href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
                                     <IconExternalLink size={14} />
                                   </ActionIcon>
+
+                                  {/* Keyboard-accessible move menu */}
+                                  <Menu position="bottom-end" shadow="md" withinPortal>
+                                    <Menu.Target>
+                                      <ActionIcon
+                                        variant="subtle"
+                                        size="sm"
+                                        aria-label={`Move ${grant.title} to different stage`}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <IconDots size={14} />
+                                      </ActionIcon>
+                                    </Menu.Target>
+                                    <Menu.Dropdown>
+                                      <Menu.Label>Move to stage</Menu.Label>
+                                      {PIPELINE_STAGES.filter(s => s.id !== stage.id).map((targetStage) => (
+                                        <Menu.Item
+                                          key={targetStage.id}
+                                          leftSection={<IconArrowRight size={14} />}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateStatusMutation.mutate({
+                                              grantId: grant.id,
+                                              newStatus: targetStage.id as PipelineStage,
+                                            });
+                                          }}
+                                        >
+                                          {targetStage.label}
+                                        </Menu.Item>
+                                      ))}
+                                    </Menu.Dropdown>
+                                  </Menu>
                                 </Group>
                               </Stack>
                             </Card>

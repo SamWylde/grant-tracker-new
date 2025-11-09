@@ -68,6 +68,8 @@ export default async function handler(
       agencies,
       oppStatuses,
       aln,
+      dueInDays,
+      sortBy,
       rows = 25,
       startRecordNum = 0,
     } = req.body;
@@ -127,7 +129,71 @@ export default async function handler(
       }
 
       // Normalize the response
-      const normalizedGrants = apiResponse.data.oppHits.map(normalizeOpportunity);
+      let normalizedGrants = apiResponse.data.oppHits.map(normalizeOpportunity);
+
+      // Apply server-side filtering for dueInDays
+      if (dueInDays && typeof dueInDays === 'number' && dueInDays > 0) {
+        const now = new Date();
+        normalizedGrants = normalizedGrants.filter((grant) => {
+          if (!grant.closeDate) return false;
+          const closeDate = new Date(grant.closeDate);
+          const daysDiff = Math.ceil((closeDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return daysDiff >= 0 && daysDiff <= dueInDays;
+        });
+      }
+
+      // Apply server-side sorting
+      if (sortBy) {
+        switch (sortBy) {
+          case 'due_soon':
+            normalizedGrants.sort((a, b) => {
+              if (!a.closeDate && !b.closeDate) return 0;
+              if (!a.closeDate) return 1;
+              if (!b.closeDate) return -1;
+              return new Date(a.closeDate).getTime() - new Date(b.closeDate).getTime();
+            });
+            break;
+          case 'newest':
+            normalizedGrants.sort((a, b) => {
+              if (!a.openDate && !b.openDate) return 0;
+              if (!a.openDate) return 1;
+              if (!b.openDate) return -1;
+              return new Date(b.openDate).getTime() - new Date(a.openDate).getTime();
+            });
+            break;
+          case 'relevance':
+            // Calculate relevance scores based on keyword matching
+            if (keyword) {
+              const searchTerms = keyword.toLowerCase().split(' ').filter(Boolean);
+              const calculateRelevanceScore = (grant: NormalizedGrant): number => {
+                let score = 0;
+                const title = grant.title.toLowerCase();
+                const agency = grant.agency.toLowerCase();
+
+                searchTerms.forEach((term) => {
+                  // Title matches are worth 3x more than agency matches
+                  if (title.includes(term)) score += 3;
+                  if (agency.includes(term)) score += 1;
+                });
+
+                return score;
+              };
+
+              normalizedGrants.sort((a, b) => {
+                const scoreA = calculateRelevanceScore(a);
+                const scoreB = calculateRelevanceScore(b);
+                if (scoreA !== scoreB) return scoreB - scoreA;
+
+                // Fallback to due date if scores are equal
+                if (!a.closeDate && !b.closeDate) return 0;
+                if (!a.closeDate) return 1;
+                if (!b.closeDate) return -1;
+                return new Date(a.closeDate).getTime() - new Date(b.closeDate).getTime();
+              });
+            }
+            break;
+        }
+      }
 
       // Return normalized response
       const responseData = {

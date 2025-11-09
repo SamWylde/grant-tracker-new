@@ -10,6 +10,7 @@ interface OrganizationContextType {
   userOrgs: Organization[];
   userRole: 'admin' | 'contributor' | null;
   loading: boolean;
+  error: Error | null;
   switchOrg: (orgId: string) => void;
   refreshOrgs: () => Promise<void>;
   isAdmin: boolean;
@@ -23,6 +24,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
   const [userRole, setUserRole] = useState<'admin' | 'contributor' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   // Load user's organizations
   const loadOrganizations = async () => {
@@ -30,11 +32,13 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       setUserOrgs([]);
       setCurrentOrg(null);
       setUserRole(null);
+      setError(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     try {
       // Get organizations the user is a member of
@@ -63,6 +67,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
+      setError(error instanceof Error ? error : new Error('Failed to load organizations'));
     } finally {
       setLoading(false);
     }
@@ -97,6 +102,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     userOrgs,
     userRole,
     loading,
+    error,
     switchOrg,
     refreshOrgs: loadOrganizations,
     isAdmin: userRole === 'admin',

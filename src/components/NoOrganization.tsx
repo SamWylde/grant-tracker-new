@@ -6,7 +6,7 @@ import { notifications } from '@mantine/notifications';
 import { useOrganization } from '../contexts/OrganizationContext';
 
 export function NoOrganization() {
-  const { refreshOrgs } = useOrganization();
+  const { refreshOrgs, error: orgError } = useOrganization();
   const [creating, setCreating] = useState(false);
   const [orgName, setOrgName] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -90,6 +90,28 @@ export function NoOrganization() {
               collaborate with your team.
             </Text>
           </Stack>
+
+          {/* Show organization loading error */}
+          {orgError && (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" w="100%">
+              <Stack gap="xs">
+                <Text size="sm" fw={500}>
+                  Error loading organizations
+                </Text>
+                <Text size="sm">
+                  {orgError.message || 'Failed to load your organizations. Please try refreshing the page.'}
+                </Text>
+                <Button
+                  size="xs"
+                  variant="light"
+                  onClick={() => refreshOrgs()}
+                  mt="xs"
+                >
+                  Retry
+                </Button>
+              </Stack>
+            </Alert>
+          )}
 
           <Alert icon={<IconAlertCircle size={16} />} color="blue" w="100%">
             <Text size="sm">
