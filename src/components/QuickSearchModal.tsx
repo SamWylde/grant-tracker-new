@@ -1,6 +1,6 @@
-import { Badge, Group, Kbd, Modal, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { Badge, Group, Kbd, Modal, Stack, Text, TextInput, UnstyledButton, Loader, Alert } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
-import { IconClock, IconSearch } from "@tabler/icons-react";
+import { IconClock, IconSearch, IconAlertCircle } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -36,6 +36,7 @@ export function QuickSearchModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Load recent searches
@@ -47,16 +48,20 @@ export function QuickSearchModal({
 
   const loadRecentSearches = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(
         `/api/recent-searches?org_id=${orgId}&user_id=${userId}&limit=10`
       );
-      if (response.ok) {
-        const data = await response.json();
-        setRecentSearches(data.searches || []);
+      if (!response.ok) {
+        throw new Error('Failed to load recent searches');
       }
-    } catch (error) {
-      console.error("Error loading recent searches:", error);
+      const data = await response.json();
+      setRecentSearches(data.searches || []);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      console.error("Error loading recent searches:", err);
     } finally {
       setLoading(false);
     }
@@ -123,8 +128,23 @@ export function QuickSearchModal({
           }
         />
 
+        {/* Loading state */}
+        {loading && (
+          <Group justify="center" py="xl">
+            <Loader size="sm" />
+            <Text size="sm" c="dimmed">Loading recent searches...</Text>
+          </Group>
+        )}
+
+        {/* Error state */}
+        {error && !loading && (
+          <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
+            <Text size="sm">{error}</Text>
+          </Alert>
+        )}
+
         {/* Recent Searches */}
-        {!searchQuery && recentSearches.length > 0 && (
+        {!searchQuery && !loading && !error && recentSearches.length > 0 && (
           <Stack gap="xs">
             <Text size="sm" fw={600} c="dimmed">
               Recent Searches
@@ -170,7 +190,7 @@ export function QuickSearchModal({
         )}
 
         {/* Filtered searches */}
-        {searchQuery && filteredSearches.length > 0 && (
+        {searchQuery && !loading && !error && filteredSearches.length > 0 && (
           <Stack gap="xs">
             <Text size="sm" fw={600} c="dimmed">
               Matching Recent Searches
@@ -211,7 +231,7 @@ export function QuickSearchModal({
         )}
 
         {/* Empty state */}
-        {recentSearches.length === 0 && !loading && (
+        {recentSearches.length === 0 && !loading && !error && (
           <Text size="sm" c="dimmed" ta="center" py="xl">
             No recent searches yet
           </Text>

@@ -12,7 +12,7 @@ import {
   Loader,
   ActionIcon,
 } from "@mantine/core";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import {
   IconGripVertical,
@@ -23,6 +23,7 @@ import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
+import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -34,40 +35,14 @@ const PIPELINE_STAGES = [
 
 type PipelineStage = typeof PIPELINE_STAGES[number]["id"];
 
-interface SavedGrant {
-  id: string;
-  org_id: string;
-  user_id: string;
-  external_id: string;
-  title: string;
-  agency: string | null;
-  aln: string | null;
-  open_date: string | null;
-  close_date: string | null;
-  status: PipelineStage;
-  assigned_to: string | null;
-  priority: "low" | "medium" | "high" | "urgent";
-  saved_at: string;
-  stage_updated_at: string | null;
-  notes: string | null;
-}
-
 export function PipelinePage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
 
-  // Fetch saved grants
-  const { data, isLoading } = useQuery<{ grants: SavedGrant[] }>({
-    queryKey: ["savedGrants", currentOrg?.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/saved?org_id=${currentOrg?.id}`);
-      if (!response.ok) throw new Error("Failed to fetch saved grants");
-      return response.json();
-    },
-    enabled: !!currentOrg?.id,
-  });
+  // Fetch saved grants using shared hook
+  const { data, isLoading, error } = useSavedGrants();
 
   // Update grant status mutation
   const updateStatusMutation = useMutation({
@@ -126,7 +101,7 @@ export function PipelinePage() {
     setDraggedItem(null);
   };
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: string | null) => {
     switch (priority) {
       case "urgent":
         return "red";
@@ -178,6 +153,17 @@ export function PipelinePage() {
                 <Loader size="lg" />
                 <Text>Loading pipeline...</Text>
               </Group>
+            </Card>
+          ) : error ? (
+            <Card padding="xl" withBorder>
+              <Stack align="center" gap="md">
+                <Text c="red" fw={600}>
+                  Error loading grants
+                </Text>
+                <Text c="dimmed" ta="center">
+                  {error instanceof Error ? error.message : "An error occurred"}
+                </Text>
+              </Stack>
             </Card>
           ) : (
             <ScrollArea>
@@ -247,7 +233,7 @@ export function PipelinePage() {
                                     <IconGripVertical size={16} />
                                   </ActionIcon>
                                   <Badge size="sm" color={getPriorityColor(grant.priority)} variant="light">
-                                    {grant.priority}
+                                    {grant.priority || "normal"}
                                   </Badge>
                                 </Group>
 

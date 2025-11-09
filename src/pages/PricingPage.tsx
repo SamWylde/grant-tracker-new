@@ -133,7 +133,7 @@ export function PricingPage() {
               </ThemeIcon>
               <Stack gap={0}>
                 <Text fw={700} component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                  GrantTracker
+                  GrantCue
                 </Text>
                 <Text size="xs" c="dimmed">
                   Funding visibility for every team
@@ -527,7 +527,7 @@ export function PricingPage() {
               Start tracking grants and never miss a deadline
             </Title>
             <Text ta="center" c="dimmed" maw={520}>
-              Join teams that have already streamlined their grant management workflow with GrantTracker.
+              Join teams that have already streamlined their grant management workflow with GrantCue.
             </Text>
             <Group gap="md" wrap="wrap" justify="center">
               <Button size="lg" color="grape" component={Link} to="/signin">
@@ -547,7 +547,7 @@ export function PricingPage() {
           <Group justify="space-between" align="center">
             <Stack gap={0}>
               <Text fw={700} c="white">
-                GrantTracker
+                GrantCue
               </Text>
               <Text size="sm" c="dimmed">
                 Purpose-built funding operations for ambitious teams.

@@ -135,9 +135,13 @@ CREATE POLICY grant_alert_matches_select ON grant_alert_matches
   );
 
 -- Service role can insert matches (for background jobs)
+-- Restricted to service role to prevent unauthorized alert creation and notification spam
 CREATE POLICY grant_alert_matches_insert ON grant_alert_matches
   FOR INSERT
-  WITH CHECK (true); -- Background jobs will use service role
+  WITH CHECK (
+    -- Only allow service role (background jobs) to insert
+    auth.jwt() ->> 'role' = 'service_role'
+  );
 
 -- Users can update matches (mark as viewed/dismissed)
 CREATE POLICY grant_alert_matches_update ON grant_alert_matches

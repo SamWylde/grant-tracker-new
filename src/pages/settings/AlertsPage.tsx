@@ -13,7 +13,6 @@ import {
   TextInput,
   Textarea,
   Select,
-  MultiSelect,
   Switch,
   NumberInput,
   ActionIcon,
