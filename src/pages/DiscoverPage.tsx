@@ -36,6 +36,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   FEDERAL_AGENCIES,
   FUNDING_CATEGORIES,
@@ -260,13 +261,8 @@ export function DiscoverPage() {
             <Button
               variant="light"
               color="grape"
-              onClick={() => {
-                notifications.show({
-                  title: "Coming soon",
-                  message: "Saved grants page is under construction",
-                  color: "blue",
-                });
-              }}
+              component={Link}
+              to="/saved"
             >
               View Saved ({savedGrants?.grants.length || 0})
             </Button>
