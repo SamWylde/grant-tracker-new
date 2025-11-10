@@ -1,35 +1,24 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Container,
   Paper,
   Title,
   Text,
   TextInput,
-  PasswordInput,
   Button,
   Stack,
   Anchor,
   Alert,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
 
-export default function SignInPage() {
+export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { user } = useAuth();
-
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      navigate('/discover');
-    }
-  }, [user, navigate]);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,26 +26,49 @@ export default function SignInPage() {
     setError(null);
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
       });
 
-      if (signInError) {
-        setError(signInError.message);
+      if (resetError) {
+        setError(resetError.message);
         setLoading(false);
         return;
       }
 
-      if (data.user) {
-        // Redirect to discover page after successful sign-in
-        navigate('/discover');
-      }
+      setSuccess(true);
+      setLoading(false);
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <Container size="xs" style={{ marginTop: '80px' }}>
+        <Paper shadow="md" p="xl" radius="md" withBorder>
+          <Stack gap="lg">
+            <Alert icon={<IconCheck size={16} />} title="Check your email" color="green">
+              We've sent you an email with a password reset link. Please check your inbox and
+              click the link to reset your password.
+            </Alert>
+            <Text c="dimmed" size="sm" ta="center">
+              Remember your password?{' '}
+              <Anchor component={Link} to="/signin" size="sm">
+                Sign in here
+              </Anchor>
+            </Text>
+            <Text c="dimmed" size="sm" ta="center">
+              <Anchor component={Link} to="/" size="sm">
+                Back to home
+              </Anchor>
+            </Text>
+          </Stack>
+        </Paper>
+      </Container>
+    );
+  }
 
   return (
     <Container size="xs" style={{ marginTop: '80px' }}>
@@ -64,10 +76,10 @@ export default function SignInPage() {
         <Stack gap="lg">
           <div>
             <Title order={2} ta="center" mb="xs">
-              Welcome back
+              Reset your password
             </Title>
             <Text c="dimmed" size="sm" ta="center">
-              Sign in to your account to continue
+              Enter your email address and we'll send you a link to reset your password
             </Text>
           </div>
 
@@ -93,32 +105,16 @@ export default function SignInPage() {
                 disabled={loading}
               />
 
-              <PasswordInput
-                label="Password"
-                placeholder="Your password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
-
               <Button type="submit" fullWidth loading={loading}>
-                Sign in
+                Send reset link
               </Button>
-
-              <Text c="dimmed" size="sm" ta="center">
-                <Anchor component={Link} to="/reset-password" size="sm">
-                  Forgot password?
-                </Anchor>
-              </Text>
             </Stack>
           </form>
 
           <Text c="dimmed" size="sm" ta="center">
-            Don't have an account?{' '}
-            <Anchor component={Link} to="/signup" size="sm">
-              Sign up
+            Remember your password?{' '}
+            <Anchor component={Link} to="/signin" size="sm">
+              Sign in
             </Anchor>
           </Text>
 
