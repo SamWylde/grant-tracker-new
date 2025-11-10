@@ -55,6 +55,7 @@ import { SaveToPipelineModal, type SaveToPipelineData } from "../components/Save
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
+import { supabase } from "../lib/supabase";
 
 // Enable relative time plugin for dayjs
 dayjs.extend(relativeTime);
@@ -278,8 +279,17 @@ export function DiscoverPage() {
         );
         if (!savedGrant) return;
 
+        // Get auth token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Not authenticated');
+        }
+
         const response = await fetch(`/api/saved?id=${(savedGrant as any).id}`, {
           method: "DELETE",
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
         });
 
         if (!response.ok) throw new Error("Failed to remove grant");
@@ -321,9 +331,18 @@ export function DiscoverPage() {
 
     setIsSaving(true);
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch("/api/saved", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           org_id: currentOrg.id,
           user_id: user.id,

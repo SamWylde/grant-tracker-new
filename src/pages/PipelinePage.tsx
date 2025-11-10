@@ -33,6 +33,7 @@ import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { useAuth } from "../contexts/AuthContext";
 import { printBoardPacket } from "../utils/printBoardPacket";
+import { supabase } from "../lib/supabase";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -62,9 +63,18 @@ export function PipelinePage() {
   // Update grant status mutation with optimistic updates
   const updateStatusMutation = useMutation({
     mutationFn: async ({ grantId, newStatus }: { grantId: string; newStatus: PipelineStage }) => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`/api/saved/${grantId}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ status: newStatus }),
       });
       if (!response.ok) throw new Error("Failed to update grant status");

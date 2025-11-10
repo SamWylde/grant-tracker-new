@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { supabase } from '../lib/supabase';
 
 export interface SavedGrant {
   id: string;
@@ -35,7 +36,17 @@ export function useSavedGrants() {
         return { grants: [] };
       }
 
-      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch saved grants');
