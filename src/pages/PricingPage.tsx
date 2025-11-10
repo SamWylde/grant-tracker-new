@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Anchor,
   Stack,
   Title,
   Text,
@@ -15,9 +16,6 @@ import {
   Alert,
   Container,
   Box,
-  Anchor,
-  Burger,
-  Drawer,
 } from '@mantine/core';
 import {
   IconCreditCard,
@@ -30,6 +28,7 @@ import {
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { MarketingHeader } from '../components/MarketingHeader';
 
 const PLAN_FEATURES = {
   free: {
@@ -94,7 +93,6 @@ const PLAN_FEATURES = {
 export function PricingPage() {
   const { user } = useAuth();
   const [showAnnual, setShowAnnual] = useState(false);
-  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
 
   const getPrice = (plan: keyof typeof PLAN_FEATURES) => {
     const basePrice = PLAN_FEATURES[plan].price;
@@ -112,121 +110,22 @@ export function PricingPage() {
 
   return (
     <Box bg="var(--mantine-color-gray-0)" mih="100vh">
-      {/* Header */}
-      <Box
-        component="header"
-        px="md"
-        py="lg"
-        bg="white"
-        style={{
-          borderBottom: '1px solid var(--mantine-color-gray-3)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <Container size="lg">
-          <Group justify="space-between">
-            <Group gap={6}>
-              <ThemeIcon variant="light" color="grape" size={38} radius="xl">
-                <IconRocket size={20} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fw={700} component={Link} to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-                  GrantCue
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Funding visibility for every team
-                </Text>
-              </Stack>
-            </Group>
-
-            {/* Desktop Navigation */}
-            <Group gap="sm" visibleFrom="sm">
-              <Anchor size="sm" c="dark" component={Link} to="/discover">
-                Discover Grants
-              </Anchor>
-              <Anchor size="sm" c="dark" component={Link} to="/">
-                Product
-              </Anchor>
-              <Anchor size="sm" c="dark" component={Link} to="/pricing">
-                Pricing
-              </Anchor>
-              {user ? (
-                <Button color="grape" component={Link} to="/saved">
-                  Dashboard
-                </Button>
-              ) : (
-                <>
-                  <Button variant="light" color="grape" component={Link} to="/signin">
-                    Sign in
-                  </Button>
-                  <Button color="grape">Book demo</Button>
-                </>
-              )}
-            </Group>
-
-            {/* Mobile Menu Button */}
-            <Burger
-              opened={mobileMenuOpened}
-              onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
-              hiddenFrom="sm"
-              size="sm"
-            />
-          </Group>
-
-          {/* Mobile Navigation Drawer */}
-          <Drawer
-            opened={mobileMenuOpened}
-            onClose={() => setMobileMenuOpened(false)}
-            size="xs"
-            padding="md"
-            title="Menu"
-            hiddenFrom="sm"
-            position="right"
-          >
-            <Stack gap="lg">
-              <Anchor component={Link} to="/discover" c="dark" onClick={() => setMobileMenuOpened(false)}>
-                Discover Grants
-              </Anchor>
-              <Anchor component={Link} to="/" c="dark" onClick={() => setMobileMenuOpened(false)}>
-                Product
-              </Anchor>
-              <Anchor component={Link} to="/pricing" c="dark" onClick={() => setMobileMenuOpened(false)}>
-                Pricing
-              </Anchor>
-              <Divider />
-              {user ? (
-                <Button
-                  color="grape"
-                  component={Link}
-                  to="/saved"
-                  fullWidth
-                  onClick={() => setMobileMenuOpened(false)}
-                >
-                  Dashboard
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="light"
-                    color="grape"
-                    component={Link}
-                    to="/signin"
-                    fullWidth
-                    onClick={() => setMobileMenuOpened(false)}
-                  >
-                    Sign in
-                  </Button>
-                  <Button color="grape" fullWidth onClick={() => setMobileMenuOpened(false)}>
-                    Book demo
-                  </Button>
-                </>
-              )}
-            </Stack>
-          </Drawer>
-        </Container>
-      </Box>
+      <MarketingHeader
+        user={user}
+        navLinks={[
+          { label: 'Discover Grants', to: '/discover' },
+          { label: 'Product', to: '/' },
+          { label: 'Pricing', to: '/pricing' },
+        ]}
+        loggedOutActions={
+          <>
+            <Button variant="light" color="grape" component={Link} to="/signin">
+              Sign in
+            </Button>
+            <Button color="grape">Book demo</Button>
+          </>
+        }
+      />
 
       {/* Hero Section */}
       <Box
