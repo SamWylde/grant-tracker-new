@@ -77,7 +77,20 @@ export function PipelinePage() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!response.ok) throw new Error("Failed to update grant status");
+
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = "Failed to update grant status";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If response body is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
       return response.json();
     },
     onMutate: async ({ grantId, newStatus }) => {
@@ -109,14 +122,14 @@ export function PipelinePage() {
         color: "green",
       });
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       // Rollback to previous state on error
       if (context?.previousData) {
         queryClient.setQueryData(["savedGrants"], context.previousData);
       }
       notifications.show({
         title: "Error",
-        message: "Failed to update grant status. Changes have been reverted.",
+        message: error instanceof Error ? error.message : "Failed to update grant status. Changes have been reverted.",
         color: "red",
       });
     },
@@ -264,7 +277,7 @@ export function PipelinePage() {
                 {PIPELINE_STAGES.map((stage) => (
                   <Box
                     key={stage.id}
-                    style={{ minWidth: 320, maxWidth: 320 }}
+                    style={{ minWidth: 280, maxWidth: 280 }}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, stage.id)}
                   >
