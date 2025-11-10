@@ -33,16 +33,14 @@ import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { ImportWizard } from "../components/ImportWizard";
 import { type GrantDetail } from "../types/grants";
-import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
+import { useSavedGrants } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
-import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
 import { printBoardPacket } from "../utils/printBoardPacket";
 import { stripHtml } from "../utils/htmlUtils";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
-  const { currentOrg } = useOrganization();
   const [sortBy, setSortBy] = useState<string>("deadline-asc");
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
