@@ -13,6 +13,7 @@ import {
   ActionIcon,
   Menu,
   Switch,
+  Button,
 } from "@mantine/core";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -22,6 +23,7 @@ import {
   IconExternalLink,
   IconArrowRight,
   IconDots,
+  IconPrinter,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
@@ -30,6 +32,7 @@ import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { useAuth } from "../contexts/AuthContext";
+import { printBoardPacket } from "../utils/printBoardPacket";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -200,6 +203,15 @@ export function PipelinePage() {
               <Text size="sm" c="dimmed">
                 Showing {filteredGrants.length} of {data?.grants.length || 0} grants
               </Text>
+              <Button
+                leftSection={<IconPrinter size={16} />}
+                variant="light"
+                color="grape"
+                onClick={() => printBoardPacket(filteredGrants, { title: 'Pipeline Board Packet' })}
+                disabled={filteredGrants.length === 0}
+              >
+                Export Board Packet
+              </Button>
             </Group>
           </Group>
 

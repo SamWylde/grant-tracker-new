@@ -23,6 +23,7 @@ import {
   IconExternalLink,
   IconFileText,
   IconTrash,
+  IconPrinter,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -35,6 +36,7 @@ import { type SavedGrant } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
+import { printBoardPacket } from "../utils/printBoardPacket";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
@@ -187,9 +189,20 @@ export function SavedGrantsPage() {
                 Manage your saved grants and track important deadlines
               </Text>
             </Stack>
-            <Button variant="light" color="grape" component={Link} to="/discover">
-              Discover More Grants
-            </Button>
+            <Group>
+              <Button
+                leftSection={<IconPrinter size={16} />}
+                variant="light"
+                color="grape"
+                onClick={() => printBoardPacket(sortedGrants, { title: 'Saved Grants Report' })}
+                disabled={sortedGrants.length === 0}
+              >
+                Export Report
+              </Button>
+              <Button variant="light" color="grape" component={Link} to="/discover">
+                Discover More Grants
+              </Button>
+            </Group>
           </Group>
 
           <Divider />
