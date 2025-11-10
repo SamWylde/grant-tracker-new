@@ -19,9 +19,21 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Real-time Data**: Live data from Grants.gov Search2 API and fetchOpportunity API
 
 ### Authentication & Access
+- **Self-Service Sign-Up**: New user registration with email confirmation
 - **Secure Sign-In**: Email/password authentication via Supabase Auth
 - **User Profiles**: Manage personal profile information and preferences
 - **Protected Routes**: Role-based access control for sensitive features
+- **API Authentication**: Bearer token authentication on all API endpoints
+
+### Multi-Source Grant Ingestion
+- **Source Adapter Architecture**: Extensible adapter pattern for multiple grant sources
+- **Grants.gov Integration**: Automated sync with federal grant database
+- **Custom Grant Entry**: Manual grant entry with full validation
+- **Automated Nightly Sync**: Vercel cron job for incremental updates (2 AM daily)
+- **De-duplication Engine**: Content hash-based matching with fuzzy title comparison
+- **Sync Job Tracking**: Comprehensive logging of sync operations, errors, and metrics
+- **Admin Sync Controls**: Manual full/incremental sync triggers with source management
+- **Full-Text Search**: PostgreSQL tsvector for fast grant catalog searches
 
 ### Pipeline & Workflow Management
 - **Kanban Board**: Visual pipeline with 4 stages (Researching → Drafting → Submitted → Awarded)
@@ -112,8 +124,8 @@ cp .env.example .env
 
 Then edit `.env` and add your Supabase credentials:
 ```
-VITE_SUPABASE_URL=your-project-url.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 For the API routes (serverless functions), also set:
@@ -123,17 +135,25 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=your-resend-api-key
 ```
 
+**Note**: Use `NEXT_PUBLIC_` prefix for client-side environment variables. The API routes can access both `NEXT_PUBLIC_` and plain `SUPABASE_URL` variables.
+
 4. Set up the database:
 
 Run the migrations in your Supabase SQL editor (in order):
 
 - `supabase/migrations/20250108_create_org_grants_saved.sql` - Creates the saved grants table
 - `supabase/migrations/20250108_create_settings_and_org_schema.sql` - Creates organizations, user profiles, team members, invitations, preferences, and settings tables with RLS policies
-- `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
+- `supabase/migrations/20250109_add_value_metrics_tracking.sql` - Creates value metrics tracking for ROI calculations
+- `supabase/migrations/20250110_auto_create_organization.sql` - Adds trigger to auto-create organization on user signup
+- `supabase/migrations/20250111_fix_org_members_rls.sql` - Fixes RLS policies for organization members
 - `supabase/migrations/20250112_add_search_features.sql` - Creates recent_searches, saved_views, and grant_interactions tables
 - `supabase/migrations/20250113_add_eligibility_profile.sql` - Adds eligibility profile fields to organizations table and grant recommendations view
 - `supabase/migrations/20250114_add_pipeline_fields.sql` - Adds pipeline status, priority, and assignment fields to saved grants
 - `supabase/migrations/20250115_add_grant_tasks.sql` - Creates grant_tasks table for actionable task breakdown with auto-created templates
+- `supabase/migrations/20250116_add_grant_alerts.sql` - Creates grant alerts and notification system
+- `supabase/migrations/20250117_multi_source_ingestion.sql` - Creates multi-source grant ingestion system (grant_sources, grants_catalog, sync_jobs, de-duplication)
+- `supabase/migrations/20250118_fix_status_constraint.sql` - Fixes status check constraint
+- `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
 
@@ -195,29 +215,44 @@ END $$;
 ```
 grant-tracker-new/
 ├── api/                      # Vercel serverless functions
+│   ├── admin/
+│   │   └── sync.ts          # Admin sync management (manual full/incremental sync)
+│   ├── cron/
+│   │   └── sync-grants.ts   # Automated nightly sync job (2 AM)
 │   ├── grants/
 │   │   ├── search.ts        # Proxy to Grants.gov Search2 API
-│   │   └── details.ts       # Proxy to Grants.gov fetchOpportunity API
+│   │   ├── details.ts       # Proxy to Grants.gov fetchOpportunity API
+│   │   └── custom.ts        # Custom grant entry endpoint
 │   ├── saved/
 │   │   └── [id]/
-│   │       └── status.ts    # Update grant status/priority/assignment
-│   ├── saved.ts             # CRUD for saved grants (auto-creates default tasks)
-│   ├── tasks.ts             # CRUD for grant tasks
-│   ├── views.ts             # CRUD for saved filter views
+│   │       └── status.ts    # Update grant status/priority/assignment (auth required)
+│   ├── saved.ts             # CRUD for saved grants (auth required, auto-creates default tasks)
+│   ├── tasks.ts             # CRUD for grant tasks (auth required)
+│   ├── views.ts             # CRUD for saved filter views (auth required)
 │   ├── recent-searches.ts   # Recent search history tracking
 │   ├── webhooks.ts          # CRUD for custom webhooks
 │   └── integrations.ts      # CRUD for integrations (Teams, Slack, etc.)
+├── lib/
+│   └── grants/
+│       ├── types.ts         # Grant ingestion type definitions
+│       ├── SyncService.ts   # Sync orchestration service
+│       └── adapters/
+│           ├── BaseGrantAdapter.ts    # Abstract base adapter
+│           ├── GrantsGovAdapter.ts    # Grants.gov implementation
+│           ├── OpenGrantsAdapter.ts   # OpenGrants implementation
+│           └── CustomGrantAdapter.ts  # Custom grant entry validation
 ├── src/
 │   ├── components/
-│   │   ├── AppHeader.tsx    # Global header with navigation & user menu
-│   │   ├── OrgSwitcher.tsx  # Organization selector dropdown
-│   │   ├── UserMenu.tsx     # User profile dropdown menu
-│   │   ├── SettingsLayout.tsx # Settings page layout with tabs
-│   │   ├── ProtectedRoute.tsx # Route guard with permission checks
-│   │   ├── QuickSearchModal.tsx # cmd/ctrl+K quick search modal
-│   │   ├── SavedViewsPanel.tsx  # Saved filter views panel
+│   │   ├── AppHeader.tsx         # Global header with navigation & user menu
+│   │   ├── OrgSwitcher.tsx       # Organization selector dropdown
+│   │   ├── UserMenu.tsx          # User profile dropdown menu
+│   │   ├── SettingsLayout.tsx    # Settings page layout with tabs
+│   │   ├── ProtectedRoute.tsx    # Route guard with permission checks
+│   │   ├── QuickSearchModal.tsx  # cmd/ctrl+K quick search modal
+│   │   ├── SavedViewsPanel.tsx   # Saved filter views panel
 │   │   ├── GrantDetailDrawer.tsx # Grant details with tasks and notes
-│   │   └── TaskList.tsx     # Task management component with progress tracking
+│   │   ├── TaskList.tsx          # Task management component with progress tracking
+│   │   └── CustomGrantForm.tsx   # Manual grant entry form with validation
 │   ├── contexts/
 │   │   ├── AuthContext.tsx  # Supabase authentication context
 │   │   └── OrganizationContext.tsx # Multi-org state management
@@ -227,20 +262,28 @@ grant-tracker-new/
 │   │   ├── supabase.ts      # Supabase client config
 │   │   └── database.types.ts # Database TypeScript types
 │   ├── pages/
-│   │   ├── HomePage.tsx     # Marketing/landing page with mobile nav
-│   │   ├── SignInPage.tsx   # Sign-in page with email/password
-│   │   ├── DiscoverPage.tsx # Grant search & discovery with filters/sort
-│   │   ├── SavedGrantsPage.tsx # Saved grants list view
-│   │   ├── PipelinePage.tsx # Kanban board for grant workflow
-│   │   ├── MetricsPage.tsx  # Value metrics and analytics
-│   │   ├── FeaturesPage.tsx # Product features and roadmap
+│   │   ├── HomePage.tsx            # Marketing/landing page with mobile nav
+│   │   ├── SignInPage.tsx          # Sign-in page with email/password
+│   │   ├── SignUpPage.tsx          # User registration with email confirmation
+│   │   ├── DiscoverPage.tsx        # Grant search & discovery with filters/sort
+│   │   ├── SavedGrantsPage.tsx     # Saved grants list view
+│   │   ├── PipelinePage.tsx        # Kanban board for grant workflow
+│   │   ├── MetricsPage.tsx         # Value metrics and analytics
+│   │   ├── FeaturesPage.tsx        # Product features and roadmap
+│   │   ├── PricingPage.tsx         # Pricing tiers and plans
+│   │   ├── PrivacyPage.tsx         # Privacy policy
+│   │   ├── GrantHubImportPage.tsx  # GrantHub migration tool
+│   │   ├── GrantHubMigrationPage.tsx # GrantHub migration guide
+│   │   ├── admin/
+│   │   │   └── SyncManagementPage.tsx # Admin sync controls and source management
 │   │   └── settings/
 │   │       ├── ProfilePage.tsx        # User profile settings
 │   │       ├── OrganizationPage.tsx   # Organization details & eligibility profile
 │   │       ├── TeamPage.tsx           # Team member management
 │   │       ├── NotificationsPage.tsx  # Email reminder settings
+│   │       ├── AlertsPage.tsx         # Grant alert configuration
 │   │       ├── CalendarPage.tsx       # ICS feed & integrations
-│   │       ├── BillingPage.tsx        # Plan & billing (stub)
+│   │       ├── BillingPage.tsx        # Plan & billing
 │   │       └── DangerZonePage.tsx     # Data export & org deletion
 │   ├── types/
 │   │   └── grants.ts        # Grant-related TypeScript types
@@ -251,14 +294,50 @@ grant-tracker-new/
 │   └── migrations/
 │       ├── 20250108_create_org_grants_saved.sql
 │       ├── 20250108_create_settings_and_org_schema.sql
-│       ├── add_integrations.sql
+│       ├── 20250109_add_value_metrics_tracking.sql
+│       ├── 20250110_auto_create_organization.sql
+│       ├── 20250111_fix_org_members_rls.sql
 │       ├── 20250112_add_search_features.sql
 │       ├── 20250113_add_eligibility_profile.sql
 │       ├── 20250114_add_pipeline_fields.sql
-│       └── 20250115_add_grant_tasks.sql
-├── vercel.json              # Vercel deployment config
+│       ├── 20250115_add_grant_tasks.sql
+│       ├── 20250116_add_grant_alerts.sql
+│       ├── 20250117_multi_source_ingestion.sql
+│       ├── 20250118_fix_status_constraint.sql
+│       └── add_integrations.sql
+├── vercel.json              # Vercel deployment config (includes cron jobs)
 └── package.json
 ```
+
+## Application Routes
+
+### Public Routes
+- `/` - Marketing homepage
+- `/signin` - User sign-in page
+- `/signup` - Self-service user registration with email confirmation
+- `/pricing` - Pricing tiers and plans
+- `/features` - Product features and capabilities
+- `/privacy` - Privacy policy
+- `/granthub-migration` - Migration guide for GrantHub users
+
+### Protected Routes (Require Authentication)
+- `/discover` - Grant search and discovery
+- `/saved` - Saved grants list view
+- `/pipeline` - Kanban pipeline board
+- `/metrics` - Value metrics and ROI tracking
+
+### Settings Routes (Require Authentication)
+- `/settings/profile` - User profile management
+- `/settings/organization` - Organization details and eligibility profile
+- `/settings/team` - Team member management
+- `/settings/notifications` - Email notification preferences
+- `/settings/alerts` - Grant alert configuration
+- `/settings/calendar` - ICS feed and integrations
+- `/settings/billing` - Plan and billing management
+- `/settings/danger-zone` - Data export and organization deletion
+
+### Admin Routes (Require Admin Role)
+- `/admin/sync` - Grant sync management and source configuration
 
 ## API Routes
 
@@ -322,6 +401,77 @@ Fetch full grant details from Grants.gov fetchOpportunity API.
   "grantsGovUrl": "https://www.grants.gov/search-results-detail/50283"
 }
 ```
+
+### Multi-Source Grant Ingestion
+
+#### `POST /api/grants/custom`
+
+Submit a custom grant entry. **Requires authentication**.
+
+**Request body:**
+```json
+{
+  "org_id": "uuid",
+  "user_id": "uuid",
+  "title": "Custom Grant Opportunity",
+  "description": "Full grant description",
+  "agency": "State Department of Education",
+  "opportunity_number": "STATE-EDU-2025-01",
+  "funding_category": "ED",
+  "estimated_funding": 500000,
+  "award_floor": 25000,
+  "award_ceiling": 100000,
+  "expected_awards": 10,
+  "cost_sharing_required": false,
+  "open_date": "2025-01-15",
+  "close_date": "2025-03-15",
+  "opportunity_status": "posted",
+  "source_url": "https://example.com/grant",
+  "application_url": "https://example.com/apply"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "grant": {
+    "id": "uuid",
+    "title": "Custom Grant Opportunity",
+    "status": "researching"
+  }
+}
+```
+
+#### `POST /api/admin/sync`
+
+Trigger manual grant sync. **Admin only**.
+
+**Request body:**
+```json
+{
+  "source_id": "uuid",
+  "sync_type": "full",
+  "user_id": "uuid"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "job": {
+    "id": "uuid",
+    "source_id": "uuid",
+    "status": "running",
+    "started_at": "2025-01-17T10:00:00Z"
+  }
+}
+```
+
+#### `GET /api/cron/sync-grants`
+
+Automated nightly sync job (scheduled via Vercel cron at 2 AM). Syncs all enabled grant sources with incremental updates.
 
 ### Saved Grants
 
@@ -836,6 +986,128 @@ Task breakdown for grant application workflow management.
 5. Obtain letters of support (letters)
 6. Submit application (submission)
 
+### Multi-Source Grant Ingestion Tables
+
+#### `grant_sources`
+Configuration for different grant data sources.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| name | text | Source name (Grants.gov, OpenGrants, Custom) |
+| source_type | text | grants_gov, opengrants, foundation, state_portal, custom |
+| api_endpoint | text | API endpoint URL (if applicable) |
+| api_key | text | API authentication key (encrypted) |
+| is_enabled | boolean | Whether source is active |
+| sync_frequency | text | full_daily, incremental_hourly, manual |
+| last_sync_at | timestamptz | Last successful sync timestamp |
+| next_sync_at | timestamptz | Scheduled next sync |
+| sync_config | jsonb | Source-specific configuration |
+| created_at | timestamptz | Creation timestamp |
+| updated_at | timestamptz | Last update timestamp |
+
+**RLS**: Public read access, admin-only write access.
+
+#### `grants_catalog`
+Centralized grant catalog from all sources.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| source_id | uuid | Reference to grant_sources |
+| external_id | text | Source's unique grant ID |
+| title | text | Grant title |
+| description | text | Full grant description |
+| agency | text | Issuing agency |
+| category | text | Funding category code |
+| opportunity_number | text | Official opportunity number |
+| open_date | timestamptz | Opening date |
+| close_date | timestamptz | Closing/deadline date |
+| award_floor | numeric | Minimum award amount |
+| award_ceiling | numeric | Maximum award amount |
+| estimated_funding | numeric | Total program funding |
+| expected_awards | integer | Number of expected awards |
+| eligibility | text | Eligibility requirements |
+| cost_sharing_required | boolean | Cost sharing requirement |
+| opportunity_status | text | posted, forecasted, closed, archived |
+| source_url | text | Original listing URL |
+| application_url | text | Application submission URL |
+| content_hash | text | SHA-256 hash for de-duplication |
+| search_vector | tsvector | Full-text search index |
+| raw_data | jsonb | Original source data |
+| created_at | timestamptz | First ingestion timestamp |
+| updated_at | timestamptz | Last update timestamp |
+
+**Unique constraint**: (source_id, external_id)
+
+**Indexes**:
+- GIN index on search_vector for full-text search
+- Index on content_hash for de-duplication
+- Index on (source_id, external_id) for lookups
+
+**RLS**: Public read access for active grants.
+
+#### `sync_jobs`
+Sync operation tracking and logging.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| source_id | uuid | Reference to grant_sources |
+| sync_type | text | full, incremental, single |
+| status | text | pending, running, completed, failed |
+| started_at | timestamptz | Sync start time |
+| completed_at | timestamptz | Sync completion time |
+| started_by | uuid | User who triggered (null for cron) |
+| grants_fetched | integer | Number of grants retrieved |
+| grants_created | integer | Number of new grants added |
+| grants_updated | integer | Number of grants updated |
+| grants_unchanged | integer | Number of unchanged grants |
+| duplicates_found | integer | Number of duplicates detected |
+| error_message | text | Error details if failed |
+| error_stack | text | Full error stack trace |
+| sync_metadata | jsonb | Additional sync details |
+| created_at | timestamptz | Record creation time |
+
+**RLS**: Admin-only access.
+
+#### `grant_duplicates`
+Duplicate grant detection and linking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| catalog_grant_id | uuid | Reference to grants_catalog (primary) |
+| duplicate_grant_id | uuid | Reference to grants_catalog (duplicate) |
+| match_type | text | exact_hash, fuzzy_title, manual |
+| match_score | numeric | Similarity score (0-1) |
+| detected_at | timestamptz | Detection timestamp |
+| verified_by | uuid | User who verified (if manual) |
+| verified_at | timestamptz | Verification timestamp |
+
+**Unique constraint**: (catalog_grant_id, duplicate_grant_id)
+
+**RLS**: Public read access, admin-only write access.
+
+#### `grant_match_notifications`
+Notifications for grants matching org eligibility profiles.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| org_id | uuid | Reference to organizations |
+| catalog_grant_id | uuid | Reference to grants_catalog |
+| match_score | numeric | Relevance score (0-1) |
+| match_reasons | text[] | Array of matching criteria |
+| notified_at | timestamptz | Notification sent timestamp |
+| viewed_at | timestamptz | When user viewed |
+| dismissed_at | timestamptz | When user dismissed |
+| created_at | timestamptz | Record creation time |
+
+**Unique constraint**: (org_id, catalog_grant_id)
+
+**RLS**: Users can view matches for their organization only.
+
 ### Integration Tables
 
 #### `integrations`
@@ -971,11 +1243,13 @@ vercel
 ```
 
 3. Set environment variables in Vercel dashboard:
-   - `VITE_SUPABASE_URL` - Supabase project URL
-   - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+   - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL (client-side)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key (client-side)
    - `SUPABASE_URL` - Supabase project URL (for API routes)
    - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for API routes)
    - `RESEND_API_KEY` - Resend API key for email delivery
+
+   **Note**: Use `NEXT_PUBLIC_` prefix for environment variables that need to be accessible in the browser. API routes can access both prefixed and non-prefixed variables.
 
 4. Configure custom domain (grantcue.com) in Vercel dashboard
 
@@ -990,10 +1264,13 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 ### v1 Complete Features
 
 **Authentication & Authorization**
+- ✅ Self-service user sign-up with email confirmation
 - ✅ Email/password sign-in
 - ✅ Supabase Auth integration
 - ✅ Protected routes with permission checks
 - ✅ Role-based access control (Admin/Contributor)
+- ✅ Bearer token authentication on all API endpoints
+- ✅ Organization membership verification
 
 **Grant Discovery & Search**
 - ✅ Advanced search with Grants.gov API integration
@@ -1008,6 +1285,17 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 - ✅ Grant interaction tracking for ML training
 - ✅ Save/unsave grants to organization pipeline
 - ✅ Proper error handling with fallback links
+
+**Multi-Source Grant Ingestion**
+- ✅ Source adapter architecture (extensible pattern for multiple sources)
+- ✅ Grants.gov automated sync integration
+- ✅ Custom grant entry with full validation
+- ✅ Automated nightly sync via Vercel cron (2 AM daily)
+- ✅ De-duplication engine (content hash + fuzzy matching)
+- ✅ Sync job tracking and error logging
+- ✅ Admin sync controls (manual full/incremental triggers)
+- ✅ Full-text search with PostgreSQL tsvector
+- ✅ Grant catalog with centralized multi-source storage
 
 **Organizations & Teams**
 - ✅ Multi-organization support with org switching
