@@ -385,24 +385,29 @@ ALTER TABLE public.sync_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.grant_match_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Grant Sources: Public read, admin write
+DROP POLICY IF EXISTS "Anyone can view grant sources" ON public.grant_sources;
 CREATE POLICY "Anyone can view grant sources"
   ON public.grant_sources FOR SELECT
   USING (TRUE);
 
+DROP POLICY IF EXISTS "Service role can manage sources" ON public.grant_sources;
 CREATE POLICY "Service role can manage sources"
   ON public.grant_sources FOR ALL
   USING (auth.role() = 'service_role');
 
 -- Grants Catalog: Public read for active grants
+DROP POLICY IF EXISTS "Anyone can view active grants" ON public.grants_catalog;
 CREATE POLICY "Anyone can view active grants"
   ON public.grants_catalog FOR SELECT
   USING (is_active = TRUE);
 
+DROP POLICY IF EXISTS "Service role can manage catalog" ON public.grants_catalog;
 CREATE POLICY "Service role can manage catalog"
   ON public.grants_catalog FOR ALL
   USING (auth.role() = 'service_role');
 
 -- Grant Duplicates: Admins can view and manage
+DROP POLICY IF EXISTS "Org admins can view duplicates" ON public.grant_duplicates;
 CREATE POLICY "Org admins can view duplicates"
   ON public.grant_duplicates FOR SELECT
   USING (
@@ -412,15 +417,18 @@ CREATE POLICY "Org admins can view duplicates"
     )
   );
 
+DROP POLICY IF EXISTS "Service role can manage duplicates" ON public.grant_duplicates;
 CREATE POLICY "Service role can manage duplicates"
   ON public.grant_duplicates FOR ALL
   USING (auth.role() = 'service_role');
 
 -- Sync Jobs: Service role only
+DROP POLICY IF EXISTS "Service role can manage sync jobs" ON public.sync_jobs;
 CREATE POLICY "Service role can manage sync jobs"
   ON public.sync_jobs FOR ALL
   USING (auth.role() = 'service_role');
 
+DROP POLICY IF EXISTS "Admins can view sync jobs" ON public.sync_jobs;
 CREATE POLICY "Admins can view sync jobs"
   ON public.sync_jobs FOR SELECT
   USING (
@@ -431,14 +439,17 @@ CREATE POLICY "Admins can view sync jobs"
   );
 
 -- Grant Match Notifications: Users see their own
+DROP POLICY IF EXISTS "Users can view their notifications" ON public.grant_match_notifications;
 CREATE POLICY "Users can view their notifications"
   ON public.grant_match_notifications FOR SELECT
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can update their notifications" ON public.grant_match_notifications;
 CREATE POLICY "Users can update their notifications"
   ON public.grant_match_notifications FOR UPDATE
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Service role can create notifications" ON public.grant_match_notifications;
 CREATE POLICY "Service role can create notifications"
   ON public.grant_match_notifications FOR INSERT
   WITH CHECK (auth.role() = 'service_role');

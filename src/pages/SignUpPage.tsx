@@ -24,6 +24,8 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -33,6 +35,28 @@ export default function SignUpPage() {
       navigate('/discover');
     }
   }, [user, navigate]);
+
+  const handleResendConfirmation = async () => {
+    setResendingEmail(true);
+    setResendMessage(null);
+
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (resendError) {
+        setResendMessage('Unable to resend email. Please try again later.');
+      } else {
+        setResendMessage('Confirmation email sent! Please check your inbox.');
+      }
+    } catch (err) {
+      setResendMessage('Unable to resend email. Please try again later.');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +120,25 @@ export default function SignUpPage() {
               We've sent you an email with a confirmation link. Please check your inbox and click
               the link to activate your account.
             </Alert>
+
+            {resendMessage && (
+              <Alert
+                color={resendMessage.includes('sent') ? 'green' : 'red'}
+                icon={resendMessage.includes('sent') ? <IconCheck size={16} /> : <IconAlertCircle size={16} />}
+              >
+                {resendMessage}
+              </Alert>
+            )}
+
+            <Button
+              onClick={handleResendConfirmation}
+              loading={resendingEmail}
+              variant="light"
+              fullWidth
+            >
+              Resend confirmation email
+            </Button>
+
             <Text c="dimmed" size="sm" ta="center">
               Already confirmed?{' '}
               <Anchor component={Link} to="/signin" size="sm">
@@ -137,6 +180,8 @@ export default function SignUpPage() {
               <TextInput
                 label="Full Name"
                 placeholder="John Doe"
+                type="text"
+                autoComplete="name"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -147,6 +192,10 @@ export default function SignUpPage() {
                 label="Email"
                 placeholder="your@email.com"
                 type="email"
+                autoComplete="email"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -156,6 +205,7 @@ export default function SignUpPage() {
               <PasswordInput
                 label="Password"
                 placeholder="Create a password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -166,6 +216,7 @@ export default function SignUpPage() {
               <PasswordInput
                 label="Confirm Password"
                 placeholder="Confirm your password"
+                autoComplete="new-password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
