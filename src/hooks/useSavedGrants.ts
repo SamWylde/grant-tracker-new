@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { supabase } from '../lib/supabase';
@@ -62,8 +63,10 @@ export function useSavedGrants() {
 export function useSavedGrantIds() {
   const { data: savedGrants, ...rest } = useSavedGrants();
 
-  const savedGrantIds = new Set(
-    savedGrants?.grants.map((g) => g.external_id) || []
+  // Memoize the Set to avoid rebuilding on every render
+  const savedGrantIds = useMemo(
+    () => new Set(savedGrants?.grants.map((g) => g.external_id) || []),
+    [savedGrants]
   );
 
   return {

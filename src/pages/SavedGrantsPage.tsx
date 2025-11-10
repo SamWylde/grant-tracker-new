@@ -19,7 +19,6 @@ import {
 } from "@mantine/core";
 import {
   IconBookmarkFilled,
-  IconCalendar,
   IconExternalLink,
   IconFileText,
   IconTrash,
@@ -39,6 +38,7 @@ import { notifications } from "@mantine/notifications";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
 import { printBoardPacket } from "../utils/printBoardPacket";
+import { stripHtml } from "../utils/htmlUtils";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
@@ -52,23 +52,6 @@ export function SavedGrantsPage() {
     assignedTo: [],
   });
   const [importWizardOpen, setImportWizardOpen] = useState(false);
-
-  // Utility function to strip HTML tags and decode entities
-  const stripHtml = (html: string): string => {
-    if (!html) return '';
-
-    // Create a temporary div to use browser's HTML parsing
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-
-    // Get text content (this automatically decodes entities and strips tags)
-    let text = tmp.textContent || tmp.innerText || '';
-
-    // Clean up extra whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    return text;
-  };
 
   // Fetch saved grants
   const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
@@ -91,7 +74,7 @@ export function SavedGrantsPage() {
     error: detailsError,
   } = useQuery<GrantDetail>({
     queryKey: ["grantDetails", selectedGrantId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
 
       const response = await fetch('/api/grants/details', {
@@ -100,6 +83,7 @@ export function SavedGrantsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ id: selectedGrantId }),
+        signal, // Add AbortSignal for request cancellation
       });
       if (!response.ok) {
         const errorData = await response.json();
