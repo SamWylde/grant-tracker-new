@@ -111,7 +111,17 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
   const { data: tasksData, isLoading } = useQuery({
     queryKey: ["grant-tasks", grantId],
     queryFn: async () => {
-      const res = await fetch(`/api/tasks?grant_id=${grantId}&org_id=${orgId}`);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const res = await fetch(`/api/tasks?grant_id=${grantId}&org_id=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       if (!res.ok) throw new Error("Failed to fetch tasks");
       return res.json();
     },
@@ -127,9 +137,18 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
   // Create task mutation
   const createTaskMutation = useMutation({
     mutationFn: async (taskData: any) => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const res = await fetch("/api/tasks", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           ...taskData,
           grant_id: grantId,
@@ -163,9 +182,18 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
   // Update task mutation
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const res = await fetch(`/api/tasks?id=${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(updates),
       });
       if (!res.ok) throw new Error("Failed to update task");
@@ -192,8 +220,17 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
   // Delete task mutation
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const res = await fetch(`/api/tasks?id=${id}`, {
         method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       });
       if (!res.ok) throw new Error("Failed to delete task");
       return res.json();

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -31,6 +31,21 @@ export default async function handler(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Verify authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized - Missing or invalid authorization header' });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+
+  // Verify the JWT token and get user
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized - Invalid token' });
+  }
+
   try {
     switch (req.method) {
       case 'GET': {
@@ -43,6 +58,23 @@ export default async function handler(
 
         if (!user_id || typeof user_id !== 'string') {
           return res.status(400).json({ error: 'user_id is required' });
+        }
+
+        // Verify user belongs to the organization
+        const { data: membership, error: membershipError } = await supabase
+          .from('org_members')
+          .select('id')
+          .eq('org_id', org_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membershipError || !membership) {
+          return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
+        }
+
+        // Verify user is accessing their own data or is admin
+        if (user_id !== user.id) {
+          return res.status(403).json({ error: 'Forbidden - Cannot access another user\'s data' });
         }
 
         const limitNum = parseInt(limit as string, 10);
@@ -71,6 +103,23 @@ export default async function handler(
           return res.status(400).json({
             error: 'Missing required fields: org_id, user_id'
           });
+        }
+
+        // Verify user belongs to the organization
+        const { data: membership, error: membershipError } = await supabase
+          .from('org_members')
+          .select('id')
+          .eq('org_id', searchData.org_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membershipError || !membership) {
+          return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
+        }
+
+        // Verify user is saving their own data
+        if (searchData.user_id !== user.id) {
+          return res.status(403).json({ error: 'Forbidden - Cannot save data for another user' });
         }
 
         // Try to find existing search with same parameters
@@ -145,6 +194,23 @@ export default async function handler(
         if (clear_all === 'true') {
           if (!org_id || typeof org_id !== 'string' || !user_id || typeof user_id !== 'string') {
             return res.status(400).json({ error: 'org_id and user_id are required' });
+          }
+
+          // Verify user belongs to the organization
+          const { data: membership, error: membershipError } = await supabase
+            .from('org_members')
+            .select('id')
+            .eq('org_id', org_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (membershipError || !membership) {
+            return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
+          }
+
+          // Verify user is deleting their own data
+          if (user_id !== user.id) {
+            return res.status(403).json({ error: 'Forbidden - Cannot delete another user\'s data' });
           }
 
           const { error } = await supabase
