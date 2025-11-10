@@ -23,6 +23,7 @@ import {
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 interface SavedView {
   id: string;
@@ -75,8 +76,19 @@ export function SavedViewsPanel({
   const { data, isLoading } = useQuery<{ views: SavedView[] }>({
     queryKey: ["savedViews", orgId, userId],
     queryFn: async () => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(
-        `/api/views?org_id=${orgId}&user_id=${userId}`
+        `/api/views?org_id=${orgId}&user_id=${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
       );
       if (!response.ok) throw new Error("Failed to fetch saved views");
       return response.json();
@@ -100,9 +112,18 @@ export function SavedViewsPanel({
 
     setSaving(true);
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch("/api/views", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           org_id: orgId,
           created_by: userId,
@@ -151,8 +172,17 @@ export function SavedViewsPanel({
   // Delete a view
   const handleDeleteView = async (viewId: string) => {
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`/api/views?id=${viewId}`, {
         method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       });
 
       if (!response.ok) throw new Error("Failed to delete view");
@@ -176,9 +206,18 @@ export function SavedViewsPanel({
   // Toggle share status
   const handleToggleShare = async (view: SavedView) => {
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`/api/views?id=${view.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           ...view,
           is_shared: !view.is_shared,

@@ -24,6 +24,7 @@ import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
 import { printGrantBrief } from "../utils/printGrant";
+import { supabase } from "../lib/supabase";
 
 interface Grant {
   id: string;
@@ -71,7 +72,17 @@ export function GrantDetailDrawer({
   const { data: tasksData } = useQuery({
     queryKey: ['grantTasks', grant.id],
     queryFn: async () => {
-      const response = await fetch(`/api/tasks?grant_id=${grant.id}`);
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/tasks?grant_id=${grant.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch tasks');
       return response.json();
     },

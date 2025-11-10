@@ -225,9 +225,19 @@ export function DiscoverPage() {
     try {
       if (!currentOrg?.id || !user?.id) return; // Skip if not authenticated
 
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('Not authenticated - cannot track search');
+        return;
+      }
+
       await fetch("/api/recent-searches", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           org_id: currentOrg.id,
           user_id: user.id,

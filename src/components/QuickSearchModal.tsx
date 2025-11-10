@@ -4,6 +4,7 @@ import { IconClock, IconSearch, IconAlertCircle } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import { supabase } from "../lib/supabase";
 
 interface RecentSearch {
   id: string;
@@ -50,8 +51,19 @@ export function QuickSearchModal({
     setLoading(true);
     setError(null);
     try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(
-        `/api/recent-searches?org_id=${orgId}&user_id=${userId}&limit=10`
+        `/api/recent-searches?org_id=${orgId}&user_id=${userId}&limit=10`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
       );
       if (!response.ok) {
         throw new Error('Failed to load recent searches');

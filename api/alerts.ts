@@ -38,6 +38,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'org_id is required' });
       }
 
+      // Verify user belongs to the organization
+      const { data: membership, error: membershipError } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', org_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (membershipError || !membership) {
+        return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
+      }
+
       const { data: alerts, error } = await supabase
         .from('grant_alerts')
         .select('*')
@@ -72,6 +84,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!org_id || !name) {
         return res.status(400).json({ error: 'org_id and name are required' });
+      }
+
+      // Verify user belongs to the organization
+      const { data: membership, error: membershipError } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', org_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (membershipError || !membership) {
+        return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
       }
 
       const { data: alert, error } = await supabase
@@ -113,10 +137,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'alert_id is required' });
       }
 
-      // Verify user owns this alert
+      // Verify user owns this alert and belongs to org
       const { data: existingAlert, error: fetchError } = await supabase
         .from('grant_alerts')
-        .select('user_id')
+        .select('user_id, org_id')
         .eq('id', alert_id)
         .single();
 
@@ -124,6 +148,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (existingAlert.user_id !== user.id) {
         return res.status(403).json({ error: 'Forbidden: You do not own this alert' });
+      }
+
+      // Verify user belongs to the organization
+      const { data: membership, error: membershipError } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', existingAlert.org_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (membershipError || !membership) {
+        return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
       }
 
       const { data: alert, error } = await supabase
@@ -149,10 +185,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'alert_id is required' });
       }
 
-      // Verify user owns this alert
+      // Verify user owns this alert and belongs to org
       const { data: existingAlert, error: fetchError } = await supabase
         .from('grant_alerts')
-        .select('user_id')
+        .select('user_id, org_id')
         .eq('id', alert_id)
         .single();
 
@@ -160,6 +196,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (existingAlert.user_id !== user.id) {
         return res.status(403).json({ error: 'Forbidden: You do not own this alert' });
+      }
+
+      // Verify user belongs to the organization
+      const { data: membership, error: membershipError } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', existingAlert.org_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (membershipError || !membership) {
+        return res.status(403).json({ error: 'Forbidden - User is not a member of this organization' });
       }
 
       const { error } = await supabase.from('grant_alerts').delete().eq('id', alert_id);
