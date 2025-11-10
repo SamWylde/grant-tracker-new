@@ -30,6 +30,7 @@ import { AppHeader } from '../components/AppHeader';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
 interface ParsedGrant {
   title: string;
@@ -122,8 +123,21 @@ export function GrantHubImportPage() {
     setImporting(true);
     setImportProgress(0);
 
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      notifications.show({
+        title: 'Authentication error',
+        message: 'Please sign in again to import grants',
+        color: 'red',
+      });
+      setImporting(false);
+      return;
+    }
+
     let imported = 0;
     let failed = 0;
+    const errors: string[] = [];
 
     for (let i = 0; i < selectedGrants.length; i++) {
       const grant = selectedGrants[i];
@@ -133,6 +147,7 @@ export function GrantHubImportPage() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             org_id: currentOrg?.id,
@@ -152,9 +167,17 @@ export function GrantHubImportPage() {
           imported++;
         } else {
           failed++;
+          // Try to extract error message
+          try {
+            const errorData = await response.json();
+            errors.push(`${grant.title}: ${errorData.error || 'Unknown error'}`);
+          } catch {
+            errors.push(`${grant.title}: HTTP ${response.status}`);
+          }
         }
       } catch (error) {
         failed++;
+        errors.push(`${grant.title}: ${error instanceof Error ? error.message : 'Network error'}`);
       }
 
       setImportProgress(((i + 1) / selectedGrants.length) * 100);
@@ -169,6 +192,11 @@ export function GrantHubImportPage() {
       color: imported > 0 ? 'green' : 'red',
       icon: <IconCheck size={16} />,
     });
+
+    // Log errors for debugging
+    if (errors.length > 0) {
+      console.error('Import errors:', errors);
+    }
   };
 
   const mapStatus = (status: string): string => {
