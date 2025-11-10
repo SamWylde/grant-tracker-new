@@ -53,6 +53,23 @@ export function SavedGrantsPage() {
   });
   const [importWizardOpen, setImportWizardOpen] = useState(false);
 
+  // Utility function to strip HTML tags and decode entities
+  const stripHtml = (html: string): string => {
+    if (!html) return '';
+
+    // Create a temporary div to use browser's HTML parsing
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    // Get text content (this automatically decodes entities and strips tags)
+    let text = tmp.textContent || tmp.innerText || '';
+
+    // Clean up extra whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
+  };
+
   // Fetch saved grants
   const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
     queryKey: ["savedGrants", currentOrg?.id],
@@ -280,10 +297,38 @@ export function SavedGrantsPage() {
                 const isClosingSoon = daysUntilClose !== null && daysUntilClose >= 0 && daysUntilClose <= 30;
 
                 return (
-                  <Card key={grant.id} padding="md" withBorder>
-                    <Stack gap="sm">
-                      <Group justify="space-between" align="flex-start">
-                        <Stack gap={4} style={{ flex: 1 }}>
+                  <Card
+                    key={grant.id}
+                    padding="lg"
+                    withBorder
+                    style={{
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "";
+                      e.currentTarget.style.transform = "";
+                    }}
+                  >
+                    <Stack gap="md">
+                      {/* Header */}
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Stack gap={8} style={{ flex: 1 }}>
+                          <Group gap="xs" wrap="wrap">
+                            <Badge variant="filled" size="sm" color="grape">
+                              Saved
+                            </Badge>
+                            {grant.aln && (
+                              <Badge variant="outline" size="sm" color="gray">
+                                {grant.aln}
+                              </Badge>
+                            )}
+                          </Group>
+
                           <Anchor
                             href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
                             target="_blank"
@@ -292,43 +337,40 @@ export function SavedGrantsPage() {
                             size="lg"
                             c="dark"
                             style={{ textDecoration: "none" }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Group gap="xs">
-                              {grant.title}
-                              <IconExternalLink size={16} />
+                            <Group gap="xs" wrap="nowrap">
+                              <Text lineClamp={2}>{grant.title}</Text>
+                              <IconExternalLink size={16} style={{ flexShrink: 0 }} />
                             </Group>
                           </Anchor>
-                          <Group gap="xs">
-                            <Text size="sm" c="dimmed">
-                              {grant.agency}
-                            </Text>
-                            {grant.aln && (
-                              <>
-                                <Text size="sm" c="dimmed">
-                                  •
-                                </Text>
-                                <Badge variant="light" size="sm">
-                                  ALN: {grant.aln}
-                                </Badge>
-                              </>
-                            )}
-                          </Group>
+
+                          <Text size="sm" c="dimmed" fw={500}>
+                            {grant.agency}
+                          </Text>
                         </Stack>
-                        <Group gap="xs">
-                          <ActionIcon
+
+                        <Group gap="xs" style={{ flexShrink: 0 }}>
+                          <Button
                             variant="light"
                             color="blue"
-                            size="lg"
-                            onClick={() => handleViewDetails(grant.external_id)}
-                            title="View details"
+                            size="sm"
+                            leftSection={<IconFileText size={16} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(grant.external_id);
+                            }}
                           >
-                            <IconFileText size={20} />
-                          </ActionIcon>
+                            Details
+                          </Button>
                           <ActionIcon
                             variant="light"
                             color="red"
                             size="lg"
-                            onClick={() => handleRemoveGrant(grant.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveGrant(grant.id);
+                            }}
                             title="Remove from pipeline"
                           >
                             <IconTrash size={20} />
@@ -336,21 +378,64 @@ export function SavedGrantsPage() {
                         </Group>
                       </Group>
 
-                      <Group gap="md">
-                        {grant.close_date && (
-                          <Badge
-                            variant="light"
-                            color={isOverdue ? "red" : isClosingSoon ? "orange" : "green"}
-                            leftSection={<IconCalendar size={14} />}
-                          >
-                            {isOverdue
-                              ? `Closed ${Math.abs(daysUntilClose!)} days ago`
-                              : `Closes ${dayjs(grant.close_date).format("MMM D, YYYY")} (${daysUntilClose} days)`}
-                          </Badge>
+                      <Divider />
+
+                      {/* Dates */}
+                      <Group gap="xl">
+                        {grant.open_date && (
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                              Posted
+                            </Text>
+                            <Text size="sm" fw={500}>
+                              {dayjs(grant.open_date).format("MMM D, YYYY")}
+                            </Text>
+                          </Stack>
                         )}
-                        <Badge variant="light" color="gray" size="sm">
-                          Saved {dayjs(grant.saved_at).format("MMM D, YYYY")}
-                        </Badge>
+                        <Stack gap={4}>
+                          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                            {isOverdue ? "Closed" : "Closes"}
+                          </Text>
+                          {grant.close_date ? (
+                            <Group gap="xs">
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c={
+                                  isOverdue
+                                    ? "red"
+                                    : isClosingSoon
+                                      ? "orange"
+                                      : "dark"
+                                }
+                              >
+                                {dayjs(grant.close_date).format("MMM D, YYYY")}
+                              </Text>
+                              {daysUntilClose !== null && !isOverdue && (
+                                <Badge
+                                  size="sm"
+                                  color={isClosingSoon ? "orange" : "gray"}
+                                  variant="light"
+                                >
+                                  {daysUntilClose === 0
+                                    ? "Today"
+                                    : daysUntilClose === 1
+                                      ? "Tomorrow"
+                                      : `${daysUntilClose} days`}
+                                </Badge>
+                              )}
+                              {isOverdue && (
+                                <Badge size="sm" color="red" variant="light">
+                                  Overdue
+                                </Badge>
+                              )}
+                            </Group>
+                          ) : (
+                            <Text size="sm" c="dimmed">
+                              TBD
+                            </Text>
+                          )}
+                        </Stack>
                       </Group>
                     </Stack>
                   </Card>
@@ -420,7 +505,7 @@ export function SavedGrantsPage() {
                     Description
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.description}
+                    {stripHtml(grantDetails.description)}
                   </Text>
                 </Stack>
               )}
@@ -507,7 +592,7 @@ export function SavedGrantsPage() {
                     Eligible Applicants
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.eligibility}
+                    {stripHtml(grantDetails.eligibility)}
                   </Text>
                 </Stack>
               )}
