@@ -1,0 +1,129 @@
+import { Group, MultiSelect, Button } from "@mantine/core";
+import { IconFilter, IconX } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
+import { useOrganization } from "../contexts/OrganizationContext";
+import { supabase } from "../lib/supabase";
+
+export interface GrantFilterValues {
+  status?: string[];
+  priority?: string[];
+  assignedTo?: string[];
+}
+
+interface GrantFiltersProps {
+  value: GrantFilterValues;
+  onChange: (filters: GrantFilterValues) => void;
+  showStatus?: boolean;
+  statusOptions?: { value: string; label: string }[];
+}
+
+const DEFAULT_STATUS_OPTIONS = [
+  { value: "researching", label: "Researching" },
+  { value: "drafting", label: "Drafting" },
+  { value: "submitted", label: "Submitted" },
+  { value: "awarded", label: "Awarded" },
+  { value: "rejected", label: "Rejected" },
+  { value: "withdrawn", label: "Withdrawn" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
+];
+
+export function GrantFilters({
+  value,
+  onChange,
+  showStatus = true,
+  statusOptions = DEFAULT_STATUS_OPTIONS,
+}: GrantFiltersProps) {
+  const { currentOrg } = useOrganization();
+
+  // Fetch team members for assignee filter
+  const { data: teamMembers } = useQuery({
+    queryKey: ["teamMembers", currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return [];
+
+      const { data, error } = await supabase
+        .from("org_members")
+        .select(`
+          user_id,
+          user_profiles!inner (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq("org_id", currentOrg.id);
+
+      if (error) throw error;
+
+      return data.map((member: any) => ({
+        value: member.user_profiles.id,
+        label: member.user_profiles.full_name || member.user_profiles.email,
+      }));
+    },
+    enabled: !!currentOrg?.id,
+  });
+
+  const hasActiveFilters =
+    (value.status && value.status.length > 0) ||
+    (value.priority && value.priority.length > 0) ||
+    (value.assignedTo && value.assignedTo.length > 0);
+
+  const clearFilters = () => {
+    onChange({ status: [], priority: [], assignedTo: [] });
+  };
+
+  return (
+    <Group gap="sm">
+      {showStatus && (
+        <MultiSelect
+          placeholder="Filter by status"
+          data={statusOptions}
+          value={value.status || []}
+          onChange={(val) => onChange({ ...value, status: val })}
+          leftSection={<IconFilter size={16} />}
+          clearable
+          w={200}
+        />
+      )}
+
+      <MultiSelect
+        placeholder="Filter by priority"
+        data={PRIORITY_OPTIONS}
+        value={value.priority || []}
+        onChange={(val) => onChange({ ...value, priority: val })}
+        leftSection={<IconFilter size={16} />}
+        clearable
+        w={200}
+      />
+
+      <MultiSelect
+        placeholder="Filter by assignee"
+        data={teamMembers || []}
+        value={value.assignedTo || []}
+        onChange={(val) => onChange({ ...value, assignedTo: val })}
+        leftSection={<IconFilter size={16} />}
+        clearable
+        searchable
+        w={220}
+      />
+
+      {hasActiveFilters && (
+        <Button
+          variant="subtle"
+          color="gray"
+          size="sm"
+          leftSection={<IconX size={16} />}
+          onClick={clearFilters}
+        >
+          Clear filters
+        </Button>
+      )}
+    </Group>
+  );
+}

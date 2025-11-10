@@ -12,6 +12,7 @@ import {
   Loader,
   ActionIcon,
   Menu,
+  Switch,
 } from "@mantine/core";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -24,9 +25,11 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
+import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
+import { useAuth } from "../contexts/AuthContext";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -41,8 +44,14 @@ type PipelineStage = typeof PIPELINE_STAGES[number]["id"];
 export function PipelinePage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
+  const { user } = useAuth();
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
+  const [filters, setFilters] = useState<GrantFilterValues>({
+    priority: [],
+    assignedTo: [],
+  });
+  const [showMyGrantsOnly, setShowMyGrantsOnly] = useState(false);
 
   // Fetch saved grants using shared hook
   const { data, isLoading, error } = useSavedGrants();
@@ -100,9 +109,29 @@ export function PipelinePage() {
     },
   });
 
+  // Filter grants before grouping by stage
+  const filteredGrants = data?.grants ? data.grants.filter((grant) => {
+    // Filter by priority
+    if (filters.priority && filters.priority.length > 0) {
+      if (!grant.priority || !filters.priority.includes(grant.priority)) return false;
+    }
+
+    // Filter by assignee
+    if (filters.assignedTo && filters.assignedTo.length > 0) {
+      if (!grant.assigned_to || !filters.assignedTo.includes(grant.assigned_to)) return false;
+    }
+
+    // Show only user's grants if toggle is enabled
+    if (showMyGrantsOnly && user) {
+      if (grant.assigned_to !== user.id) return false;
+    }
+
+    return true;
+  }) : [];
+
   // Group grants by status
   const grantsByStage = PIPELINE_STAGES.reduce((acc, stage) => {
-    acc[stage.id] = data?.grants.filter((g) => g.status === stage.id) || [];
+    acc[stage.id] = filteredGrants.filter((g) => g.status === stage.id);
     return acc;
   }, {} as Record<PipelineStage, SavedGrant[]>);
 
@@ -169,9 +198,23 @@ export function PipelinePage() {
             </div>
             <Group>
               <Text size="sm" c="dimmed">
-                Total: {data?.grants.length || 0} grants
+                Showing {filteredGrants.length} of {data?.grants.length || 0} grants
               </Text>
             </Group>
+          </Group>
+
+          {/* Filters */}
+          <Group justify="space-between" align="flex-start">
+            <GrantFilters
+              value={filters}
+              onChange={setFilters}
+              showStatus={false}
+            />
+            <Switch
+              label="My grants only"
+              checked={showMyGrantsOnly}
+              onChange={(event) => setShowMyGrantsOnly(event.currentTarget.checked)}
+            />
           </Group>
 
           {/* Pipeline Board */}

@@ -29,7 +29,9 @@ import dayjs from "dayjs";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
-import { type GrantDetail, type SavedGrant } from "../types/grants";
+import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
+import { type GrantDetail } from "../types/grants";
+import { type SavedGrant } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
@@ -40,6 +42,11 @@ export function SavedGrantsPage() {
   const [sortBy, setSortBy] = useState<string>("deadline-asc");
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [filters, setFilters] = useState<GrantFilterValues>({
+    status: [],
+    priority: [],
+    assignedTo: [],
+  });
 
   // Fetch saved grants
   const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
@@ -125,8 +132,28 @@ export function SavedGrantsPage() {
     }
   };
 
+  // Filter grants
+  const filteredGrants = savedGrants?.grants ? savedGrants.grants.filter((grant) => {
+    // Filter by status
+    if (filters.status && filters.status.length > 0) {
+      if (!filters.status.includes(grant.status)) return false;
+    }
+
+    // Filter by priority
+    if (filters.priority && filters.priority.length > 0) {
+      if (!grant.priority || !filters.priority.includes(grant.priority)) return false;
+    }
+
+    // Filter by assignee
+    if (filters.assignedTo && filters.assignedTo.length > 0) {
+      if (!grant.assigned_to || !filters.assignedTo.includes(grant.assigned_to)) return false;
+    }
+
+    return true;
+  }) : [];
+
   // Sort grants
-  const sortedGrants = savedGrants?.grants ? [...savedGrants.grants].sort((a, b) => {
+  const sortedGrants = [...filteredGrants].sort((a, b) => {
     switch (sortBy) {
       case "deadline-asc":
         if (!a.close_date) return 1;
@@ -143,7 +170,7 @@ export function SavedGrantsPage() {
       default:
         return 0;
     }
-  }) : [];
+  });
 
   return (
     <Box bg="var(--mantine-color-gray-0)" mih="100vh">
@@ -168,11 +195,15 @@ export function SavedGrantsPage() {
           <Divider />
 
           {/* Filters / Sort */}
+          <Group justify="space-between" align="flex-start">
+            <GrantFilters value={filters} onChange={setFilters} />
+          </Group>
+
           <Group justify="space-between">
             <Group gap="xs">
               <IconBookmarkFilled size={20} />
               <Text fw={600}>
-                {savedGrants?.grants.length || 0} saved grant{savedGrants?.grants.length !== 1 ? "s" : ""}
+                {sortedGrants.length} of {savedGrants?.grants.length || 0} grant{savedGrants?.grants.length !== 1 ? "s" : ""}
               </Text>
             </Group>
             <Select

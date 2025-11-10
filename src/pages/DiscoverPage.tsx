@@ -51,6 +51,7 @@ import { QuickSearchModal, useQuickSearchModal } from "../components/QuickSearch
 import { SavedViewsPanel } from "../components/SavedViewsPanel";
 import { FitScoreBadge } from "../components/FitScoreBadge";
 import { QuickAddGrantModal } from "../components/QuickAddGrantModal";
+import { SaveToPipelineModal, type SaveToPipelineData } from "../components/SaveToPipelineModal";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
@@ -95,6 +96,11 @@ export function DiscoverPage() {
   // Details modal state
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
+  // Save to pipeline modal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [grantToSave, setGrantToSave] = useState<NormalizedGrant | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Quick search modal
   const quickSearch = useQuickSearchModal();
@@ -283,8 +289,11 @@ export function DiscoverPage() {
           message: `${grant.title} has been removed from your pipeline`,
           color: "blue",
         });
+
+        // Refetch saved grants
+        queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
       } else {
-        // Save
+        // Open save modal instead of directly saving
         if (!currentOrg?.id || !user?.id) {
           notifications.show({
             title: "Authentication required",
@@ -294,40 +303,60 @@ export function DiscoverPage() {
           return;
         }
 
-        const response = await fetch("/api/saved", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            org_id: currentOrg.id,
-            user_id: user.id,
-            external_id: grant.id,
-            title: grant.title,
-            agency: grant.agency,
-            aln: grant.aln,
-            open_date: grant.openDate,
-            close_date: grant.closeDate,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          if (response.status === 409) {
-            notifications.show({
-              title: "Already saved",
-              message: "This grant is already in your pipeline",
-              color: "yellow",
-            });
-            return;
-          }
-          throw new Error(errorData.error || "Failed to save grant");
-        }
-
-        notifications.show({
-          title: "Saved to pipeline",
-          message: `${grant.title} has been added to your pipeline`,
-          color: "green",
-        });
+        setGrantToSave(grant);
+        setSaveModalOpen(true);
       }
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err instanceof Error ? err.message : "An error occurred",
+        color: "red",
+      });
+    }
+  };
+
+  // Handle save with pipeline data
+  const handleSaveWithPipelineData = async (pipelineData: SaveToPipelineData) => {
+    if (!grantToSave || !currentOrg?.id || !user?.id) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          org_id: currentOrg.id,
+          user_id: user.id,
+          external_id: grantToSave.id,
+          title: grantToSave.title,
+          agency: grantToSave.agency,
+          aln: grantToSave.aln,
+          open_date: grantToSave.openDate,
+          close_date: grantToSave.closeDate,
+          status: pipelineData.status,
+          priority: pipelineData.priority,
+          assigned_to: pipelineData.assigned_to,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 409) {
+          notifications.show({
+            title: "Already saved",
+            message: "This grant is already in your pipeline",
+            color: "yellow",
+          });
+          return;
+        }
+        throw new Error(errorData.error || "Failed to save grant");
+      }
+
+      notifications.show({
+        title: "Saved to pipeline",
+        message: `${grantToSave.title} has been added to your pipeline`,
+        color: "green",
+      });
 
       // Refetch saved grants
       queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
@@ -337,6 +366,9 @@ export function DiscoverPage() {
         message: err instanceof Error ? err.message : "An error occurred",
         color: "red",
       });
+      throw err; // Re-throw to prevent modal from closing
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -943,6 +975,18 @@ export function DiscoverPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
         }}
+      />
+
+      {/* Save to Pipeline Modal */}
+      <SaveToPipelineModal
+        opened={saveModalOpen}
+        onClose={() => {
+          setSaveModalOpen(false);
+          setGrantToSave(null);
+        }}
+        onSave={handleSaveWithPipelineData}
+        grantTitle={grantToSave?.title || ""}
+        saving={isSaving}
       />
     </Box>
   );
