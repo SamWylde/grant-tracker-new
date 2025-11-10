@@ -24,6 +24,7 @@ import {
   IconFileText,
   IconTrash,
   IconPrinter,
+  IconUpload,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -31,6 +32,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
+import { ImportWizard } from "../components/ImportWizard";
 import { type GrantDetail } from "../types/grants";
 import { type SavedGrant } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
@@ -49,6 +51,7 @@ export function SavedGrantsPage() {
     priority: [],
     assignedTo: [],
   });
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
 
   // Fetch saved grants
   const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
@@ -190,6 +193,13 @@ export function SavedGrantsPage() {
               </Text>
             </Stack>
             <Group>
+              <Button
+                leftSection={<IconUpload size={16} />}
+                variant="light"
+                onClick={() => setImportWizardOpen(true)}
+              >
+                Import Grants
+              </Button>
               <Button
                 leftSection={<IconPrinter size={16} />}
                 variant="light"
@@ -552,6 +562,15 @@ export function SavedGrantsPage() {
           </Text>
         )}
       </Modal>
+
+      {/* Import Wizard Modal */}
+      <ImportWizard
+        opened={importWizardOpen}
+        onClose={() => setImportWizardOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
+        }}
+      />
     </Box>
   );
 }
