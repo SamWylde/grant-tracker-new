@@ -124,8 +124,8 @@ cp .env.example .env
 
 Then edit `.env` and add your Supabase credentials:
 ```
-NEXT_PUBLIC_SUPABASE_URL=your-project-url.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+VITE_SUPABASE_URL=your-project-url.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
 For the API routes (serverless functions), also set:
@@ -135,7 +135,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=your-resend-api-key
 ```
 
-**Note**: Use `NEXT_PUBLIC_` prefix for client-side environment variables. The API routes can access both `NEXT_PUBLIC_` and plain `SUPABASE_URL` variables.
+**Note**: Use `VITE_` prefix for client-side environment variables (Vite framework). The API routes use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for server-side operations.
 
 4. Set up the database:
 
@@ -1243,13 +1243,14 @@ vercel
 ```
 
 3. Set environment variables in Vercel dashboard:
-   - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL (client-side)
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key (client-side)
+   - `VITE_SUPABASE_URL` - Supabase project URL (client-side)
+   - `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key (client-side)
    - `SUPABASE_URL` - Supabase project URL (for API routes)
    - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (for API routes)
    - `RESEND_API_KEY` - Resend API key for email delivery
+   - `CRON_SECRET` - Secret key for cron job authentication
 
-   **Note**: Use `NEXT_PUBLIC_` prefix for environment variables that need to be accessible in the browser. API routes can access both prefixed and non-prefixed variables.
+   **Note**: Use `VITE_` prefix for environment variables that need to be accessible in the browser (Vite framework requirement). API routes use non-prefixed variables like `SUPABASE_URL`.
 
 4. Configure custom domain (grantcue.com) in Vercel dashboard
 

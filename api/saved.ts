@@ -17,6 +17,9 @@ interface SavedGrantRequest {
   aln?: string;
   open_date?: string;
   close_date?: string;
+  status?: string;
+  priority?: string;
+  assigned_to?: string;
 }
 
 export default async function handler(
@@ -142,7 +145,9 @@ export default async function handler(
             aln: grantData.aln || null,
             open_date: convertToISO(grantData.open_date),
             close_date: convertToISO(grantData.close_date),
-            status: 'researching', // Default to researching stage
+            status: grantData.status || 'researching', // Default to researching if not provided
+            priority: grantData.priority || 'medium', // Default to medium if not provided
+            assigned_to: grantData.assigned_to || null,
           })
           .select()
           .single();
