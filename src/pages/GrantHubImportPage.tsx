@@ -18,6 +18,7 @@ import {
   Card,
   List,
   SimpleGrid,
+  Select,
 } from '@mantine/core';
 import {
   IconUpload,
@@ -25,6 +26,7 @@ import {
   IconAlertCircle,
   IconFileImport,
   IconArrowRight,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { AppHeader } from '../components/AppHeader';
@@ -42,6 +44,7 @@ interface ParsedGrant {
   status: string;
   notes: string;
   selected: boolean;
+  warnings: string[];
 }
 
 interface ImportResults {
@@ -50,45 +53,148 @@ interface ImportResults {
   failed: number;
 }
 
+interface ColumnMapping {
+  [csvColumn: string]: string | null; // null means skip column
+}
+
+interface ValidationIssue {
+  row: number;
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+// Available GrantCue fields for mapping
+const AVAILABLE_FIELDS = [
+  { value: 'title', label: 'Grant Title (Required)' },
+  { value: 'agency', label: 'Agency/Funder' },
+  { value: 'aln', label: 'ALN/CFDA Number' },
+  { value: 'closeDate', label: 'Close Date/Deadline' },
+  { value: 'amount', label: 'Award Amount' },
+  { value: 'status', label: 'Status/Stage' },
+  { value: 'notes', label: 'Notes/Description' },
+  { value: 'skip', label: '— Skip this column —' },
+];
+
 export function GrantHubImportPage() {
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [file, setFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState<string>('');
+  const [detectedColumns, setDetectedColumns] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
   const [parsedGrants, setParsedGrants] = useState<ParsedGrant[]>([]);
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
 
-  const parseCSV = (text: string): ParsedGrant[] => {
+  // Auto-detect column mapping based on common field names
+  const autoMapColumns = (columns: string[]): ColumnMapping => {
+    const mapping: ColumnMapping = {};
+
+    columns.forEach(col => {
+      const lower = col.toLowerCase();
+
+      if (lower.includes('title') || lower.includes('grant name') || lower.includes('opportunity')) {
+        mapping[col] = 'title';
+      } else if (lower.includes('agency') || lower.includes('funder') || lower.includes('organization')) {
+        mapping[col] = 'agency';
+      } else if (lower.includes('aln') || lower.includes('cfda')) {
+        mapping[col] = 'aln';
+      } else if (lower.includes('deadline') || lower.includes('close date') || lower.includes('due date')) {
+        mapping[col] = 'closeDate';
+      } else if (lower.includes('amount') || lower.includes('award') || lower.includes('funding')) {
+        mapping[col] = 'amount';
+      } else if (lower.includes('status') || lower.includes('stage')) {
+        mapping[col] = 'status';
+      } else if (lower.includes('notes') || lower.includes('description')) {
+        mapping[col] = 'notes';
+      } else {
+        mapping[col] = 'skip'; // Skip unmapped columns by default
+      }
+    });
+
+    return mapping;
+  };
+
+  // Parse CSV with applied column mapping
+  const parseCSVWithMapping = (text: string, mapping: ColumnMapping): ParsedGrant[] => {
     const lines = text.split('\n');
     if (lines.length < 2) {
       throw new Error('CSV file appears to be empty');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const headers = lines[0].split(',').map(h => h.trim());
     const grants: ParsedGrant[] = [];
+    const issues: ValidationIssue[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
       const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const warnings: string[] = [];
+
+      // Build grant object based on mapping
+      const grantData: any = {
+        title: '',
+        agency: '',
+        aln: '',
+        closeDate: '',
+        amount: '',
+        status: 'Researching',
+        notes: '',
+      };
+
+      headers.forEach((header, index) => {
+        const mappedField = mapping[header];
+        if (mappedField && mappedField !== 'skip' && values[index]) {
+          grantData[mappedField] = values[index];
+        }
+      });
+
+      // Validation
+      if (!grantData.title || grantData.title.trim() === '') {
+        issues.push({
+          row: i,
+          field: 'title',
+          message: 'Missing required field: Grant Title',
+          severity: 'error',
+        });
+        grantData.title = 'Unnamed Grant';
+        warnings.push('Missing title');
+      }
+
+      if (!grantData.agency || grantData.agency.trim() === '') {
+        warnings.push('No agency specified');
+      }
+
+      if (grantData.closeDate) {
+        // Validate date format
+        const date = new Date(grantData.closeDate);
+        if (isNaN(date.getTime())) {
+          warnings.push('Invalid date format');
+          issues.push({
+            row: i,
+            field: 'closeDate',
+            message: 'Invalid date format, expected YYYY-MM-DD or MM/DD/YYYY',
+            severity: 'warning',
+          });
+        }
+      }
 
       const grant: ParsedGrant = {
-        title: values[headers.indexOf('title')] || values[headers.indexOf('grant name')] || values[headers.indexOf('opportunity title')] || 'Unnamed Grant',
-        agency: values[headers.indexOf('agency')] || values[headers.indexOf('funder')] || values[headers.indexOf('organization')] || '',
-        aln: values[headers.indexOf('aln')] || values[headers.indexOf('cfda')] || '',
-        closeDate: values[headers.indexOf('deadline')] || values[headers.indexOf('close date')] || values[headers.indexOf('due date')] || '',
-        amount: values[headers.indexOf('amount')] || values[headers.indexOf('award amount')] || values[headers.indexOf('funding amount')] || '',
-        status: values[headers.indexOf('status')] || values[headers.indexOf('stage')] || 'Researching',
-        notes: values[headers.indexOf('notes')] || values[headers.indexOf('description')] || '',
+        ...grantData,
         selected: true,
+        warnings,
       };
 
       grants.push(grant);
     }
 
+    setValidationIssues(issues);
     return grants;
   };
 
@@ -96,18 +202,73 @@ export function GrantHubImportPage() {
     if (!uploadedFile) return;
 
     setFile(uploadedFile);
-
     try {
       const text = await uploadedFile.text();
-      const grants = parseCSV(text);
-      setParsedGrants(grants);
+      setCsvText(text);
+
+      // Extract column headers
+      const lines = text.split('\n');
+      if (lines.length < 2) {
+        throw new Error('CSV file appears to be empty');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      setDetectedColumns(headers);
+
+      // Auto-map columns
+      const mapping = autoMapColumns(headers);
+      setColumnMapping(mapping);
+
       setActiveStep(1);
       notifications.show({
-        title: 'File parsed successfully',
-        message: `Found ${grants.length} grants in your export`,
+        title: 'File uploaded successfully',
+        message: `Detected ${headers.length} columns. Please review the field mapping.`,
         color: 'green',
         icon: <IconCheck size={16} />,
       });
+    } catch (error) {
+      notifications.show({
+        title: 'Error reading file',
+        message: error instanceof Error ? error.message : 'Please check the file format',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleApplyMapping = () => {
+    // Check if title is mapped
+    const hasTitleMapping = Object.values(columnMapping).includes('title');
+    if (!hasTitleMapping) {
+      notifications.show({
+        title: 'Missing required field',
+        message: 'Please map at least one column to "Grant Title"',
+        color: 'orange',
+      });
+      return;
+    }
+
+    try {
+      const grants = parseCSVWithMapping(csvText, columnMapping);
+      setParsedGrants(grants);
+      setActiveStep(2);
+
+      if (validationIssues.length > 0) {
+        const errorCount = validationIssues.filter(i => i.severity === 'error').length;
+        const warningCount = validationIssues.filter(i => i.severity === 'warning').length;
+        notifications.show({
+          title: 'Mapping applied with issues',
+          message: `Found ${errorCount} errors and ${warningCount} warnings. Review grants before importing.`,
+          color: 'orange',
+          icon: <IconAlertCircle size={16} />,
+        });
+      } else {
+        notifications.show({
+          title: 'Mapping applied successfully',
+          message: `Parsed ${grants.length} grants. Review and select grants to import.`,
+          color: 'green',
+          icon: <IconCheck size={16} />,
+        });
+      }
     } catch (error) {
       notifications.show({
         title: 'Error parsing file',
@@ -216,7 +377,7 @@ export function GrantHubImportPage() {
 
     setImporting(false);
     setImportResults({ imported, skipped, failed });
-    setActiveStep(2);
+    setActiveStep(3);
 
     // Build result message
     const parts = [`${imported} imported`];
@@ -314,8 +475,78 @@ export function GrantHubImportPage() {
               </Stack>
             </Stepper.Step>
 
+            <Stepper.Step label="Map Fields" description="Map CSV columns to GrantCue fields">
+              <Stack gap="md" mt="lg">
+                <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+                  <Text size="sm">
+                    We've automatically detected your CSV columns and mapped them to GrantCue fields.
+                    Review and adjust the mapping below. At minimum, you must map one column to "Grant Title".
+                  </Text>
+                </Alert>
+
+                <Paper p="md" withBorder>
+                  <Stack gap="md">
+                    <Title order={4}>Column Mapping</Title>
+
+                    {detectedColumns.map((column, index) => (
+                      <Group key={index} gap="md" align="center">
+                        <Text w={200} fw={500} size="sm">
+                          {column}
+                        </Text>
+                        <Text c="dimmed">→</Text>
+                        <Select
+                          w={250}
+                          data={AVAILABLE_FIELDS}
+                          value={columnMapping[column] || 'skip'}
+                          onChange={(value) =>
+                            setColumnMapping({ ...columnMapping, [column]: value })
+                          }
+                          placeholder="Select field"
+                        />
+                      </Group>
+                    ))}
+                  </Stack>
+                </Paper>
+
+                <Group justify="flex-end">
+                  <Button variant="light" onClick={() => setActiveStep(0)}>
+                    Back
+                  </Button>
+                  <Button
+                    leftSection={<IconCheck size={16} />}
+                    onClick={handleApplyMapping}
+                  >
+                    Apply Mapping & Continue
+                  </Button>
+                </Group>
+              </Stack>
+            </Stepper.Step>
+
             <Stepper.Step label="Review" description="Review and select grants">
               <Stack gap="md" mt="lg">
+                {/* Validation Issues Summary */}
+                {validationIssues.length > 0 && (
+                  <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light">
+                    <Stack gap="xs">
+                      <Text fw={600} size="sm">
+                        Found {validationIssues.length} validation issue(s):
+                      </Text>
+                      <List size="sm">
+                        {validationIssues.slice(0, 5).map((issue, index) => (
+                          <List.Item key={index}>
+                            Row {issue.row}: {issue.message}
+                          </List.Item>
+                        ))}
+                        {validationIssues.length > 5 && (
+                          <List.Item>
+                            ... and {validationIssues.length - 5} more issues
+                          </List.Item>
+                        )}
+                      </List>
+                    </Stack>
+                  </Alert>
+                )}
+
                 <Group justify="space-between">
                   <Text fw={600}>
                     Found {parsedGrants.length} grants
@@ -339,6 +570,7 @@ export function GrantHubImportPage() {
                         <Table.Th>Agency</Table.Th>
                         <Table.Th>Deadline</Table.Th>
                         <Table.Th>Status</Table.Th>
+                        <Table.Th>Warnings</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -351,12 +583,23 @@ export function GrantHubImportPage() {
                             />
                           </Table.Td>
                           <Table.Td>{grant.title}</Table.Td>
-                          <Table.Td>{grant.agency}</Table.Td>
-                          <Table.Td>{grant.closeDate}</Table.Td>
+                          <Table.Td>{grant.agency || <Text c="dimmed" size="sm">—</Text>}</Table.Td>
+                          <Table.Td>{grant.closeDate || <Text c="dimmed" size="sm">—</Text>}</Table.Td>
                           <Table.Td>
                             <Badge size="sm" variant="light">
                               {grant.status}
                             </Badge>
+                          </Table.Td>
+                          <Table.Td>
+                            {grant.warnings && grant.warnings.length > 0 ? (
+                              <Badge size="sm" color="orange" variant="dot">
+                                {grant.warnings.length} issue{grant.warnings.length > 1 ? 's' : ''}
+                              </Badge>
+                            ) : (
+                              <Badge size="sm" color="green" variant="dot">
+                                OK
+                              </Badge>
+                            )}
                           </Table.Td>
                         </Table.Tr>
                       ))}
@@ -365,8 +608,8 @@ export function GrantHubImportPage() {
                 </Paper>
 
                 <Group justify="flex-end">
-                  <Button variant="light" onClick={() => setActiveStep(0)}>
-                    Back
+                  <Button variant="light" onClick={() => setActiveStep(1)}>
+                    Back to Mapping
                   </Button>
                   <Button
                     leftSection={<IconFileImport size={16} />}
