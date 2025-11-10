@@ -21,6 +21,7 @@ A comprehensive grant discovery and workflow management platform that helps orga
 ### Authentication & Access
 - **Self-Service Sign-Up**: New user registration with email confirmation
 - **Secure Sign-In**: Email/password authentication via Supabase Auth
+- **Magic Link Authentication**: Passwordless sign-in via email OTP links
 - **User Profiles**: Manage personal profile information and preferences
 - **Protected Routes**: Role-based access control for sensitive features
 - **API Authentication**: Bearer token authentication on all API endpoints
@@ -34,6 +35,15 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Sync Job Tracking**: Comprehensive logging of sync operations, errors, and metrics
 - **Admin Sync Controls**: Manual full/incremental sync triggers with source management
 - **Full-Text Search**: PostgreSQL tsvector for fast grant catalog searches
+
+### Import & Migration
+- **CSV Import Wizard**: Multi-step wizard for bulk importing grants from CSV files
+- **Platform-Specific Presets**: Auto-detection and field mapping for GrantHub, Instrumentl, Foundation Search, Candid, and Grants.gov exports
+- **Smart Field Mapping**: Automatic detection of CSV platform with custom mapping fallback
+- **Data Preview & Validation**: Preview and validate data before importing with error reporting
+- **Bulk Import API**: Efficient batch processing for importing multiple grants at once
+- **Progress Tracking**: Real-time import progress with success/failure reporting
+- **PDF/Print Export**: Generate professional grant briefs and board packets for presentations
 
 ### Pipeline & Workflow Management
 - **Kanban Board**: Visual pipeline with 4 stages (Researching → Drafting → Submitted → Awarded)
@@ -227,6 +237,7 @@ grant-tracker-new/
 │   │   └── [id]/
 │   │       └── status.ts    # Update grant status/priority/assignment (auth required)
 │   ├── saved.ts             # CRUD for saved grants (auth required, auto-creates default tasks)
+│   ├── import.ts            # Bulk grant import endpoint (auth required)
 │   ├── tasks.ts             # CRUD for grant tasks (auth required)
 │   ├── views.ts             # CRUD for saved filter views (auth required)
 │   ├── recent-searches.ts   # Recent search history tracking
@@ -252,7 +263,10 @@ grant-tracker-new/
 │   │   ├── SavedViewsPanel.tsx   # Saved filter views panel
 │   │   ├── GrantDetailDrawer.tsx # Grant details with tasks and notes
 │   │   ├── TaskList.tsx          # Task management component with progress tracking
-│   │   └── CustomGrantForm.tsx   # Manual grant entry form with validation
+│   │   ├── CustomGrantForm.tsx   # Manual grant entry form with validation
+│   │   ├── GrantFilters.tsx      # Reusable filter component for status/priority/assignee
+│   │   ├── SaveToPipelineModal.tsx # Modal for configuring grant on save
+│   │   └── ImportWizard.tsx      # Multi-step CSV import wizard
 │   ├── contexts/
 │   │   ├── AuthContext.tsx  # Supabase authentication context
 │   │   └── OrganizationContext.tsx # Multi-org state management
@@ -261,6 +275,11 @@ grant-tracker-new/
 │   ├── lib/
 │   │   ├── supabase.ts      # Supabase client config
 │   │   └── database.types.ts # Database TypeScript types
+│   ├── utils/
+│   │   ├── csvParser.ts     # CSV parsing utility with delimiter detection
+│   │   ├── fieldMapper.ts   # Platform-specific field mapping presets
+│   │   ├── printGrant.ts    # Individual grant brief PDF generator
+│   │   └── printBoardPacket.ts # Multi-grant board packet PDF generator
 │   ├── pages/
 │   │   ├── HomePage.tsx            # Marketing/landing page with mobile nav
 │   │   ├── SignInPage.tsx          # Sign-in page with email/password
@@ -512,6 +531,47 @@ Update grant status, priority, or assignment.
   "priority": "high",
   "assigned_to": "user-uuid",
   "notes": "Working on budget section"
+}
+```
+
+#### `POST /api/import`
+
+Bulk import multiple grants from CSV. **Requires authentication**.
+
+**Request body:**
+```json
+{
+  "org_id": "uuid",
+  "user_id": "uuid",
+  "grants": [
+    {
+      "external_id": "grant-123",
+      "title": "Grant Title 1",
+      "agency": "Agency Name",
+      "aln": "12.345",
+      "open_date": "2025-01-01",
+      "close_date": "2025-03-01",
+      "status": "researching",
+      "priority": "high",
+      "assigned_to": "user-uuid"
+    },
+    {
+      "external_id": "grant-456",
+      "title": "Grant Title 2",
+      "agency": "Another Agency",
+      "close_date": "2025-04-15"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "imported": 2,
+  "failed": 0,
+  "errors": []
 }
 ```
 
@@ -1267,6 +1327,7 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 **Authentication & Authorization**
 - ✅ Self-service user sign-up with email confirmation
 - ✅ Email/password sign-in
+- ✅ Magic link authentication (passwordless OTP via email)
 - ✅ Supabase Auth integration
 - ✅ Protected routes with permission checks
 - ✅ Role-based access control (Admin/Contributor)
@@ -1310,16 +1371,31 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 - ✅ Automatic status change timestamp tracking
 - ✅ Priority levels (low, medium, high, urgent)
 - ✅ Grant assignment to team members
+- ✅ Advanced filtering by status, priority, and assignee
+- ✅ "My grants only" toggle for personalized view
+- ✅ Save-to-pipeline modal with stage, priority, and assignee selection
 - ✅ Visual deadline indicators (color-coded)
 - ✅ Stage counts and visual grouping
 - ✅ Notes field for internal tracking
 - ✅ Grant detail drawer with tabs (Tasks, Notes)
+- ✅ Print grant brief as professional PDF
 - ✅ Task management system with CRUD operations
 - ✅ Auto-created default task templates (6 tasks per grant)
 - ✅ Task progress tracking with completion percentage
 - ✅ Task types and status tracking
 - ✅ Task due dates and completion timestamps
 - ✅ Required vs optional task flags
+
+**Import & Migration**
+- ✅ Multi-step CSV import wizard with file upload
+- ✅ Platform-specific presets (GrantHub, Instrumentl, Foundation Search, Candid, Grants.gov)
+- ✅ Auto-detection of CSV platform based on headers
+- ✅ Custom field mapping with visual preview
+- ✅ Data validation and error reporting before import
+- ✅ Bulk import API for efficient batch processing
+- ✅ Real-time import progress tracking
+- ✅ PDF/print export for grant briefs
+- ✅ Board packet export with summary statistics and timeline
 
 **Calendar & Integrations**
 - ✅ ICS calendar feed with unique tokens
@@ -1374,10 +1450,11 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 
 **Business Features**
 - Real billing integration (Stripe)
-- Export data functionality (CSV, JSON, PDF reports)
+- Export data functionality (CSV, JSON)
 - Advanced search with Boolean operators
 - State and foundation grant portals integration
 - Grant writing AI assistance
+- Additional import sources (state portals, private foundations)
 
 ## API Reference & Documentation
 
