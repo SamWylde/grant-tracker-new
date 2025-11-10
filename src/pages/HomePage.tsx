@@ -72,7 +72,7 @@ export function HomePage() {
                 <Button variant="light" color="grape" component={Link} to="/signin">
                   Sign in
                 </Button>
-                <Button color="grape" component={Link} to="/signin">
+                <Button color="grape" component={Link} to="/signup">
                   Get started
                 </Button>
               </Group>
@@ -135,7 +135,7 @@ export function HomePage() {
                 <Button
                   color="grape"
                   component={Link}
-                  to="/signin"
+                  to="/signup"
                   fullWidth
                   onClick={() => setMobileMenuOpened(false)}
                 >
@@ -170,7 +170,7 @@ export function HomePage() {
                 focus on crafting standout proposals instead of chasing spreadsheets.
               </Text>
               <Group gap="md">
-                <Button size="lg" color="grape" component={Link} to="/signin">
+                <Button size="lg" color="grape" component={Link} to="/signup">
                   Start free trial
                 </Button>
                 <Button size="lg" variant="default" component={Link} to="/discover">
@@ -393,7 +393,7 @@ export function HomePage() {
               and data migration support from our specialist team.
             </Text>
             <Group gap="md" wrap="wrap" justify="center">
-              <Button size="lg" color="grape" component={Link} to="/signin">
+              <Button size="lg" color="grape" component={Link} to="/signup">
                 Get started
               </Button>
               <Button size="lg" variant="default" component={Link} to="/features">
