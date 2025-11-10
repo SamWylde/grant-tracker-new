@@ -33,7 +33,7 @@ import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { ImportWizard } from "../components/ImportWizard";
 import { type GrantDetail } from "../types/grants";
-import { type SavedGrant } from "../hooks/useSavedGrants";
+import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
@@ -53,19 +53,8 @@ export function SavedGrantsPage() {
   });
   const [importWizardOpen, setImportWizardOpen] = useState(false);
 
-  // Fetch saved grants
-  const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
-    queryKey: ["savedGrants", currentOrg?.id],
-    queryFn: async () => {
-      if (!currentOrg?.id) return { grants: [] };
-      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch saved grants");
-      }
-      return response.json();
-    },
-    enabled: !!currentOrg?.id,
-  });
+  // Fetch saved grants using shared hook with auth headers
+  const { data: savedGrants, isLoading } = useSavedGrants();
 
   // Fetch grant details
   const {
