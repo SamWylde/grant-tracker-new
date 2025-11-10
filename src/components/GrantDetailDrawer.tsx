@@ -18,9 +18,12 @@ import {
   IconBuilding,
   IconClock,
   IconX,
+  IconPrinter,
 } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
+import { printGrantBrief } from "../utils/printGrant";
 
 interface Grant {
   id: string;
@@ -34,6 +37,7 @@ interface Grant {
   priority: string | null;
   notes: string | null;
   org_id: string;
+  assigned_to: string | null;
 }
 
 interface GrantDetailDrawerProps {
@@ -62,6 +66,21 @@ export function GrantDetailDrawer({
 
   const isOverdue = daysUntilDeadline !== null && daysUntilDeadline < 0;
   const isClosingSoon = daysUntilDeadline !== null && daysUntilDeadline <= 14 && daysUntilDeadline >= 0;
+
+  // Fetch tasks for this grant
+  const { data: tasksData } = useQuery({
+    queryKey: ['grantTasks', grant.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks?grant_id=${grant.id}`);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
+    enabled: opened,
+  });
+
+  const handlePrintBrief = () => {
+    printGrantBrief(grant, tasksData?.tasks);
+  };
 
   return (
     <Drawer
@@ -180,7 +199,7 @@ export function GrantDetailDrawer({
         </Box>
 
         {/* Quick Actions */}
-        <Group>
+        <Group grow>
           <Button
             component="a"
             href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
@@ -188,9 +207,16 @@ export function GrantDetailDrawer({
             rel="noopener noreferrer"
             leftSection={<IconExternalLink size={16} />}
             variant="light"
-            fullWidth
           >
             View on Grants.gov
+          </Button>
+          <Button
+            onClick={handlePrintBrief}
+            leftSection={<IconPrinter size={16} />}
+            variant="light"
+            color="grape"
+          >
+            Print Brief
           </Button>
         </Group>
 
