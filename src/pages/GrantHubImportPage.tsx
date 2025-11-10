@@ -17,6 +17,7 @@ import {
   Divider,
   Card,
   List,
+  SimpleGrid,
 } from '@mantine/core';
 import {
   IconUpload,
@@ -43,6 +44,12 @@ interface ParsedGrant {
   selected: boolean;
 }
 
+interface ImportResults {
+  imported: number;
+  skipped: number;
+  failed: number;
+}
+
 export function GrantHubImportPage() {
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
@@ -51,6 +58,7 @@ export function GrantHubImportPage() {
   const [parsedGrants, setParsedGrants] = useState<ParsedGrant[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  const [importResults, setImportResults] = useState<ImportResults | null>(null);
 
   const parseCSV = (text: string): ParsedGrant[] => {
     const lines = text.split('\n');
@@ -135,12 +143,35 @@ export function GrantHubImportPage() {
       return;
     }
 
+    // Fetch existing grants to check for duplicates
+    const { data: existingGrants } = await supabase
+      .from('org_grants_saved')
+      .select('title, agency, external_id')
+      .eq('org_id', currentOrg?.id || '');
+
+    const existingSet = new Set(
+      (existingGrants || []).map((g: { title: string; agency: string | null; external_id: string }) =>
+        `${g.title.toLowerCase()}|${(g.agency || '').toLowerCase()}`
+      )
+    );
+
     let imported = 0;
+    let skipped = 0;
     let failed = 0;
     const errors: string[] = [];
+    const warnings: string[] = [];
 
     for (let i = 0; i < selectedGrants.length; i++) {
       const grant = selectedGrants[i];
+
+      // Check for duplicate
+      const grantKey = `${grant.title.toLowerCase()}|${(grant.agency || '').toLowerCase()}`;
+      if (existingSet.has(grantKey)) {
+        skipped++;
+        warnings.push(`${grant.title}: Already exists (skipped)`);
+        setImportProgress(((i + 1) / selectedGrants.length) * 100);
+        continue;
+      }
 
       try {
         const response = await fetch('/api/saved', {
@@ -153,7 +184,7 @@ export function GrantHubImportPage() {
             org_id: currentOrg?.id,
             user_id: user?.id,
             external_source: 'granthub_import',
-            external_id: `import_${Date.now()}_${i}`,
+            external_id: `granthub_${Date.now()}_${i}`,
             title: grant.title,
             agency: grant.agency || null,
             aln: grant.aln || null,
@@ -184,16 +215,25 @@ export function GrantHubImportPage() {
     }
 
     setImporting(false);
+    setImportResults({ imported, skipped, failed });
     setActiveStep(2);
+
+    // Build result message
+    const parts = [`${imported} imported`];
+    if (skipped > 0) parts.push(`${skipped} skipped (duplicates)`);
+    if (failed > 0) parts.push(`${failed} failed`);
 
     notifications.show({
       title: 'Import complete',
-      message: `Successfully imported ${imported} grants${failed > 0 ? `, ${failed} failed` : ''}`,
-      color: imported > 0 ? 'green' : 'red',
+      message: parts.join(', '),
+      color: imported > 0 ? 'green' : failed > 0 ? 'red' : 'orange',
       icon: <IconCheck size={16} />,
     });
 
-    // Log errors for debugging
+    // Log details for debugging
+    if (warnings.length > 0) {
+      console.info('Import warnings (duplicates skipped):', warnings);
+    }
     if (errors.length > 0) {
       console.error('Import errors:', errors);
     }
@@ -359,11 +399,51 @@ export function GrantHubImportPage() {
                   <Stack align="center" gap="md">
                     <IconCheck size={64} style={{ color: 'var(--mantine-color-green-6)' }} />
                     <Title order={2}>Import Complete!</Title>
-                    <Text ta="center" c="dimmed">
-                      Your grants have been successfully imported. You can now view and manage them
-                      in your pipeline.
+
+                    {importResults && (
+                      <SimpleGrid cols={3} w="100%" mt="md">
+                        <Paper p="md" withBorder bg="var(--mantine-color-green-0)">
+                          <Stack gap={4} align="center">
+                            <Text size="xl" fw={700} c="green">
+                              {importResults.imported}
+                            </Text>
+                            <Text size="sm" c="dimmed">
+                              Imported
+                            </Text>
+                          </Stack>
+                        </Paper>
+                        {importResults.skipped > 0 && (
+                          <Paper p="md" withBorder bg="var(--mantine-color-yellow-0)">
+                            <Stack gap={4} align="center">
+                              <Text size="xl" fw={700} c="orange">
+                                {importResults.skipped}
+                              </Text>
+                              <Text size="sm" c="dimmed">
+                                Skipped (duplicates)
+                              </Text>
+                            </Stack>
+                          </Paper>
+                        )}
+                        {importResults.failed > 0 && (
+                          <Paper p="md" withBorder bg="var(--mantine-color-red-0)">
+                            <Stack gap={4} align="center">
+                              <Text size="xl" fw={700} c="red">
+                                {importResults.failed}
+                              </Text>
+                              <Text size="sm" c="dimmed">
+                                Failed
+                              </Text>
+                            </Stack>
+                          </Paper>
+                        )}
+                      </SimpleGrid>
+                    )}
+
+                    <Text ta="center" c="dimmed" mt="md">
+                      Your grants have been imported. You can now view and manage them in your pipeline.
                     </Text>
-                    <Group>
+
+                    <Group mt="md">
                       <Button component="a" href="/pipeline" variant="filled" rightSection={<IconArrowRight size={16} />}>
                         Go to Pipeline
                       </Button>
