@@ -533,7 +533,12 @@ export function PricingPage() {
               <Button size="lg" color="grape" component={Link} to="/signin">
                 Start free trial
               </Button>
-              <Button size="lg" variant="default">
+              <Button
+                size="lg"
+                variant="default"
+                component="a"
+                href="mailto:sales@grantcue.com?subject=Sales Inquiry"
+              >
                 Talk to sales
               </Button>
             </Group>
@@ -557,10 +562,10 @@ export function PricingPage() {
               <Anchor size="sm" c="gray.4" component={Link} to="/privacy">
                 Privacy
               </Anchor>
-              <Anchor size="sm" c="gray.4">
+              <Anchor size="sm" c="gray.4" component={Link} to="/security">
                 Security
               </Anchor>
-              <Anchor size="sm" c="gray.4">
+              <Anchor size="sm" c="gray.4" component={Link} to="/support">
                 Support
               </Anchor>
             </Group>

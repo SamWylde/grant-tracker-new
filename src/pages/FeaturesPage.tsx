@@ -762,10 +762,10 @@ export function FeaturesPage() {
               <Anchor size="sm" c="gray.4" component={Link} to="/privacy">
                 Privacy
               </Anchor>
-              <Anchor size="sm" c="gray.4">
+              <Anchor size="sm" c="gray.4" component={Link} to="/security">
                 Security
               </Anchor>
-              <Anchor size="sm" c="gray.4">
+              <Anchor size="sm" c="gray.4" component={Link} to="/support">
                 Support
               </Anchor>
             </Group>
