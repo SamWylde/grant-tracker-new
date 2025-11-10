@@ -105,8 +105,8 @@ export default function SignInPage() {
 
           <Text c="dimmed" size="sm" ta="center">
             Don't have an account?{' '}
-            <Anchor component={Link} to="/" size="sm">
-              Contact us for access
+            <Anchor component={Link} to="/signup" size="sm">
+              Sign up
             </Anchor>
           </Text>
 
