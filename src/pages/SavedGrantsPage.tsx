@@ -89,8 +89,17 @@ export function SavedGrantsPage() {
   // Handler to remove grant from saved list
   const handleRemoveGrant = async (grantId: string) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("Not authenticated");
+      }
+
       const response = await fetch(`/api/saved?id=${grantId}`, {
         method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       });
 
       if (!response.ok) {
