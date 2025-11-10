@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -34,6 +34,23 @@ export default async function handler(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Verify authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+
+  const token = authHeader.substring(7);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     switch (req.method) {
       case 'GET': {
@@ -42,6 +59,28 @@ export default async function handler(
 
         if (!grant_id || typeof grant_id !== 'string') {
           return res.status(400).json({ error: 'grant_id is required' });
+        }
+
+        // Verify the grant belongs to an organization the user is a member of
+        const { data: grant } = await supabase
+          .from('org_grants_saved')
+          .select('org_id')
+          .eq('id', grant_id)
+          .single();
+
+        if (!grant) {
+          return res.status(404).json({ error: 'Grant not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', grant.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this grant' });
         }
 
         const query = supabase
@@ -72,6 +111,23 @@ export default async function handler(
           return res.status(400).json({
             error: 'Missing required fields: grant_id, org_id, title, created_by'
           });
+        }
+
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', taskData.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this organization' });
+        }
+
+        // Ensure the created_by matches the authenticated user
+        if (taskData.created_by !== user.id) {
+          return res.status(403).json({ error: 'Cannot create tasks for other users' });
         }
 
         const { data, error } = await supabase
@@ -110,6 +166,28 @@ export default async function handler(
           return res.status(400).json({ error: 'id is required' });
         }
 
+        // Verify the task belongs to an organization the user is a member of
+        const { data: task } = await supabase
+          .from('grant_tasks')
+          .select('org_id')
+          .eq('id', id)
+          .single();
+
+        if (!task) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', task.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this task' });
+        }
+
         // Build the update object
         const updateData: any = {};
         if (updates.title !== undefined) updateData.title = updates.title;
@@ -143,6 +221,28 @@ export default async function handler(
 
         if (!id || typeof id !== 'string') {
           return res.status(400).json({ error: 'id is required' });
+        }
+
+        // Verify the task belongs to an organization the user is a member of
+        const { data: task } = await supabase
+          .from('grant_tasks')
+          .select('org_id')
+          .eq('id', id)
+          .single();
+
+        if (!task) {
+          return res.status(404).json({ error: 'Task not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', task.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this task' });
         }
 
         const { error } = await supabase

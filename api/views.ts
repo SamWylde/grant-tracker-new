@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -35,18 +35,43 @@ export default async function handler(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Verify authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+
+  const token = authHeader.substring(7);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     switch (req.method) {
       case 'GET': {
         // List saved views for an organization
-        const { org_id, user_id } = req.query;
+        const { org_id } = req.query;
 
         if (!org_id || typeof org_id !== 'string') {
           return res.status(400).json({ error: 'org_id is required' });
         }
 
-        if (!user_id || typeof user_id !== 'string') {
-          return res.status(400).json({ error: 'user_id is required' });
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this organization' });
         }
 
         // Get views that are either created by user or shared within org
@@ -54,8 +79,8 @@ export default async function handler(
           .from('saved_views')
           .select('*')
           .eq('org_id', org_id)
-          .or(`created_by.eq.${user_id},and(is_shared.eq.true)`)
-          .order('created_at', { ascending: false });
+          .or(`created_by.eq.${user.id},and(is_shared.eq.true)`)
+          .order('created_at', { ascending: false});
 
         if (error) {
           console.error('Error fetching saved views:', error);
@@ -73,6 +98,23 @@ export default async function handler(
           return res.status(400).json({
             error: 'Missing required fields: org_id, created_by, name'
           });
+        }
+
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', viewData.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this organization' });
+        }
+
+        // Ensure created_by matches authenticated user
+        if (viewData.created_by !== user.id) {
+          return res.status(403).json({ error: 'Cannot create views for other users' });
         }
 
         const { data, error } = await supabase
@@ -115,6 +157,34 @@ export default async function handler(
           return res.status(400).json({ error: 'id is required' });
         }
 
+        // Verify the view belongs to an organization the user is a member of
+        // and that the user created it (only creator can update)
+        const { data: view } = await supabase
+          .from('saved_views')
+          .select('org_id, created_by')
+          .eq('id', id)
+          .single();
+
+        if (!view) {
+          return res.status(404).json({ error: 'View not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', view.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this view' });
+        }
+
+        // Only the creator can update the view
+        if (view.created_by !== user.id) {
+          return res.status(403).json({ error: 'Only the creator can update this view' });
+        }
+
         const { data, error } = await supabase
           .from('saved_views')
           .update({
@@ -149,6 +219,34 @@ export default async function handler(
 
         if (!id || typeof id !== 'string') {
           return res.status(400).json({ error: 'id is required' });
+        }
+
+        // Verify the view belongs to an organization the user is a member of
+        // and that the user created it (only creator can delete)
+        const { data: view } = await supabase
+          .from('saved_views')
+          .select('org_id, created_by')
+          .eq('id', id)
+          .single();
+
+        if (!view) {
+          return res.status(404).json({ error: 'View not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', view.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this view' });
+        }
+
+        // Only the creator can delete the view
+        if (view.created_by !== user.id) {
+          return res.status(403).json({ error: 'Only the creator can delete this view' });
         }
 
         const { error } = await supabase

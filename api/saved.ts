@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -30,6 +30,23 @@ export default async function handler(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+  // Verify authentication
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+  }
+
+  const token = authHeader.substring(7);
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     switch (req.method) {
       case 'GET': {
@@ -38,6 +55,18 @@ export default async function handler(
 
         if (!org_id || typeof org_id !== 'string') {
           return res.status(400).json({ error: 'org_id is required' });
+        }
+
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this organization' });
         }
 
         const { data, error } = await supabase
@@ -62,6 +91,23 @@ export default async function handler(
           return res.status(400).json({
             error: 'Missing required fields: org_id, user_id, external_id, title'
           });
+        }
+
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', grantData.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this organization' });
+        }
+
+        // Ensure the user_id in the request matches the authenticated user
+        if (grantData.user_id !== user.id) {
+          return res.status(403).json({ error: 'Cannot save grants for other users' });
         }
 
         // Helper to convert MM/DD/YYYY to ISO format
@@ -141,6 +187,28 @@ export default async function handler(
 
         if (!id || typeof id !== 'string') {
           return res.status(400).json({ error: 'id is required' });
+        }
+
+        // Verify the grant belongs to an organization the user is a member of
+        const { data: grant } = await supabase
+          .from('org_grants_saved')
+          .select('org_id')
+          .eq('id', id)
+          .single();
+
+        if (!grant) {
+          return res.status(404).json({ error: 'Grant not found' });
+        }
+
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', grant.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this grant' });
         }
 
         const { error } = await supabase

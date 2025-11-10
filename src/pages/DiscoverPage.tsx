@@ -127,6 +127,8 @@ export function DiscoverPage() {
       category,
       agency,
       oppStatuses,
+      dueInDays,
+      sortBy,
       currentPage,
     ],
     queryFn: async () => {
@@ -138,6 +140,8 @@ export function DiscoverPage() {
           fundingCategories: category || undefined,
           agencies: agency || undefined,
           oppStatuses: oppStatuses || "posted|forecasted",
+          dueInDays: dueInDays ? Number(dueInDays) : undefined,
+          sortBy: sortBy || undefined,
           rows: ITEMS_PER_PAGE,
           startRecordNum: (currentPage - 1) * ITEMS_PER_PAGE,
         }),
@@ -252,65 +256,9 @@ export function DiscoverPage() {
     setSortBy(search.sort_by || "due_soon");
   };
 
-  // Filter by due date client-side
-  const filteredGrants =
-    data?.grants.filter((grant) => {
-      if (!dueInDays || dueInDays === "") return true;
-      if (!grant.closeDate) return false;
-
-      const daysDiff = dayjs(grant.closeDate).diff(dayjs(), "day");
-      return daysDiff >= 0 && daysDiff <= Number(dueInDays);
-    }) || [];
-
-  // Calculate relevance score for each grant
-  const calculateRelevanceScore = (grant: NormalizedGrant): number => {
-    if (!debouncedKeyword) return 0;
-
-    const searchTerms = debouncedKeyword.toLowerCase().split(" ");
-    let score = 0;
-
-    const title = grant.title.toLowerCase();
-    const agency = grant.agency.toLowerCase();
-
-    searchTerms.forEach((term) => {
-      // Title matches are worth more
-      if (title.includes(term)) score += 3;
-      if (agency.includes(term)) score += 1;
-    });
-
-    return score;
-  };
-
-  // Sort grants based on selected option
-  const sortedGrants = [...filteredGrants].sort((a, b) => {
-    switch (sortBy) {
-      case "relevance": {
-        const scoreA = calculateRelevanceScore(a);
-        const scoreB = calculateRelevanceScore(b);
-        if (scoreA !== scoreB) return scoreB - scoreA; // Higher score first
-        // Fallback to due date if scores are equal
-        if (!a.closeDate && !b.closeDate) return 0;
-        if (!a.closeDate) return 1;
-        if (!b.closeDate) return -1;
-        return dayjs(a.closeDate).valueOf() - dayjs(b.closeDate).valueOf();
-      }
-      case "newest": {
-        // Sort by open date (newest first)
-        if (!a.openDate && !b.openDate) return 0;
-        if (!a.openDate) return 1;
-        if (!b.openDate) return -1;
-        return dayjs(b.openDate).valueOf() - dayjs(a.openDate).valueOf();
-      }
-      case "due_soon":
-      default: {
-        // Sort by close date (soonest first)
-        if (!a.closeDate && !b.closeDate) return 0;
-        if (!a.closeDate) return 1;
-        if (!b.closeDate) return -1;
-        return dayjs(a.closeDate).valueOf() - dayjs(b.closeDate).valueOf();
-      }
-    }
-  });
+  // Server-side filtering and sorting is now handled by the API
+  // No need for client-side filtering or sorting anymore
+  const sortedGrants = data?.grants || [];
 
   const totalPages = data ? Math.ceil(data.totalCount / ITEMS_PER_PAGE) : 0;
 
