@@ -32,6 +32,7 @@ import { AppHeader } from "../components/AppHeader";
 import { type GrantDetail, type SavedGrant } from "../types/grants";
 import { notifications } from "@mantine/notifications";
 import { useOrganization } from "../contexts/OrganizationContext";
+import { supabase } from "../lib/supabase";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
