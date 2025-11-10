@@ -10,6 +10,7 @@ import {
   Divider,
   Group,
   Loader,
+  Menu,
   Modal,
   ScrollArea,
   Select,
@@ -19,6 +20,8 @@ import {
 } from "@mantine/core";
 import {
   IconBookmarkFilled,
+  IconChevronDown,
+  IconDownload,
   IconExternalLink,
   IconFileText,
   IconTrash,
@@ -36,11 +39,13 @@ import { type GrantDetail } from "../types/grants";
 import { useSavedGrants } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
 import { supabase } from "../lib/supabase";
-import { printBoardPacket } from "../utils/printBoardPacket";
+import { printBoardPacket, exportGrantsToCSV } from "../utils/printBoardPacket";
 import { stripHtml } from "../utils/htmlUtils";
+import { useOrganization } from "../contexts/OrganizationContext";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
+  const { currentOrg } = useOrganization();
   const [sortBy, setSortBy] = useState<string>("deadline-asc");
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
@@ -188,15 +193,33 @@ export function SavedGrantsPage() {
               >
                 Import Grants
               </Button>
-              <Button
-                leftSection={<IconPrinter size={16} />}
-                variant="light"
-                color="grape"
-                onClick={() => printBoardPacket(sortedGrants, { title: 'Saved Grants Report' })}
-                disabled={sortedGrants.length === 0}
-              >
-                Export Report
-              </Button>
+              <Menu shadow="md" width={200}>
+                <Menu.Target>
+                  <Button
+                    leftSection={<IconDownload size={16} />}
+                    rightSection={<IconChevronDown size={16} />}
+                    variant="light"
+                    color="grape"
+                    disabled={sortedGrants.length === 0}
+                  >
+                    Export Report
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconPrinter size={16} />}
+                    onClick={() => printBoardPacket(sortedGrants, { title: 'Saved Grants Report' })}
+                  >
+                    Print Report
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconDownload size={16} />}
+                    onClick={() => exportGrantsToCSV(sortedGrants, currentOrg?.name || 'Organization')}
+                  >
+                    Download CSV
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <Button variant="light" color="grape" component={Link} to="/discover">
                 Discover More Grants
               </Button>
