@@ -162,6 +162,56 @@ export default async function handler(
           return res.status(200).send(csv);
         }
 
+        // Enrich grants with descriptions from Grants.gov if missing
+        const grantsWithoutDescriptions = validGrants.filter(g => !g.description);
+
+        if (grantsWithoutDescriptions.length > 0) {
+          console.log(`[Saved API] Fetching ${grantsWithoutDescriptions.length} descriptions from Grants.gov`);
+
+          // Fetch descriptions in batches
+          const batchSize = 10;
+          for (let i = 0; i < grantsWithoutDescriptions.length; i += batchSize) {
+            const batch = grantsWithoutDescriptions.slice(i, i + batchSize);
+
+            await Promise.all(
+              batch.map(async (grant) => {
+                try {
+                  const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ opportunityId: Number(grant.external_id) }),
+                  });
+
+                  if (detailsResponse.ok) {
+                    const detailsData = await detailsResponse.json();
+                    const description = detailsData?.data?.synopsis?.synopsisDesc || null;
+
+                    if (description) {
+                      // Update in-memory grant
+                      grant.description = description;
+
+                      // Update database asynchronously
+                      void (async () => {
+                        try {
+                          await supabase
+                            .from('org_grants_saved')
+                            .update({ description })
+                            .eq('id', grant.id);
+                          console.log(`[Saved API] Cached description for grant ${grant.id}`);
+                        } catch (err) {
+                          console.warn(`[Saved API] Failed to cache description:`, err);
+                        }
+                      })();
+                    }
+                  }
+                } catch (err) {
+                  console.warn(`[Saved API] Failed to fetch description for grant ${grant.external_id}:`, err);
+                }
+              })
+            );
+          }
+        }
+
         return res.status(200).json({ grants: validGrants });
       }
 
