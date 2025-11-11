@@ -669,13 +669,11 @@ export function DiscoverPage() {
                             <FitScoreBadge
                               grantCategory={category || undefined}
                             />
-                            {currentOrg?.id && (
-                              <SuccessScoreBadge
-                                grantId={grant.id}
-                                orgId={currentOrg.id}
-                                compact
-                              />
-                            )}
+                            <SuccessScoreBadge
+                              grantId={grant.id}
+                              orgId={currentOrg?.id}
+                              compact
+                            />
                           </Group>
                           <GrantTagBadges grantId={grant.id} maxTags={3} />
 
@@ -699,11 +697,9 @@ export function DiscoverPage() {
                             {grant.agency}
                           </Text>
 
-                          {grant.description && (
-                            <Text size="sm" c="dimmed" lineClamp={2} mt={4}>
-                              {stripHtml(grant.description)}
-                            </Text>
-                          )}
+                          <Text size="sm" c="dimmed" lineClamp={2} mt={4}>
+                            {grant.description ? stripHtml(grant.description) : "No description available"}
+                          </Text>
                         </Stack>
 
                         <Group gap="xs" style={{ flexShrink: 0 }}>

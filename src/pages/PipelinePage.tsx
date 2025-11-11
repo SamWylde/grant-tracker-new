@@ -381,16 +381,14 @@ export function PipelinePage() {
                                 </Text>
 
                                 {/* Description preview */}
-                                {grant.description && (
-                                  <Text size="xs" c="dimmed" lineClamp={2}>
-                                    {(() => {
-                                      const cleanDesc = stripHtml(grant.description);
-                                      return cleanDesc.length > 150
-                                        ? cleanDesc.substring(0, 150) + '...'
-                                        : cleanDesc;
-                                    })()}
-                                  </Text>
-                                )}
+                                <Text size="xs" c="dimmed" lineClamp={2}>
+                                  {grant.description ? (() => {
+                                    const cleanDesc = stripHtml(grant.description);
+                                    return cleanDesc.length > 150
+                                      ? cleanDesc.substring(0, 150) + '...'
+                                      : cleanDesc;
+                                  })() : "No description available"}
+                                </Text>
 
                                 {/* Deadline */}
                                 {grant.close_date && (

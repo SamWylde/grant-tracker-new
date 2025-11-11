@@ -108,7 +108,6 @@ Run the migrations in your Supabase SQL editor in the following order:
 10. `20250114_add_pipeline_fields.sql` - Pipeline status, priority, assignments
 11. `20250115_add_grant_tasks.sql` - Task management with templates
 12. `20250121_add_activity_log.sql` - Activity feed and audit trail
-13. `20250125_fix_activity_log_user_id.sql` - Allow system-generated activities
 
 #### Alerts & Notifications
 14. `20250116_add_grant_alerts.sql` - Alert system with email notifications
@@ -119,13 +118,17 @@ Run the migrations in your Supabase SQL editor in the following order:
 #### AI Features
 16. `20250124_add_ai_features.sql` - AI summaries, tagging, recommendations, success scoring
 
+#### Collaboration Features
+17. `20250125_add_collaboration_features.sql` - Threaded comments, @mentions, activity stream
+
 #### Integrations
-17. `add_integrations.sql` - Calendar feeds, webhooks, Teams/Slack
+18. `add_integrations.sql` - Calendar feeds, webhooks, Teams/Slack
 
 #### Data Fixes
-18. `20250118_fix_status_constraint.sql` - Status field constraint fix
-19. `20250119_add_user_profiles_foreign_key.sql` - Foreign key for PostgREST joins
-20. `20250120_fix_grant_org_id.sql` - Data integrity fix for org_id
+19. `20250118_fix_status_constraint.sql` - Status field constraint fix
+20. `20250119_add_user_profiles_foreign_key.sql` - Foreign key for PostgREST joins
+21. `20250120_fix_grant_org_id.sql` - Data integrity fix for org_id
+22. `20250126_fix_activity_log_user_id.sql` - Allow system-generated activities
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
 
