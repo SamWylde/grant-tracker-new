@@ -446,8 +446,7 @@ CREATE INDEX IF NOT EXISTS idx_grant_recommendations_user_org_score
   WHERE NOT dismissed;
 
 CREATE INDEX IF NOT EXISTS idx_grant_success_scores_org_probability
-  ON public.grant_success_scores(org_id, success_probability DESC)
-  WHERE expires_at IS NULL OR expires_at > NOW();
+  ON public.grant_success_scores(org_id, success_probability DESC);
 
 -- =====================================================
 -- 10. COMMENTS AND DOCUMENTATION
