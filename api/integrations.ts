@@ -54,6 +54,11 @@ export default async function handler(
       .eq('org_id', org_id);
 
     if (error) {
+      // If table doesn't exist, return empty array
+      if (error.code === 'PGRST204' || error.message.includes('relation') || error.message.includes('does not exist')) {
+        console.warn('[Integrations] Table does not exist yet, returning empty array');
+        return res.status(200).json({ integrations: [], message: 'Integrations feature not yet enabled' });
+      }
       return res.status(500).json({ error: error.message });
     }
 
