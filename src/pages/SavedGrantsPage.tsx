@@ -617,16 +617,14 @@ export function SavedGrantsPage() {
                           </Text>
 
                           {/* Description preview */}
-                          {grant.description && (
-                            <Text size="sm" c="dimmed" lineClamp={2}>
-                              {(() => {
-                                const cleanDesc = stripHtml(grant.description);
-                                return cleanDesc.length > 200
-                                  ? cleanDesc.substring(0, 200) + '...'
-                                  : cleanDesc;
-                              })()}
-                            </Text>
-                          )}
+                          <Text size="sm" c="dimmed" lineClamp={2}>
+                            {grant.description ? (() => {
+                              const cleanDesc = stripHtml(grant.description);
+                              return cleanDesc.length > 200
+                                ? cleanDesc.substring(0, 200) + '...'
+                                : cleanDesc;
+                            })() : "No description available"}
+                          </Text>
                         </Stack>
 
                         <Group gap="xs" style={{ flexShrink: 0 }}>

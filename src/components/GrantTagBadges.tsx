@@ -25,7 +25,7 @@ export function GrantTagBadges({ grantId, maxTags = 3 }: GrantTagBadgesProps) {
       if (!session) return null;
 
       const response = await fetch(
-        `/api/grants/tags?grant_id=${grantId}`,
+        `/api/grants/tags?external_id=${grantId}`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,

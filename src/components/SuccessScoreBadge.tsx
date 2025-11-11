@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 
 interface SuccessScoreBadgeProps {
   grantId: string;
-  orgId: string;
+  orgId?: string;
   compact?: boolean;
 }
 
@@ -13,6 +13,8 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
   const { data, isLoading, error } = useQuery({
     queryKey: ["successScore", grantId, orgId],
     queryFn: async () => {
+      if (!orgId) throw new Error('No organization selected');
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
