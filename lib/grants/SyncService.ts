@@ -8,7 +8,6 @@ import { createClient } from '@supabase/supabase-js';
 import { createAdapter } from './adapters';
 import type {
   GrantSource,
-  CatalogGrant,
   SyncJob,
   SyncResult,
   JobType,
@@ -166,8 +165,8 @@ export class SyncService {
    */
   private async processSyncResult(
     result: SyncResult,
-    source: GrantSource,
-    adapter: any
+    _source: GrantSource,
+    _adapter: any
   ): Promise<SyncResult> {
     // This would iterate through fetched grants and:
     // 1. Normalize them
@@ -196,18 +195,19 @@ export class SyncService {
 
     if (error || !duplicates) return;
 
-    // Insert duplicate records
+    // Insert duplicate records (upsert to handle conflicts)
     for (const dup of duplicates) {
       await this.supabase
         .from('grant_duplicates')
-        .insert({
+        .upsert({
           primary_grant_id: grantId,
           duplicate_grant_id: dup.duplicate_id,
           match_score: dup.match_score,
           match_method: dup.match_reason,
-        })
-        .onConflict('primary_grant_id,duplicate_grant_id')
-        .ignore();
+        }, {
+          onConflict: 'primary_grant_id,duplicate_grant_id',
+          ignoreDuplicates: true
+        });
     }
   }
 

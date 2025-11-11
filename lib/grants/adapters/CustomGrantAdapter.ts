@@ -40,7 +40,7 @@ export class CustomGrantAdapter extends BaseGrantAdapter {
   /**
    * Custom grants don't support API fetching - they're manually entered
    */
-  async fetchGrants(params: SourceSearchParams): Promise<SourceFetchResponse> {
+  async fetchGrants(_params: SourceSearchParams): Promise<SourceFetchResponse> {
     // Custom grants are not fetched from external source
     // They're created directly in the system
     return {
@@ -57,7 +57,7 @@ export class CustomGrantAdapter extends BaseGrantAdapter {
   /**
    * Custom grants don't have external IDs to fetch
    */
-  async fetchSingleGrant(externalId: string): Promise<RawGrantData | null> {
+  async fetchSingleGrant(_externalId: string): Promise<RawGrantData | null> {
     return null;
   }
 

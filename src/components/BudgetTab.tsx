@@ -29,7 +29,7 @@ interface BudgetLineItem {
   spent_amount: number;
 }
 
-export function BudgetTab({ grantId, orgId }: BudgetTabProps) {
+export function BudgetTab({ grantId }: BudgetTabProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['grantBudget', grantId],
     queryFn: async () => {

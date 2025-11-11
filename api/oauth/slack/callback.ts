@@ -70,6 +70,10 @@ export default async function handler(
     const webhookUrl = incoming_webhook?.url || '';
 
     // Store tokens in database
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { error: dbError } = await supabase

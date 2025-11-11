@@ -202,7 +202,7 @@ export default async function handler(
             due_in_days: viewData.due_in_days,
             sort_by: viewData.sort_by,
             is_shared: viewData.is_shared,
-            use_count: viewData.is_shared ? supabase.sql`use_count + 1` : undefined,
+            // Note: use_count increment would require an RPC function or separate query
             last_used_at: new Date().toISOString(),
           })
           .eq('id', id)
@@ -278,19 +278,28 @@ export default async function handler(
           view_id: id
         });
 
-        // If RPC doesn't exist, fallback to regular update
+        // If RPC doesn't exist, fallback to fetch + update
         if (error) {
-          const { error: updateError } = await supabase
+          // Fetch current use_count
+          const { data: view } = await supabase
             .from('saved_views')
-            .update({
-              use_count: supabase.sql`use_count + 1`,
-              last_used_at: new Date().toISOString(),
-            })
-            .eq('id', id);
+            .select('use_count')
+            .eq('id', id)
+            .single();
 
-          if (updateError) {
-            console.error('Error incrementing view use count:', updateError);
-            return res.status(500).json({ error: 'Failed to update view usage' });
+          if (view) {
+            const { error: updateError } = await supabase
+              .from('saved_views')
+              .update({
+                use_count: (view.use_count || 0) + 1,
+                last_used_at: new Date().toISOString(),
+              })
+              .eq('id', id);
+
+            if (updateError) {
+              console.error('Error incrementing view use count:', updateError);
+              return res.status(500).json({ error: 'Failed to update view usage' });
+            }
           }
         }
 

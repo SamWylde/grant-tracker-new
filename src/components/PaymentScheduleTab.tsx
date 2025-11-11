@@ -37,7 +37,7 @@ interface PaymentSchedule {
   notes: string | null;
 }
 
-export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) {
+export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
   // Fetch budget first to get budget_id
   const { data: budgetData } = useQuery({
     queryKey: ['grantBudget', grantId],

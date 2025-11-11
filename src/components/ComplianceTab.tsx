@@ -48,7 +48,7 @@ interface ComplianceRequirement {
   notes: string | null;
 }
 
-export function ComplianceTab({ grantId, orgId }: ComplianceTabProps) {
+export function ComplianceTab({ grantId }: ComplianceTabProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['compliance', grantId],
     queryFn: async () => {

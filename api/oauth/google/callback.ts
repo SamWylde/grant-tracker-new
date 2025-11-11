@@ -63,6 +63,10 @@ export default async function handler(
     const { access_token, refresh_token, expires_in } = tokens;
 
     // Store tokens in database
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const expiresAt = new Date(Date.now() + expires_in * 1000);

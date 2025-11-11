@@ -170,7 +170,7 @@ export default async function handler(
                 const title = grant.title.toLowerCase();
                 const agency = grant.agency.toLowerCase();
 
-                searchTerms.forEach((term) => {
+                searchTerms.forEach((term: string) => {
                   // Title matches are worth 3x more than agency matches
                   if (title.includes(term)) score += 3;
                   if (agency.includes(term)) score += 1;

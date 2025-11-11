@@ -9,6 +9,10 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // Get user from auth header
