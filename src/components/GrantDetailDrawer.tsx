@@ -24,6 +24,7 @@ import {
   IconShieldCheck,
   IconEdit,
   IconCheck,
+  IconSparkles,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -33,6 +34,7 @@ import { TaskList } from "./TaskList";
 import { BudgetTab } from "./BudgetTab";
 import { PaymentScheduleTab } from "./PaymentScheduleTab";
 import { ComplianceTab } from "./ComplianceTab";
+import { AISummaryTab } from "./AISummaryTab";
 import { MentionTextarea } from "./MentionTextarea";
 import { printGrantBrief } from "../utils/printGrant";
 import { supabase } from "../lib/supabase";
@@ -320,7 +322,7 @@ export function GrantDetailDrawer({
 
         <Divider />
 
-        {/* Tabs for Tasks, Budget, Payments, Compliance, and Notes */}
+        {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, and Notes */}
         <Tabs defaultValue="tasks">
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
@@ -332,6 +334,9 @@ export function GrantDetailDrawer({
             </Tabs.Tab>
             <Tabs.Tab value="compliance" leftSection={<IconShieldCheck size={14} />}>
               Compliance
+            </Tabs.Tab>
+            <Tabs.Tab value="ai-summary" leftSection={<IconSparkles size={14} />}>
+              AI Summary
             </Tabs.Tab>
             <Tabs.Tab value="notes">Notes</Tabs.Tab>
           </Tabs.List>
@@ -350,6 +355,15 @@ export function GrantDetailDrawer({
 
           <Tabs.Panel value="compliance" pt="md">
             <ComplianceTab grantId={grant.id} orgId={grant.org_id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="ai-summary" pt="md">
+            <AISummaryTab
+              grantId={grant.id}
+              externalId={grant.external_id}
+              grantTitle={grant.title}
+              orgId={grant.org_id}
+            />
           </Tabs.Panel>
 
           <Tabs.Panel value="notes" pt="md">

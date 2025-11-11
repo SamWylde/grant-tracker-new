@@ -59,7 +59,13 @@ export interface SavedGrant {
   open_date: string | null;
   close_date: string | null;
   description: string | null;
+  status: string;
+  priority: string | null;
+  assigned_to: string | null;
+  notes: string | null;
   saved_at: string;
+  stage_updated_at: string | null;
+  created_at: string;
 }
 
 // Grant detail (from Grants.gov API)

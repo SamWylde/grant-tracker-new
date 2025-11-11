@@ -115,6 +115,81 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Google Calendar**: OAuth integration (coming soon)
 - **Slack**: OAuth integration (coming soon)
 
+### 🤖 AI-Powered Features
+- **NOFO PDF Summarizer**: AI-powered extraction of key information from Notice of Funding Opportunity documents
+  - **One-Click Generation**: Generate comprehensive summaries from grant descriptions using OpenAI GPT-4o-mini
+  - **Structured Extraction**: Automatically extracts 30+ data points including:
+    - Key Dates: Application deadline, award date, project period start/end
+    - Funding Information: Total program funding, min/max awards, expected number of awards
+    - Eligibility Requirements: Eligible organizations, geographic restrictions, limitations
+    - Focus Areas & Priorities: Program focus areas and funding priorities
+    - Cost Sharing: Required percentage and description
+    - Application Process: Submission method, required documents, evaluation criteria
+    - Contact Information: Program officer, email, phone
+  - **AI Summary Tab**: New tab in Grant Detail Drawer with formatted cards displaying all extracted info
+  - **Cost Tracking**: Monitors token usage and API costs (GPT-4o-mini: $0.15/1M input tokens)
+  - **Database Caching**: Summaries stored in database to avoid redundant API calls
+  - **Regeneration**: Update summaries as grant information changes
+  - **Provider Metadata**: Displays AI provider, model, and generation timestamp
+  - **Environment Variable**: Requires `OPEN_AI_API_KEY` for OpenAI integration
+  - **API Endpoint**: `GET /api/grants/nofo-summary?saved_grant_id={id}` (retrieve), `POST /api/grants/nofo-summary` (generate)
+
+- **Grant Recommendation Engine**: Collaborative filtering to suggest best-fit grants
+  - **Multi-Factor Scoring**: Weighted algorithm combining 5 key factors:
+    - Eligibility Match (25% weight): Category and organization type alignment
+    - Past Behavior (30% weight): Similar to grants you've previously saved or submitted
+    - Collaborative Filtering (25% weight): Popular with organizations similar to yours
+    - Agency Familiarity (10% weight): Your organization's past success with the same agency
+    - Funding Fit (10% weight): Award amounts match your organization's typical range
+  - **Personalized Recommendations**: Based on your org's interaction history (saved, submitted grants)
+  - **Transparent Scoring**: Detailed breakdown of factors contributing to each recommendation
+  - **Human-Readable Reasons**: Clear explanations like "Strong eligibility match • Similar to grants you've saved"
+  - **Smart Filtering**: Automatically excludes grants you've already interacted with
+  - **24-Hour Caching**: Recommendations cached for performance, refreshed daily
+  - **Top N Results**: Configurable limit (default 10, max 50) sorted by recommendation score
+  - **API Endpoint**: `GET /api/recommendations?org_id={id}&user_id={id}&limit=10`
+
+- **Smart Tagging & Categorization**: AI-powered automatic tagging using NLP
+  - **Automatic Tag Generation**: Uses OpenAI to analyze grant content and generate 5-8 relevant tags
+  - **Four Tag Categories**:
+    - Focus Areas: education, healthcare, environment, technology, arts-culture, community-development, research
+    - Eligibility: nonprofits, small-business, universities, state-local-gov, tribal-gov
+    - Funding Types: capacity-building, program-support, capital-projects, research, equipment
+    - Geographic: rural, urban, regional, national, international
+  - **Confidence Scores**: Each tag assigned a confidence score (0.0-1.0) by AI
+  - **Tag Management**: Tags created in database and reused across grants
+  - **Usage Analytics**: Track how many times each tag is used across all grants
+  - **Color Coding**: Visual color coding by category (violet for focus areas, teal for eligibility, etc.)
+  - **Auto-Assignment**: Tags automatically assigned to grants on generation
+  - **Seeded Tags**: Database pre-seeded with 16 common tags for immediate use
+  - **API Endpoints**: `GET /api/grants/tags?grant_id={id}` (retrieve), `POST /api/grants/tags` (generate)
+
+- **Success Probability Scoring**: Predict likelihood of winning grants
+  - **Probability Calculation**: AI-powered scoring (0.0-1.0) predicting success likelihood
+  - **Five-Factor Analysis** with weighted scoring:
+    - Agency History (25%): Your org's past win rate with the specific agency
+    - Competition Level (20%): Estimated number of applicants based on funding amount
+    - Org Fit (30%): How well your org matches eligibility requirements and categories
+    - Funding Amount Fit (15%): Whether award size matches your org's typical capacity
+    - Timeline Feasibility (10%): Days until deadline and realistic application time
+  - **Match Levels**: Four tiers (excellent ≥80%, good ≥65%, fair ≥50%, poor <50%)
+  - **Recommendation Text**: Human-readable guidance like "Highly recommended - Strong fit across all factors"
+  - **Historical Win Rate**: Displays your org's actual success rate with each agency
+  - **Estimated Competition**: Calculates approximate number of applicants based on funding level
+  - **Confidence Intervals**: Uncertainty measure for score reliability (±15%)
+  - **24-Hour Caching**: Scores cached for performance, recalculated daily
+  - **Detailed Breakdown**: Full transparency on all factors contributing to the score
+  - **API Endpoint**: `GET /api/grants/success-score?grant_id={id}&org_id={id}`
+
+- **AI Provider Abstraction**: Flexible architecture supporting multiple AI backends
+  - **Multi-Provider Support**: Built-in support for OpenAI, Claude, and local models
+  - **Provider Switching**: Easy configuration to switch between AI providers
+  - **Cost Optimization**: Uses GPT-4o-mini by default for cost-effectiveness
+  - **Token Tracking**: Monitors token usage and costs for all AI operations
+  - **Processing Time Metrics**: Tracks API response times for performance monitoring
+  - **Error Handling**: Graceful fallbacks and detailed error messages
+  - **Future-Proof**: Architecture ready for new AI models as they become available
+
 ### Notifications & Reminders
 - **Grant Alerts**: Create custom alerts for new grants matching specific criteria (keyword, category, agency, amount range, due date)
 - **Email Alert Notifications**: Automatic email notifications when new grants match your saved alerts
@@ -223,6 +298,12 @@ SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=your-resend-api-key
 CRON_SECRET=your-cron-secret
+OPEN_AI_API_KEY=your-openai-api-key
+```
+
+**AI Features (Optional):**
+```
+VITE_OPEN_AI_API_KEY=your-openai-api-key  # For client-side AI features (NOFO summarizer, tagging)
 ```
 
 **Note**: Use `VITE_` prefix for client-side environment variables (Vite framework). The API routes use non-prefixed variables for server-side operations.
@@ -250,6 +331,7 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250121_add_activity_log.sql` - Creates grant_activity_log table with automatic triggers for all grant changes
 - `supabase/migrations/20250122_add_post_award_financials.sql` - Creates post-award budget tracking, disbursements, payment schedules, and compliance requirements with automatic calculations and null-safe triggers
 - `supabase/migrations/20250123_add_grant_description.sql` - Adds description column to org_grants_saved for card previews
+- `supabase/migrations/20250124_add_ai_features.sql` - Creates AI-powered features infrastructure (grant_ai_summaries, grant_tags, grant_recommendations, grant_success_scores) with RLS policies and helper functions
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
