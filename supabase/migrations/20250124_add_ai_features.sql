@@ -145,6 +145,9 @@ COMMENT ON TABLE public.grant_tag_assignments IS 'Links grants to tags - support
 -- 4. GRANT RECOMMENDATIONS TABLE
 -- Cached grant recommendations for users/orgs
 -- =====================================================
+-- Drop existing view if it exists (cannot have indexes on views)
+DROP VIEW IF EXISTS public.grant_recommendations CASCADE;
+
 CREATE TABLE IF NOT EXISTS public.grant_recommendations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
