@@ -6,12 +6,14 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Container,
   Divider,
   Group,
   Loader,
   Menu,
   Modal,
+  Paper,
   ScrollArea,
   Select,
   Stack,
@@ -27,6 +29,10 @@ import {
   IconTrash,
   IconPrinter,
   IconUpload,
+  IconChecks,
+  IconSquare,
+  IconFlag,
+  IconX,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -57,6 +63,8 @@ export function SavedGrantsPage() {
     assignedTo: [],
   });
   const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [selectedGrantIds, setSelectedGrantIds] = useState<Set<string>>(new Set());
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
 
   // Fetch saved grants using shared hook with auth headers
   const { data: savedGrants, isLoading } = useSavedGrants();
@@ -129,6 +137,141 @@ export function SavedGrantsPage() {
         message: "Failed to remove grant. Please try again.",
         color: "red",
       });
+    }
+  };
+
+  // Bulk operations handlers
+  const toggleGrantSelection = (grantId: string) => {
+    const newSelection = new Set(selectedGrantIds);
+    if (newSelection.has(grantId)) {
+      newSelection.delete(grantId);
+    } else {
+      newSelection.add(grantId);
+    }
+    setSelectedGrantIds(newSelection);
+  };
+
+  const selectAllGrants = () => {
+    setSelectedGrantIds(new Set(sortedGrants.map(g => g.id)));
+  };
+
+  const deselectAllGrants = () => {
+    setSelectedGrantIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const deletePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved?id=${grantId}`, {
+          method: "DELETE",
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        })
+      );
+
+      await Promise.all(deletePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Grants deleted",
+        message: `${selectedGrantIds.size} grant(s) removed from pipeline`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to delete some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkUpdateStatus = async (status: string) => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const updatePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved?id=${grantId}`, {
+          method: "PATCH",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ status }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Status updated",
+        message: `${selectedGrantIds.size} grant(s) updated to ${status}`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to update some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkUpdatePriority = async (priority: string) => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const updatePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved?id=${grantId}`, {
+          method: "PATCH",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ priority }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Priority updated",
+        message: `${selectedGrantIds.size} grant(s) set to ${priority} priority`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to update some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
     }
   };
 
@@ -241,6 +384,11 @@ export function SavedGrantsPage() {
               <Text fw={600}>
                 {sortedGrants.length} of {savedGrants?.grants.length || 0} grant{savedGrants?.grants.length !== 1 ? "s" : ""}
               </Text>
+              {selectedGrantIds.size > 0 && (
+                <Badge color="grape" size="lg">
+                  {selectedGrantIds.size} selected
+                </Badge>
+              )}
             </Group>
             <Select
               placeholder="Sort by"
@@ -255,6 +403,109 @@ export function SavedGrantsPage() {
               w={200}
             />
           </Group>
+
+          {/* Bulk Actions Toolbar */}
+          {selectedGrantIds.size > 0 && (
+            <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
+              <Group justify="space-between">
+                <Group gap="sm">
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    onClick={deselectAllGrants}
+                    title="Deselect all"
+                  >
+                    <IconX size={18} />
+                  </ActionIcon>
+                  <Text fw={600} size="sm">
+                    {selectedGrantIds.size} grant{selectedGrantIds.size !== 1 ? 's' : ''} selected
+                  </Text>
+                </Group>
+                <Group gap="xs">
+                  <Menu shadow="md" width={180}>
+                    <Menu.Target>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        leftSection={<IconFlag size={16} />}
+                        loading={isBulkOperating}
+                      >
+                        Set Status
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('researching')}>
+                        Researching
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('preparing')}>
+                        Preparing
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('submitted')}>
+                        Submitted
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('awarded')}>
+                        Awarded
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('declined')}>
+                        Declined
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                  <Menu shadow="md" width={180}>
+                    <Menu.Target>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        color="blue"
+                        leftSection={<IconFlag size={16} />}
+                        loading={isBulkOperating}
+                      >
+                        Set Priority
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('low')}>
+                        Low
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('medium')}>
+                        Medium
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('high')}>
+                        High
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('urgent')}>
+                        Urgent
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconTrash size={16} />}
+                    onClick={handleBulkDelete}
+                    loading={isBulkOperating}
+                  >
+                    Delete
+                  </Button>
+                </Group>
+              </Group>
+            </Paper>
+          )}
+
+          {/* Select All Button */}
+          {!isLoading && sortedGrants.length > 0 && (
+            <Group justify="flex-end">
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={selectedGrantIds.size === sortedGrants.length ? <IconSquare size={14} /> : <IconChecks size={14} />}
+                onClick={selectedGrantIds.size === sortedGrants.length ? deselectAllGrants : selectAllGrants}
+              >
+                {selectedGrantIds.size === sortedGrants.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </Group>
+          )}
 
           {/* Loading State */}
           {isLoading && (
@@ -300,6 +551,7 @@ export function SavedGrantsPage() {
                     style={{
                       cursor: "pointer",
                       transition: "all 0.2s ease",
+                      backgroundColor: selectedGrantIds.has(grant.id) ? "var(--mantine-color-grape-0)" : undefined,
                     }}
                     onClick={() => setSelectedGrant(grant)}
                     onMouseEnter={(e) => {
@@ -314,6 +566,16 @@ export function SavedGrantsPage() {
                     <Stack gap="md">
                       {/* Header */}
                       <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Checkbox
+                          checked={selectedGrantIds.has(grant.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleGrantSelection(grant.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          size="md"
+                          style={{ flexShrink: 0 }}
+                        />
                         <Stack gap={8} style={{ flex: 1 }}>
                           <Group gap="xs" wrap="wrap">
                             <Badge variant="filled" size="sm" color="grape">

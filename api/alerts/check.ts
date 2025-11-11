@@ -119,7 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('grant_alerts')
       .select(`
         *,
-        user_profiles!grant_alerts_user_id_fkey(full_name),
+        user_profiles!grant_alerts_user_id_fkey(full_name, email),
         organizations!grant_alerts_org_id_fkey(name)
       `)
       .eq('is_active', true)
@@ -249,10 +249,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // If email notifications are enabled and there are new matches, queue email
         if (alert.notify_email && newMatches.length > 0) {
+          const userEmail = alert.user_profiles?.email;
+
+          // Skip if email is missing
+          if (!userEmail) {
+            console.warn(`[Alert Check] Skipping email for alert ${alert.id} - user email not found`);
+            continue;
+          }
+
           emailsQueued++;
           alertsWithMatches.push({
             alert_name: alert.name,
-            user_email: alert.user_profiles?.email || 'unknown',
+            user_email: userEmail,
             user_name: alert.user_profiles?.full_name || 'User',
             org_name: alert.organizations?.name || 'Your Organization',
             matches_count: newMatches.length,

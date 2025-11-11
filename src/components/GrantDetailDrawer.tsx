@@ -11,7 +11,6 @@ import {
   ScrollArea,
   Box,
   ActionIcon,
-  Textarea,
 } from "@mantine/core";
 import {
   IconExternalLink,
@@ -34,8 +33,10 @@ import { TaskList } from "./TaskList";
 import { BudgetTab } from "./BudgetTab";
 import { PaymentScheduleTab } from "./PaymentScheduleTab";
 import { ComplianceTab } from "./ComplianceTab";
+import { MentionTextarea } from "./MentionTextarea";
 import { printGrantBrief } from "../utils/printGrant";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Grant {
   id: string;
@@ -70,9 +71,11 @@ export function GrantDetailDrawer({
   opened,
   onClose,
 }: GrantDetailDrawerProps) {
+  const { user } = useAuth();
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [mentionedUsers, setMentionedUsers] = useState<Array<{ userId: string; userName: string }>>([]);
 
   if (!grant) return null;
 
@@ -86,7 +89,12 @@ export function GrantDetailDrawer({
   // Handle notes editing
   const handleEditNotes = () => {
     setNotesValue(grant.notes || "");
+    setMentionedUsers([]);
     setIsEditingNotes(true);
+  };
+
+  const handleMentionAdded = (userId: string, userName: string) => {
+    setMentionedUsers(prev => [...prev, { userId, userName }]);
   };
 
   const handleSaveNotes = async () => {
@@ -106,15 +114,36 @@ export function GrantDetailDrawer({
 
       if (!response.ok) throw new Error("Failed to save notes");
 
+      // Send notifications for mentioned users
+      for (const mention of mentionedUsers) {
+        try {
+          await supabase.from('in_app_notifications').insert({
+            user_id: mention.userId,
+            org_id: grant.org_id,
+            type: 'team_update',
+            title: `${user?.email || 'Someone'} mentioned you in notes`,
+            message: `You were mentioned in notes for grant: ${grant.title}`,
+            related_grant_id: grant.external_id,
+            action_url: `/saved?grant=${grant.id}`,
+            action_label: 'View Grant',
+          } as any);
+        } catch (notifError) {
+          console.error('Failed to send mention notification:', notifError);
+        }
+      }
+
       notifications.show({
         title: "Success",
-        message: "Notes saved successfully",
+        message: mentionedUsers.length > 0
+          ? `Notes saved and ${mentionedUsers.length} team member(s) notified`
+          : "Notes saved successfully",
         color: "green",
       });
 
       // Update the grant object locally
       grant.notes = notesValue;
       setIsEditingNotes(false);
+      setMentionedUsers([]);
     } catch (error) {
       notifications.show({
         title: "Error",
@@ -327,17 +356,26 @@ export function GrantDetailDrawer({
             <Stack gap="md">
               {isEditingNotes ? (
                 <>
-                  <Textarea
-                    placeholder="Add notes about this grant..."
+                  <MentionTextarea
                     value={notesValue}
-                    onChange={(e) => setNotesValue(e.target.value)}
+                    onChange={setNotesValue}
+                    placeholder="Add notes about this grant... Type @ to mention team members"
                     minRows={6}
                     autosize
+                    onMentionAdded={handleMentionAdded}
                   />
+                  {mentionedUsers.length > 0 && (
+                    <Text size="xs" c="dimmed">
+                      Will notify: {mentionedUsers.map(m => m.userName).join(', ')}
+                    </Text>
+                  )}
                   <Group justify="flex-end">
                     <Button
                       variant="subtle"
-                      onClick={() => setIsEditingNotes(false)}
+                      onClick={() => {
+                        setIsEditingNotes(false);
+                        setMentionedUsers([]);
+                      }}
                       disabled={isSavingNotes}
                     >
                       Cancel
