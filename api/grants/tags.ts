@@ -84,10 +84,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // =====================================================
   if (req.method === 'GET') {
     try {
-      const { grant_id } = req.query;
+      const { grant_id, external_id } = req.query;
 
-      if (!grant_id) {
-        return res.status(400).json({ error: 'grant_id is required' });
+      if (!grant_id && !external_id) {
+        return res.status(400).json({ error: 'grant_id or external_id is required' });
+      }
+
+      let catalogGrantId = grant_id as string;
+
+      // If external_id provided, lookup catalog grant UUID
+      if (external_id && !grant_id) {
+        const { data: catalogGrant, error: lookupError } = await supabase
+          .from('grants_catalog')
+          .select('id')
+          .eq('external_id', external_id)
+          .single();
+
+        if (lookupError || !catalogGrant) {
+          return res.status(404).json({
+            error: 'Grant not found in catalog',
+            details: 'This grant may not have been synced yet'
+          });
+        }
+
+        catalogGrantId = catalogGrant.id;
       }
 
       // Get tag assignments for this grant
@@ -103,7 +123,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             color
           )
         `)
-        .eq('grant_id', grant_id);
+        .eq('grant_id', catalogGrantId);
 
       if (assignmentsError) throw assignmentsError;
 
@@ -119,7 +139,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })) || [];
 
       return res.status(200).json({
-        grant_id,
+        grant_id: catalogGrantId,
+        external_id: external_id || null,
         tags,
         count: tags.length,
       });

@@ -10,14 +10,15 @@ interface SuccessScoreBadgeProps {
 }
 
 export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessScoreBadgeProps) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["successScore", grantId, orgId],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
+      if (!session) throw new Error('Not authenticated');
 
+      // Use external_id parameter since grantId is typically the Grants.gov ID, not catalog UUID
       const response = await fetch(
-        `/api/grants/success-score?grant_id=${grantId}&org_id=${orgId}`,
+        `/api/grants/success-score?external_id=${grantId}&org_id=${orgId}`,
         {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -25,14 +26,44 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
         }
       );
 
-      if (!response.ok) return null;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || errorData.error || 'Failed to fetch success score');
+      }
       return response.json();
     },
     enabled: !!grantId && !!orgId,
+    retry: false, // Don't retry on 404 (grant not in catalog)
     staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  if (isLoading || !data) return null;
+  // Show placeholder if loading or error
+  if (isLoading) {
+    return (
+      <Badge size={compact ? "sm" : "md"} variant="light" color="gray">
+        ...
+      </Badge>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <Tooltip
+        label={
+          <div>
+            <Text size="xs" fw={600}>Success score unavailable</Text>
+            <Text size="xs" c="dimmed">Grant may not be in catalog yet</Text>
+          </div>
+        }
+        multiline
+        w={200}
+      >
+        <Badge size={compact ? "sm" : "md"} variant="outline" color="gray">
+          N/A
+        </Badge>
+      </Tooltip>
+    );
+  }
 
   const score = data.success_probability;
   const matchLevel = data.match_level;

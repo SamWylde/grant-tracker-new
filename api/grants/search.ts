@@ -54,6 +54,7 @@ function normalizeOpportunity(opp: GrantsGovOpportunity): NormalizedGrant {
     closeDate: opp.closeDate,
     status: opp.oppStatus,
     aln: opp.alnist && opp.alnist.length > 0 ? opp.alnist[0] : null,
+    description: null, // Will be enriched later if available
   };
 }
 
@@ -205,12 +206,15 @@ export default async function handler(
         try {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           const grantIds = normalizedGrants.map(g => g.id);
+          console.log(`[Search API] Enriching ${grantIds.length} grants with descriptions`);
 
           // Step 1: Check catalog first
           const { data: catalogGrants } = await supabase
             .from('grants_catalog')
             .select('external_id, description')
             .in('external_id', grantIds);
+
+          console.log(`[Search API] Found ${catalogGrants?.length || 0} grants in catalog`);
 
           const descriptionMap = new Map(
             catalogGrants?.map(g => [g.external_id, g.description]) || []
@@ -221,6 +225,9 @@ export default async function handler(
             ...grant,
             description: descriptionMap.get(grant.id) || null,
           }));
+
+          const grantsWithDescriptions = normalizedGrants.filter(g => g.description).length;
+          console.log(`[Search API] ${grantsWithDescriptions} grants have descriptions from catalog`);
 
           // Step 2: Fetch missing descriptions live from Grants.gov
           const grantsWithoutDescriptions = normalizedGrants.filter(g => !g.description);
@@ -292,6 +299,10 @@ export default async function handler(
           console.warn('Could not fetch descriptions from database:', dbError);
         }
       }
+
+      // Log final description enrichment results
+      const finalDescriptionCount = normalizedGrants.filter(g => g.description).length;
+      console.log(`[Search API] Final result: ${finalDescriptionCount}/${normalizedGrants.length} grants have descriptions`);
 
       // Return normalized response
       const responseData = {
