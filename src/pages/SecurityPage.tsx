@@ -352,6 +352,9 @@ export function SecurityPage() {
               </Text>
             </Stack>
             <Group gap="xl" visibleFrom="sm">
+              <Anchor size="sm" c="gray.4" component={Link} to="/terms">
+                Terms
+              </Anchor>
               <Anchor size="sm" c="gray.4" component={Link} to="/privacy">
                 Privacy
               </Anchor>
