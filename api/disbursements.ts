@@ -136,7 +136,7 @@ export default async function handler(
       // Verify access
       const { data: disbursement } = await supabase
         .from('disbursements')
-        .select('org_id')
+        .select('org_id, approved')
         .eq('id', disbursement_id)
         .single();
 

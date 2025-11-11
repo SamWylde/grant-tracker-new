@@ -30,6 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const token = authHeader.replace('Bearer ', '');
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user token
@@ -84,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Fetch overall metrics using the database view
-    const { data: summaryMetrics, error: summaryError } = await supabase
+    const { data: _summaryMetrics, error: summaryError } = await supabase
       .from('grant_metrics_summary')
       .select('*')
       .eq('org_id', orgId)

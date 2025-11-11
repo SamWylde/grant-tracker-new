@@ -17,7 +17,7 @@ dayjs.extend(relativeTime);
 
 interface ComplianceTabProps {
   grantId: string;
-  orgId: string;
+  orgId?: string; // Optional, not currently used but may be needed for future access control
 }
 
 interface ComplianceSummary {
@@ -48,7 +48,7 @@ interface ComplianceRequirement {
   notes: string | null;
 }
 
-export function ComplianceTab({ grantId, orgId }: ComplianceTabProps) {
+export function ComplianceTab({ grantId }: ComplianceTabProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['compliance', grantId],
     queryFn: async () => {

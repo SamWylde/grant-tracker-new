@@ -1,4 +1,4 @@
-import { Stack, Text, Group, Badge, Paper, Alert, Timeline, Button, Divider } from "@mantine/core";
+import { Stack, Text, Group, Badge, Paper, Alert, Timeline, Divider } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCalendar,
@@ -17,7 +17,7 @@ dayjs.extend(relativeTime);
 
 interface PaymentScheduleTabProps {
   grantId: string;
-  orgId: string;
+  orgId?: string; // Optional, not currently used but may be needed for future access control
 }
 
 interface PaymentSchedule {
@@ -37,7 +37,7 @@ interface PaymentSchedule {
   notes: string | null;
 }
 
-export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) {
+export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
   // Fetch budget first to get budget_id
   const { data: budgetData } = useQuery({
     queryKey: ['grantBudget', grantId],

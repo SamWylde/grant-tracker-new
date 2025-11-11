@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 
 interface BudgetTabProps {
   grantId: string;
-  orgId: string;
+  orgId?: string; // Optional, not currently used but may be needed for future access control
 }
 
 interface BudgetSummary {
@@ -29,7 +29,7 @@ interface BudgetLineItem {
   spent_amount: number;
 }
 
-export function BudgetTab({ grantId, orgId }: BudgetTabProps) {
+export function BudgetTab({ grantId }: BudgetTabProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['grantBudget', grantId],
     queryFn: async () => {
