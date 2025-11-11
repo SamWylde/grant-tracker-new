@@ -202,11 +202,14 @@ export default async function handler(
       }
 
       // Enrich with descriptions (hybrid: catalog + live fetch)
+      console.log(`[Search API] Description enrichment check - Supabase URL: ${!!supabaseUrl}, Service Key: ${!!supabaseServiceKey}, Grants count: ${normalizedGrants.length}`);
+
       if (supabaseUrl && supabaseServiceKey && normalizedGrants.length > 0) {
         try {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           const grantIds = normalizedGrants.map(g => g.id);
           console.log(`[Search API] Enriching ${grantIds.length} grants with descriptions`);
+          console.log(`[Search API] Grant IDs to enrich:`, grantIds.slice(0, 5)); // Log first 5 IDs
 
           // Step 1: Check catalog first
           const { data: catalogGrants } = await supabase
@@ -233,7 +236,8 @@ export default async function handler(
           const grantsWithoutDescriptions = normalizedGrants.filter(g => !g.description);
 
           if (grantsWithoutDescriptions.length > 0) {
-            console.log(`Fetching ${grantsWithoutDescriptions.length} descriptions live from Grants.gov`);
+            console.log(`[Search API] Fetching ${grantsWithoutDescriptions.length} descriptions live from Grants.gov`);
+            console.log(`[Search API] First grant without description:`, grantsWithoutDescriptions[0]);
 
             // Fetch details in parallel (limit to 10 concurrent to avoid overwhelming API)
             const batchSize = 10;
@@ -243,19 +247,25 @@ export default async function handler(
               await Promise.all(
                 batch.map(async (grant) => {
                   try {
+                    console.log(`[Search API] Fetching details for grant ${grant.id}`);
                     const detailsResponse = await fetch('https://api.grants.gov/v1/api/opportunity2', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ id: grant.id }),
                     });
 
+                    console.log(`[Search API] Details response status for ${grant.id}: ${detailsResponse.status}`);
+
                     if (detailsResponse.ok) {
                       const detailsData = await detailsResponse.json();
                       const description = detailsData?.data?.synopsis?.synopsisDesc || null;
 
+                      console.log(`[Search API] Description found for ${grant.id}: ${description ? 'YES' : 'NO'}`);
+
                       if (description) {
                         // Update in-memory grant
                         grant.description = description;
+                        console.log(`[Search API] Updated grant ${grant.id} with description (length: ${description.length})`);
 
                         // Cache in database asynchronously (don't wait)
                         void (async () => {
@@ -286,18 +296,24 @@ export default async function handler(
                           }
                         })();
                       }
+                    } else {
+                      console.warn(`[Search API] Non-OK response for ${grant.id}: ${detailsResponse.status}`);
                     }
                   } catch (err) {
-                    console.warn(`Failed to fetch description for grant ${grant.id}:`, err);
+                    console.error(`[Search API] Failed to fetch description for grant ${grant.id}:`, err);
                   }
                 })
               );
             }
+          } else {
+            console.log(`[Search API] All grants already have descriptions from catalog`);
           }
         } catch (dbError) {
           // Silently fail - descriptions are optional enhancement
-          console.warn('Could not fetch descriptions from database:', dbError);
+          console.error('[Search API] Could not fetch descriptions from database:', dbError);
         }
+      } else {
+        console.warn(`[Search API] Skipping description enrichment - Missing config or no grants`);
       }
 
       // Log final description enrichment results

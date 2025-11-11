@@ -55,7 +55,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
       <Tooltip
         label={
           <div>
-            <Text size="xs" fw={600}>Success score unavailable</Text>
+            <Text size="xs" fw={600}>AI Success Score unavailable</Text>
             <Text size="xs" c="dimmed">Grant may not be in catalog yet</Text>
           </div>
         }
@@ -63,7 +63,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
         w={200}
       >
         <Badge size={compact ? "sm" : "md"} variant="outline" color="gray">
-          N/A
+          AI Success Score: N/A
         </Badge>
       </Tooltip>
     );
@@ -88,7 +88,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
       <Tooltip
         label={
           <div>
-            <Text size="xs" fw={600}>{percentage}% Success Probability</Text>
+            <Text size="xs" fw={600}>AI Success Score: {percentage}%</Text>
             <Text size="xs" c="dimmed">Match Level: {matchLevel}</Text>
             <Text size="xs" mt={4}>{data.recommendation_text}</Text>
           </div>
@@ -102,7 +102,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
           color={color}
           leftSection={<IconChartDots size={12} />}
         >
-          {percentage}%
+          AI: {percentage}%
         </Badge>
       </Tooltip>
     );
@@ -112,7 +112,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
     <Tooltip
       label={
         <div>
-          <Text size="xs" fw={600}>Success Factors:</Text>
+          <Text size="xs" fw={600}>AI Success Score Factors:</Text>
           <Text size="xs" mt={4}>Agency History: {(data.score_factors.agency_history * 100).toFixed(0)}%</Text>
           <Text size="xs">Competition: {(data.score_factors.competition_level * 100).toFixed(0)}%</Text>
           <Text size="xs">Org Fit: {(data.score_factors.org_fit * 100).toFixed(0)}%</Text>
@@ -136,7 +136,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
           color={color}
           leftSection={<IconChartDots size={14} />}
         >
-          {percentage}% {matchLevel}
+          AI: {percentage}% {matchLevel}
         </Badge>
       </Group>
     </Tooltip>
