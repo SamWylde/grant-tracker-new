@@ -31,6 +31,10 @@ import {
   IconCode,
   IconChecklist,
   IconCreditCard,
+  IconSparkles,
+  IconBrain,
+  IconTag,
+  IconChartDots,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -254,6 +258,155 @@ export function FeaturesPage() {
           </SimpleGrid>
         </Stack>
       </Container>
+
+      {/* AI-Powered Features */}
+      <Box bg="linear-gradient(135deg, var(--mantine-color-violet-0) 0%, var(--mantine-color-grape-0) 100%)" py={{ base: 60, md: 80 }}>
+        <Container size="lg">
+          <Stack gap="xl">
+            <Stack gap="sm" align="center">
+              <Badge size="lg" variant="light" color="violet">
+                AI-Powered
+              </Badge>
+              <Title order={2} ta="center">
+                🤖 Intelligent grant management
+              </Title>
+              <Text size="lg" c="dimmed" ta="center" maw={640}>
+                Leverage cutting-edge AI to save time, make better decisions, and win more grants.
+              </Text>
+            </Stack>
+
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+              {/* NOFO PDF Summarizer */}
+              <Card padding="xl" radius="lg" withBorder bg="white">
+                <ThemeIcon color="violet" variant="light" size={48} radius="md" mb="md">
+                  <IconSparkles size={26} />
+                </ThemeIcon>
+                <Title order={4} mb="sm">
+                  NOFO PDF Summarizer
+                </Title>
+                <Text c="dimmed" mb="md">
+                  AI extracts key information from lengthy Notice of Funding Opportunity documents in seconds.
+                </Text>
+                <List
+                  spacing="xs"
+                  size="sm"
+                  icon={
+                    <ThemeIcon size={20} radius="xl" color="violet" variant="light">
+                      <IconCheck size={12} />
+                    </ThemeIcon>
+                  }
+                >
+                  <List.Item>One-click comprehensive summaries</List.Item>
+                  <List.Item>Key dates & deadlines extraction</List.Item>
+                  <List.Item>Eligibility requirements analysis</List.Item>
+                  <List.Item>Funding amounts & priorities</List.Item>
+                  <List.Item>Cost sharing & application process</List.Item>
+                  <List.Item>Powered by OpenAI GPT-4o-mini</List.Item>
+                </List>
+              </Card>
+
+              {/* Grant Recommendations */}
+              <Card padding="xl" radius="lg" withBorder bg="white">
+                <ThemeIcon color="grape" variant="light" size={48} radius="md" mb="md">
+                  <IconBrain size={26} />
+                </ThemeIcon>
+                <Title order={4} mb="sm">
+                  Grant Recommendations
+                </Title>
+                <Text c="dimmed" mb="md">
+                  Collaborative filtering suggests best-fit grants based on your organization's history and similar organizations.
+                </Text>
+                <List
+                  spacing="xs"
+                  size="sm"
+                  icon={
+                    <ThemeIcon size={20} radius="xl" color="grape" variant="light">
+                      <IconCheck size={12} />
+                    </ThemeIcon>
+                  }
+                >
+                  <List.Item>Personalized recommendations</List.Item>
+                  <List.Item>Multi-factor scoring algorithm</List.Item>
+                  <List.Item>Eligibility & funding fit analysis</List.Item>
+                  <List.Item>Agency familiarity tracking</List.Item>
+                  <List.Item>Transparent score breakdowns</List.Item>
+                  <List.Item>Learns from your interactions</List.Item>
+                </List>
+              </Card>
+
+              {/* Smart Tagging */}
+              <Card padding="xl" radius="lg" withBorder bg="white">
+                <ThemeIcon color="teal" variant="light" size={48} radius="md" mb="md">
+                  <IconTag size={26} />
+                </ThemeIcon>
+                <Title order={4} mb="sm">
+                  Smart Tagging & Categorization
+                </Title>
+                <Text c="dimmed" mb="md">
+                  AI automatically categorizes and tags grants using natural language processing.
+                </Text>
+                <List
+                  spacing="xs"
+                  size="sm"
+                  icon={
+                    <ThemeIcon size={20} radius="xl" color="teal" variant="light">
+                      <IconCheck size={12} />
+                    </ThemeIcon>
+                  }
+                >
+                  <List.Item>Auto-generate 5-8 relevant tags</List.Item>
+                  <List.Item>Four tag categories (focus, eligibility, funding, geographic)</List.Item>
+                  <List.Item>AI confidence scores for each tag</List.Item>
+                  <List.Item>Reusable tag library</List.Item>
+                  <List.Item>Color-coded by category</List.Item>
+                  <List.Item>Pre-seeded with common tags</List.Item>
+                </List>
+              </Card>
+
+              {/* Success Probability */}
+              <Card padding="xl" radius="lg" withBorder bg="white">
+                <ThemeIcon color="orange" variant="light" size={48} radius="md" mb="md">
+                  <IconChartDots size={26} />
+                </ThemeIcon>
+                <Title order={4} mb="sm">
+                  Success Probability Scoring
+                </Title>
+                <Text c="dimmed" mb="md">
+                  Predict your likelihood of winning grants based on historical patterns and organizational fit.
+                </Text>
+                <List
+                  spacing="xs"
+                  size="sm"
+                  icon={
+                    <ThemeIcon size={20} radius="xl" color="orange" variant="light">
+                      <IconCheck size={12} />
+                    </ThemeIcon>
+                  }
+                >
+                  <List.Item>0-100% success probability scores</List.Item>
+                  <List.Item>Five-factor analysis (agency history, competition, fit)</List.Item>
+                  <List.Item>Match levels (excellent, good, fair, poor)</List.Item>
+                  <List.Item>Historical win rate tracking</List.Item>
+                  <List.Item>Estimated competition analysis</List.Item>
+                  <List.Item>Actionable recommendations</List.Item>
+                </List>
+              </Card>
+            </SimpleGrid>
+
+            <Paper p="xl" radius="lg" bg="var(--mantine-color-violet-1)" ta="center">
+              <Stack gap="md" align="center">
+                <Title order={3}>🚀 Future-proof AI architecture</Title>
+                <Text c="dimmed" maw={600}>
+                  Our flexible AI provider abstraction supports OpenAI, Claude, and local models. Cost-optimized with GPT-4o-mini by default. All AI operations tracked for transparency with detailed token usage and processing metrics.
+                </Text>
+                <Badge size="lg" variant="filled" color="violet">
+                  Requires OPEN_AI_API_KEY
+                </Badge>
+              </Stack>
+            </Paper>
+          </Stack>
+        </Container>
+      </Box>
 
       {/* Integrations */}
       <Box bg="var(--mantine-color-gray-1)" py={{ base: 60, md: 80 }}>
