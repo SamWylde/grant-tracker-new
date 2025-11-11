@@ -47,31 +47,19 @@ export function TeamPage() {
 
   const canManageTeam = hasPermission('manage_team');
 
-  // Load team members
+  // Load team members using RPC function
   const { data: members, isLoading: membersLoading } = useQuery({
     queryKey: ['teamMembers', currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg) return [];
 
-      const { data, error } = await supabase
-        .from('org_members')
-        .select(`
-          id,
-          role,
-          joined_at,
-          user_id,
-          user_profiles (
-            id,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('org_id', currentOrg.id);
+      const { data, error } = await (supabase.rpc as any)("get_org_team_members", { org_uuid: currentOrg.id });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Failed to fetch team members:", error);
+        throw error;
+      }
 
-      // Also get user emails from auth.users (need to use a function for this)
-      // For now, we'll use the user_id to fetch from auth
       return data || [];
     },
     enabled: !!currentOrg,
@@ -344,7 +332,6 @@ export function TeamPage() {
                   ) : (
                     <Stack gap="xs">
                       {members.map((member: any) => {
-                        const profile = member.user_profiles;
                         const isCurrentUser = member.user_id === user?.id;
 
                         return (
@@ -352,11 +339,11 @@ export function TeamPage() {
                             <Group justify="space-between">
                               <Group>
                                 <Avatar size={40} radius="xl" color="grape">
-                                  {getInitials(profile?.full_name)}
+                                  {getInitials(member.full_name)}
                                 </Avatar>
                                 <Stack gap={0}>
                                   <Group gap="xs">
-                                    <Text fw={500}>{profile?.full_name || 'Unknown'}</Text>
+                                    <Text fw={500}>{member.full_name || member.email || 'Unknown'}</Text>
                                     {isCurrentUser && (
                                       <Badge size="xs" color="grape">
                                         You
@@ -384,7 +371,7 @@ export function TeamPage() {
                                         setChangeRoleModal({
                                           open: true,
                                           memberId: member.id,
-                                          name: profile?.full_name,
+                                          name: member.full_name || member.email,
                                           currentRole: member.role,
                                         });
                                         setNewRole(member.role === 'admin' ? 'contributor' : 'admin');
@@ -399,7 +386,7 @@ export function TeamPage() {
                                         setRemoveModal({
                                           open: true,
                                           memberId: member.id,
-                                          name: profile?.full_name,
+                                          name: member.full_name || member.email,
                                         })
                                       }
                                     >

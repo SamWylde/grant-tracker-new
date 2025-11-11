@@ -360,7 +360,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
                     <Text size="xs" c="dimmed">
                       {(() => {
                         const member = teamMembers?.find((m: any) => m.user_id === task.assigned_to);
-                        return (member as any)?.user_profiles?.full_name || "Assigned";
+                        return member?.full_name || member?.email || "Assigned";
                       })()}
                     </Text>
                   </Group>

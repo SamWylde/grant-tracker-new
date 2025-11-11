@@ -51,18 +51,22 @@ NOTIFY pgrst, 'reload schema';
 
 CREATE OR REPLACE FUNCTION public.get_org_team_members(org_uuid UUID)
 RETURNS TABLE (
+  id UUID,
   user_id UUID,
   full_name TEXT,
   email TEXT,
-  role TEXT
+  role TEXT,
+  joined_at TIMESTAMPTZ
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT
+    om.id,
     om.user_id,
     up.full_name,
     COALESCE(up.full_name, au.email) AS email,
-    om.role
+    om.role,
+    om.joined_at
   FROM public.org_members om
   INNER JOIN public.user_profiles up ON up.id = om.user_id
   INNER JOIN auth.users au ON au.id = om.user_id
