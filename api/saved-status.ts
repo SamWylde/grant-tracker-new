@@ -53,7 +53,7 @@ export default async function handler(
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Extract grant ID from URL path
+    // Extract grant ID from query parameter
     const grantId = req.query.id as string;
 
     if (!grantId) {

@@ -69,7 +69,7 @@ export function PipelinePage() {
         throw new Error('Not authenticated');
       }
 
-      const url = `/api/saved/${grantId}/status`;
+      const url = `/api/saved-status?id=${grantId}`;
       console.log('[PipelinePage] PATCH request to:', url, 'with status:', newStatus);
 
       const response = await fetch(url, {
