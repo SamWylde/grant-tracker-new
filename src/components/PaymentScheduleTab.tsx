@@ -248,7 +248,7 @@ export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) 
                 label="Expected Date"
                 placeholder="Select date"
                 value={expectedDate}
-                onChange={setExpectedDate}
+                onChange={(value) => setExpectedDate(value ? new Date(value) : null)}
                 required
               />
 
@@ -271,7 +271,7 @@ export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) 
                   label="Report Due Date"
                   placeholder="Select date"
                   value={reportDueDate}
-                  onChange={setReportDueDate}
+                  onChange={(value) => setReportDueDate(value ? new Date(value) : null)}
                 />
               )}
 
@@ -595,7 +595,7 @@ export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) 
             label="Expected Date"
             placeholder="Select date"
             value={expectedDate}
-            onChange={setExpectedDate}
+            onChange={(value) => setExpectedDate(value ? new Date(value) : null)}
             required
           />
 
@@ -618,7 +618,7 @@ export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) 
               label="Report Due Date"
               placeholder="Select date"
               value={reportDueDate}
-              onChange={setReportDueDate}
+              onChange={(value) => setReportDueDate(value ? new Date(value) : null)}
             />
           )}
 

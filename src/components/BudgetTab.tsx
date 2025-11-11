@@ -211,14 +211,14 @@ export function BudgetTab({ grantId, orgId }: BudgetTabProps) {
                 label="Budget Period Start"
                 placeholder="Select date"
                 value={budgetPeriodStart}
-                onChange={setBudgetPeriodStart}
+                onChange={(value) => setBudgetPeriodStart(value ? new Date(value) : null)}
                 clearable
               />
               <DateInput
                 label="Budget Period End"
                 placeholder="Select date"
                 value={budgetPeriodEnd}
-                onChange={setBudgetPeriodEnd}
+                onChange={(value) => setBudgetPeriodEnd(value ? new Date(value) : null)}
                 clearable
               />
             </Group>
