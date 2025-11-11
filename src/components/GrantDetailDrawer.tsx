@@ -19,10 +19,16 @@ import {
   IconClock,
   IconX,
   IconPrinter,
+  IconCurrencyDollar,
+  IconReceipt,
+  IconShieldCheck,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
+import { BudgetTab } from "./BudgetTab";
+import { PaymentScheduleTab } from "./PaymentScheduleTab";
+import { ComplianceTab } from "./ComplianceTab";
 import { printGrantBrief } from "../utils/printGrant";
 import { supabase } from "../lib/supabase";
 
@@ -233,15 +239,36 @@ export function GrantDetailDrawer({
 
         <Divider />
 
-        {/* Tabs for Tasks and Notes */}
+        {/* Tabs for Tasks, Budget, Payments, Compliance, and Notes */}
         <Tabs defaultValue="tasks">
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
+            <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} />}>
+              Budget
+            </Tabs.Tab>
+            <Tabs.Tab value="payments" leftSection={<IconReceipt size={14} />}>
+              Payments
+            </Tabs.Tab>
+            <Tabs.Tab value="compliance" leftSection={<IconShieldCheck size={14} />}>
+              Compliance
+            </Tabs.Tab>
             <Tabs.Tab value="notes">Notes</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="tasks" pt="md">
             <TaskList grantId={grant.id} orgId={grant.org_id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="budget" pt="md">
+            <BudgetTab grantId={grant.id} orgId={grant.org_id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="payments" pt="md">
+            <PaymentScheduleTab grantId={grant.id} orgId={grant.org_id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="compliance" pt="md">
+            <ComplianceTab grantId={grant.id} orgId={grant.org_id} />
           </Tabs.Panel>
 
           <Tabs.Panel value="notes" pt="md">
