@@ -55,6 +55,11 @@ export default async function handler(
       .order('created_at', { ascending: false });
 
     if (error) {
+      // If table doesn't exist, return empty array
+      if (error.code === 'PGRST204' || error.message.includes('relation') || error.message.includes('does not exist')) {
+        console.warn('[Webhooks] Table does not exist yet, returning empty array');
+        return res.status(200).json({ webhooks: [], message: 'Webhooks feature not yet enabled' });
+      }
       return res.status(500).json({ error: error.message });
     }
 

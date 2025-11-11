@@ -103,36 +103,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Get comments
       const { data: comments, error: commentsError } = await supabase
         .from('task_comments')
-        .select(`
-          *,
-          user:user_id (
-            id,
-            email
-          )
-        `)
+        .select('*')
         .eq('task_id', task_id)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
       if (commentsError) throw commentsError;
 
-      // Get org member info
+      // Get user IDs for enrichment
       const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
-      const { data: members } = await supabase
-        .from('org_members')
-        .select('user_id, full_name, avatar_url')
-        .eq('org_id', task.org_id)
-        .in('user_id', userIds);
 
-      const memberMap = new Map(
-        members?.map(m => [m.user_id, m]) || []
+      // Get user profiles for full_name and avatar
+      const { data: profiles } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
+
+      // Get emails from auth.users
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const emailMap = new Map(
+        authUsers.users?.map(u => [u.id, u.email]) || []
       );
 
-      const enrichedComments = comments?.map(comment => ({
-        ...comment,
-        user_name: memberMap.get(comment.user_id)?.full_name || comment.user.email,
-        user_avatar: memberMap.get(comment.user_id)?.avatar_url,
-      })) || [];
+      const profileMap = new Map(
+        profiles?.map(p => [p.id, p]) || []
+      );
+
+      // Enrich comments with user info
+      const enrichedComments = comments?.map(comment => {
+        const profile = profileMap.get(comment.user_id);
+        const email = emailMap.get(comment.user_id);
+
+        return {
+          ...comment,
+          user_name: profile?.full_name || email || 'Unknown User',
+          user_avatar: profile?.avatar_url,
+        };
+      }) || [];
 
       // Build threaded structure
       const commentMap = new Map(enrichedComments.map(c => [c.id, { ...c, replies: [] }]));
