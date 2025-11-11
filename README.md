@@ -38,12 +38,22 @@ A comprehensive grant discovery and workflow management platform that helps orga
 
 ### Import & Migration
 - **CSV Import Wizard**: Multi-step wizard for bulk importing grants from CSV files
+- **Flexible Field Mapping**: Visual column mapping UI with auto-detection of common field names
 - **Platform-Specific Presets**: Auto-detection and field mapping for GrantHub, Instrumentl, Foundation Search, Candid, and Grants.gov exports
-- **Smart Field Mapping**: Automatic detection of CSV platform with custom mapping fallback
-- **Data Preview & Validation**: Preview and validate data before importing with error reporting
+- **Smart Field Mapping**: Automatic detection of CSV columns with user-adjustable mapping
+- **Enhanced Validation**: Comprehensive data validation with error and warning reporting
+  - Required field validation (Grant Title)
+  - Date format validation with helpful error messages
+  - Missing field warnings (agency, close date)
+  - Row-level issue tracking with severity levels
+- **Data Preview & Quality Indicators**: Preview and validate data before importing with visual quality badges
+- **Duplicate Detection**: Automatic detection and skipping of duplicate grants based on title + agency matching
 - **Bulk Import API**: Efficient batch processing for importing multiple grants at once
-- **Progress Tracking**: Real-time import progress with success/failure reporting
+- **Progress Tracking**: Real-time import progress with success/skipped/failure reporting
+- **GrantHub Migration Tool**: Dedicated `/import/granthub` page for GrantHub users
+- **Migration Landing Page**: Comprehensive `/granthub-migration` guide with deadline messaging, FAQs, and step-by-step instructions
 - **PDF/Print Export**: Generate professional grant briefs and board packets for presentations
+- **CSV Export**: Export saved grants and pipeline data with proper escaping and full field support
 
 ### Pipeline & Workflow Management
 - **Kanban Board**: Visual pipeline with 4 stages (Researching → Drafting → Submitted → Awarded)
@@ -255,6 +265,7 @@ grant-tracker-new/
 ├── src/
 │   ├── components/
 │   │   ├── AppHeader.tsx         # Global header with navigation & user menu
+│   │   ├── MarketingHeader.tsx   # Shared marketing header for public pages
 │   │   ├── OrgSwitcher.tsx       # Organization selector dropdown
 │   │   ├── UserMenu.tsx          # User profile dropdown menu
 │   │   ├── SettingsLayout.tsx    # Settings page layout with tabs
@@ -277,9 +288,10 @@ grant-tracker-new/
 │   │   └── database.types.ts # Database TypeScript types
 │   ├── utils/
 │   │   ├── csvParser.ts     # CSV parsing utility with delimiter detection
+│   │   ├── csvUtils.ts      # CSV generation, escaping, and security utilities
 │   │   ├── fieldMapper.ts   # Platform-specific field mapping presets
 │   │   ├── printGrant.ts    # Individual grant brief PDF generator
-│   │   └── printBoardPacket.ts # Multi-grant board packet PDF generator
+│   │   └── printBoardPacket.ts # Multi-grant board packet PDF generator with CSV export
 │   ├── pages/
 │   │   ├── HomePage.tsx            # Marketing/landing page with mobile nav
 │   │   ├── SignInPage.tsx          # Sign-in page with email/password
@@ -291,8 +303,8 @@ grant-tracker-new/
 │   │   ├── FeaturesPage.tsx        # Product features and roadmap
 │   │   ├── PricingPage.tsx         # Pricing tiers and plans
 │   │   ├── PrivacyPage.tsx         # Privacy policy
-│   │   ├── GrantHubImportPage.tsx  # GrantHub migration tool
-│   │   ├── GrantHubMigrationPage.tsx # GrantHub migration guide
+│   │   ├── GrantHubImportPage.tsx  # GrantHub CSV import wizard with field mapping and validation
+│   │   ├── GrantHubMigrationPage.tsx # GrantHub migration landing page with deadline messaging and FAQs
 │   │   ├── admin/
 │   │   │   └── SyncManagementPage.tsx # Admin sync controls and source management
 │   │   └── settings/
@@ -337,13 +349,14 @@ grant-tracker-new/
 - `/pricing` - Pricing tiers and plans
 - `/features` - Product features and capabilities
 - `/privacy` - Privacy policy
-- `/granthub-migration` - Migration guide for GrantHub users
+- `/granthub-migration` - Comprehensive migration guide for GrantHub users with deadline messaging and FAQs
 
 ### Protected Routes (Require Authentication)
 - `/discover` - Grant search and discovery
 - `/saved` - Saved grants list view
 - `/pipeline` - Kanban pipeline board
 - `/metrics` - Value metrics and ROI tracking
+- `/import/granthub` - GrantHub CSV import wizard with field mapping and validation
 
 ### Settings Routes (Require Authentication)
 - `/settings/profile` - User profile management
@@ -1387,13 +1400,27 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 - ✅ Required vs optional task flags
 
 **Import & Migration**
-- ✅ Multi-step CSV import wizard with file upload
+- ✅ Multi-step CSV import wizard with file upload (4 steps: Upload → Map Fields → Review → Import)
+- ✅ Flexible field mapping UI with visual column-to-field mapping
+- ✅ Auto-detection and intelligent mapping of CSV columns (title, agency, ALN, deadline, etc.)
+- ✅ User-adjustable field mapping with skip column option
 - ✅ Platform-specific presets (GrantHub, Instrumentl, Foundation Search, Candid, Grants.gov)
-- ✅ Auto-detection of CSV platform based on headers
-- ✅ Custom field mapping with visual preview
-- ✅ Data validation and error reporting before import
+- ✅ Enhanced data validation with error and warning severity levels
+  - ✅ Required field validation (Grant Title)
+  - ✅ Date format validation with helpful error messages
+  - ✅ Missing field warnings (agency, close date)
+  - ✅ Row-level issue tracking with line numbers
+- ✅ Data preview with visual quality indicators (OK/N issues badges)
+- ✅ Duplicate detection based on title + agency matching
 - ✅ Bulk import API for efficient batch processing
-- ✅ Real-time import progress tracking
+- ✅ Real-time import progress tracking with imported/skipped/failed counts
+- ✅ GrantHub migration landing page (/granthub-migration) with:
+  - ✅ January 31, 2026 deadline messaging
+  - ✅ Step-by-step migration guide with visual Stepper
+  - ✅ Comprehensive FAQ section (7 questions)
+  - ✅ Multiple CTAs with user-aware navigation
+  - ✅ Benefits showcase with 6 feature cards
+- ✅ CSV export with proper escaping and CSV injection prevention
 - ✅ PDF/print export for grant briefs
 - ✅ Board packet export with summary statistics and timeline
 
