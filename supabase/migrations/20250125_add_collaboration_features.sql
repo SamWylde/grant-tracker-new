@@ -196,12 +196,12 @@ SELECT
   gc.mentioned_user_ids,
   gc.created_at,
   u.email AS user_email,
-  om.full_name AS user_name,
+  COALESCE(up.full_name, u.email) AS user_name,
   ogs.title AS grant_title,
   NULL AS task_title
 FROM public.grant_comments gc
 JOIN auth.users u ON gc.user_id = u.id
-LEFT JOIN public.org_members om ON gc.user_id = om.user_id AND gc.org_id = om.org_id
+LEFT JOIN public.user_profiles up ON gc.user_id = up.id
 LEFT JOIN public.org_grants_saved ogs ON gc.grant_id = ogs.id
 WHERE gc.is_deleted = FALSE
 
@@ -220,12 +220,12 @@ SELECT
   tc.mentioned_user_ids,
   tc.created_at,
   u.email AS user_email,
-  om.full_name AS user_name,
+  COALESCE(up.full_name, u.email) AS user_name,
   ogs.title AS grant_title,
   gt.title AS task_title
 FROM public.task_comments tc
 JOIN auth.users u ON tc.user_id = u.id
-LEFT JOIN public.org_members om ON tc.user_id = om.user_id AND tc.org_id = om.org_id
+LEFT JOIN public.user_profiles up ON tc.user_id = up.id
 LEFT JOIN public.grant_tasks gt ON tc.task_id = gt.id
 LEFT JOIN public.org_grants_saved ogs ON gt.grant_id = ogs.id
 WHERE tc.is_deleted = FALSE
@@ -245,18 +245,19 @@ SELECT
   CASE
     WHEN mn.task_comment_id IS NOT NULL THEN tc.task_id
   END AS related_task_id,
-  CONCAT('@', target_om.full_name) AS content,
+  CONCAT('@', COALESCE(target_up.full_name, target_u.email)) AS content,
   NULL::UUID AS parent_comment_id,
   ARRAY[mn.user_id]::UUID[] AS mentioned_user_ids,
   mn.created_at,
   u.email AS user_email,
-  om.full_name AS user_name,
+  COALESCE(up.full_name, u.email) AS user_name,
   mn.context_title AS grant_title,
   NULL AS task_title
 FROM public.mention_notifications mn
 JOIN auth.users u ON mn.mentioned_by_user_id = u.id
-LEFT JOIN public.org_members om ON mn.mentioned_by_user_id = om.user_id AND mn.org_id = om.org_id
-LEFT JOIN public.org_members target_om ON mn.user_id = target_om.user_id AND mn.org_id = target_om.org_id
+LEFT JOIN public.user_profiles up ON mn.mentioned_by_user_id = up.id
+JOIN auth.users target_u ON mn.user_id = target_u.id
+LEFT JOIN public.user_profiles target_up ON mn.user_id = target_up.id
 LEFT JOIN public.grant_comments gc ON mn.grant_comment_id = gc.id
 LEFT JOIN public.task_comments tc ON mn.task_comment_id = tc.id
 LEFT JOIN public.grant_tasks gt ON tc.task_id = gt.id
@@ -553,12 +554,12 @@ BEGIN
         gc.created_at,
         gc.updated_at,
         gc.is_edited,
-        om.full_name AS user_name,
+        COALESCE(up.full_name, u.email) AS user_name,
         u.email AS user_email,
         0 AS level
       FROM public.grant_comments gc
       JOIN auth.users u ON gc.user_id = u.id
-      LEFT JOIN public.org_members om ON gc.user_id = om.user_id
+      LEFT JOIN public.user_profiles up ON gc.user_id = up.id
       WHERE gc.thread_id = p_thread_id
         AND gc.parent_comment_id IS NULL
         AND gc.is_deleted = FALSE
@@ -574,13 +575,13 @@ BEGIN
         gc.created_at,
         gc.updated_at,
         gc.is_edited,
-        om.full_name AS user_name,
+        COALESCE(up.full_name, u.email) AS user_name,
         u.email AS user_email,
         t.level + 1
       FROM public.grant_comments gc
       JOIN thread t ON gc.parent_comment_id = t.id
       JOIN auth.users u ON gc.user_id = u.id
-      LEFT JOIN public.org_members om ON gc.user_id = om.user_id
+      LEFT JOIN public.user_profiles up ON gc.user_id = up.id
       WHERE gc.is_deleted = FALSE
     )
     SELECT * FROM thread ORDER BY created_at ASC;
@@ -596,12 +597,12 @@ BEGIN
         tc.created_at,
         tc.updated_at,
         tc.is_edited,
-        om.full_name AS user_name,
+        COALESCE(up.full_name, u.email) AS user_name,
         u.email AS user_email,
         0 AS level
       FROM public.task_comments tc
       JOIN auth.users u ON tc.user_id = u.id
-      LEFT JOIN public.org_members om ON tc.user_id = om.user_id
+      LEFT JOIN public.user_profiles up ON tc.user_id = up.id
       WHERE tc.thread_id = p_thread_id
         AND tc.parent_comment_id IS NULL
         AND tc.is_deleted = FALSE
@@ -616,13 +617,13 @@ BEGIN
         tc.created_at,
         tc.updated_at,
         tc.is_edited,
-        om.full_name AS user_name,
+        COALESCE(up.full_name, u.email) AS user_name,
         u.email AS user_email,
         t.level + 1
       FROM public.task_comments tc
       JOIN thread t ON tc.parent_comment_id = t.id
       JOIN auth.users u ON tc.user_id = u.id
-      LEFT JOIN public.org_members om ON tc.user_id = om.user_id
+      LEFT JOIN public.user_profiles up ON tc.user_id = up.id
       WHERE tc.is_deleted = FALSE
     )
     SELECT * FROM thread ORDER BY created_at ASC;
