@@ -445,7 +445,9 @@ CREATE INDEX IF NOT EXISTS idx_grant_recommendations_user_org_score
   ON public.grant_recommendations(user_id, org_id, recommendation_score DESC)
   WHERE NOT dismissed;
 
-CREATE INDEX IF NOT EXISTS idx_grant_success_scores_org_probability
+-- Drop and recreate index to ensure correct definition (remove volatile NOW() predicate)
+DROP INDEX IF EXISTS idx_grant_success_scores_org_probability;
+CREATE INDEX idx_grant_success_scores_org_probability
   ON public.grant_success_scores(org_id, success_probability DESC);
 
 -- =====================================================
