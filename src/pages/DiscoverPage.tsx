@@ -333,6 +333,25 @@ export function DiscoverPage() {
         throw new Error('Not authenticated');
       }
 
+      // Fetch full grant details to get description
+      let description: string | null = null;
+      try {
+        const detailsResponse = await fetch('/api/grants/details', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ id: grantToSave.id }),
+        });
+        if (detailsResponse.ok) {
+          const grantDetails = await detailsResponse.json();
+          description = grantDetails.description || null;
+        }
+      } catch (error) {
+        // If fetching description fails, continue without it
+        console.warn('Failed to fetch grant description:', error);
+      }
+
       const response = await fetch("/api/saved", {
         method: "POST",
         headers: {
@@ -348,6 +367,7 @@ export function DiscoverPage() {
           aln: grantToSave.aln,
           open_date: grantToSave.openDate,
           close_date: grantToSave.closeDate,
+          description: description,
           status: pipelineData.status,
           priority: pipelineData.priority,
           assigned_to: pipelineData.assigned_to,

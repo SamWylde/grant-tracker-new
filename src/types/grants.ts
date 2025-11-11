@@ -58,6 +58,7 @@ export interface SavedGrant {
   aln: string | null;
   open_date: string | null;
   close_date: string | null;
+  description: string | null;
   saved_at: string;
 }
 

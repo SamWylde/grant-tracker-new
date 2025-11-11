@@ -11,6 +11,7 @@ import {
   ScrollArea,
   Box,
   ActionIcon,
+  Textarea,
 } from "@mantine/core";
 import {
   IconExternalLink,
@@ -22,8 +23,12 @@ import {
   IconCurrencyDollar,
   IconReceipt,
   IconShieldCheck,
+  IconEdit,
+  IconCheck,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
 import { BudgetTab } from "./BudgetTab";
@@ -65,6 +70,10 @@ export function GrantDetailDrawer({
   opened,
   onClose,
 }: GrantDetailDrawerProps) {
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
   if (!grant) return null;
 
   const daysUntilDeadline = grant.close_date
@@ -73,6 +82,49 @@ export function GrantDetailDrawer({
 
   const isOverdue = daysUntilDeadline !== null && daysUntilDeadline < 0;
   const isClosingSoon = daysUntilDeadline !== null && daysUntilDeadline <= 14 && daysUntilDeadline >= 0;
+
+  // Handle notes editing
+  const handleEditNotes = () => {
+    setNotesValue(grant.notes || "");
+    setIsEditingNotes(true);
+  };
+
+  const handleSaveNotes = async () => {
+    setIsSavingNotes(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`/api/saved?id=${grant.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ notes: notesValue }),
+      });
+
+      if (!response.ok) throw new Error("Failed to save notes");
+
+      notifications.show({
+        title: "Success",
+        message: "Notes saved successfully",
+        color: "green",
+      });
+
+      // Update the grant object locally
+      grant.notes = notesValue;
+      setIsEditingNotes(false);
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to save notes",
+        color: "red",
+      });
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
 
   // Fetch tasks for this grant
   const { data: tasksData } = useQuery({
@@ -273,14 +325,53 @@ export function GrantDetailDrawer({
 
           <Tabs.Panel value="notes" pt="md">
             <Stack gap="md">
-              {grant.notes ? (
-                <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                  {grant.notes}
-                </Text>
+              {isEditingNotes ? (
+                <>
+                  <Textarea
+                    placeholder="Add notes about this grant..."
+                    value={notesValue}
+                    onChange={(e) => setNotesValue(e.target.value)}
+                    minRows={6}
+                    autosize
+                  />
+                  <Group justify="flex-end">
+                    <Button
+                      variant="subtle"
+                      onClick={() => setIsEditingNotes(false)}
+                      disabled={isSavingNotes}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      leftSection={<IconCheck size={16} />}
+                      onClick={handleSaveNotes}
+                      loading={isSavingNotes}
+                    >
+                      Save Notes
+                    </Button>
+                  </Group>
+                </>
               ) : (
-                <Text size="sm" c="dimmed">
-                  No notes added yet
-                </Text>
+                <>
+                  {grant.notes ? (
+                    <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                      {grant.notes}
+                    </Text>
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      No notes added yet
+                    </Text>
+                  )}
+                  <Group justify="flex-end">
+                    <Button
+                      leftSection={<IconEdit size={16} />}
+                      variant="light"
+                      onClick={handleEditNotes}
+                    >
+                      {grant.notes ? "Edit Notes" : "Add Notes"}
+                    </Button>
+                  </Group>
+                </>
               )}
             </Stack>
           </Tabs.Panel>

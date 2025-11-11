@@ -1,4 +1,4 @@
-import { Stack, Text, Group, Badge, Paper, Alert, Progress, Checkbox, Accordion, Divider } from "@mantine/core";
+import { Stack, Text, Group, Badge, Paper, Alert, Progress, Checkbox, Accordion, Divider, Button, Modal, TextInput, Textarea, Select, Switch, ActionIcon } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCalendar,
@@ -7,8 +7,14 @@ import {
   IconAlertTriangle,
   IconExternalLink,
   IconFileText,
+  IconPlus,
+  IconEdit,
+  IconTrash,
 } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { DateInput } from "@mantine/dates";
+import { notifications } from "@mantine/notifications";
 import { supabase } from "../lib/supabase";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -49,6 +55,24 @@ interface ComplianceRequirement {
 }
 
 export function ComplianceTab({ grantId }: ComplianceTabProps) {
+  const queryClient = useQueryClient();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState<ComplianceRequirement | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    requirement_type: 'federal_regulation',
+    title: '',
+    description: '',
+    regulation_reference: '',
+    policy_url: '',
+    due_date: null as Date | null,
+    documentation_required: false,
+    is_critical: false,
+    notes: '',
+  });
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['compliance', grantId],
     queryFn: async () => {
@@ -64,6 +88,159 @@ export function ComplianceTab({ grantId }: ComplianceTabProps) {
       return response.json();
     },
   });
+
+  const handleOpenModal = (requirement?: ComplianceRequirement) => {
+    if (requirement) {
+      setEditingRequirement(requirement);
+      setFormData({
+        requirement_type: requirement.requirement_type,
+        title: requirement.title,
+        description: requirement.description || '',
+        regulation_reference: requirement.regulation_reference || '',
+        policy_url: requirement.policy_url || '',
+        due_date: requirement.due_date ? new Date(requirement.due_date) : null,
+        documentation_required: requirement.documentation_required,
+        is_critical: requirement.is_critical,
+        notes: requirement.notes || '',
+      });
+    } else {
+      setEditingRequirement(null);
+      setFormData({
+        requirement_type: 'federal_regulation',
+        title: '',
+        description: '',
+        regulation_reference: '',
+        policy_url: '',
+        due_date: null,
+        documentation_required: false,
+        is_critical: false,
+        notes: '',
+      });
+    }
+    setModalOpen(true);
+  };
+
+  const handleSaveRequirement = async () => {
+    if (!formData.title.trim()) {
+      notifications.show({
+        title: 'Error',
+        message: 'Title is required',
+        color: 'red',
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const payload = {
+        grant_id: grantId,
+        requirement_type: formData.requirement_type,
+        title: formData.title,
+        description: formData.description || null,
+        regulation_reference: formData.regulation_reference || null,
+        policy_url: formData.policy_url || null,
+        due_date: formData.due_date ? formData.due_date.toISOString().split('T')[0] : null,
+        documentation_required: formData.documentation_required,
+        is_critical: formData.is_critical,
+        notes: formData.notes || null,
+      };
+
+      const url = editingRequirement
+        ? `/api/compliance?requirement_id=${editingRequirement.id}`
+        : `/api/compliance`;
+
+      const response = await fetch(url, {
+        method: editingRequirement ? 'PATCH' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error('Failed to save requirement');
+
+      notifications.show({
+        title: 'Success',
+        message: `Requirement ${editingRequirement ? 'updated' : 'created'} successfully`,
+        color: 'green',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['compliance', grantId] });
+      setModalOpen(false);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to save requirement',
+        color: 'red',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteRequirement = async (requirementId: string) => {
+    if (!confirm('Are you sure you want to delete this requirement?')) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/compliance?requirement_id=${requirementId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete requirement');
+
+      notifications.show({
+        title: 'Success',
+        message: 'Requirement deleted successfully',
+        color: 'green',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['compliance', grantId] });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to delete requirement',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleToggleComplete = async (requirement: ComplianceRequirement) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/compliance?requirement_id=${requirement.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          completed: !requirement.completed,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update requirement');
+
+      queryClient.invalidateQueries({ queryKey: ['compliance', grantId] });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to update requirement',
+        color: 'red',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -174,6 +351,17 @@ export function ComplianceTab({ grantId }: ComplianceTabProps) {
           </Group>
         )}
       </Paper>
+
+      {/* Add Requirement Button */}
+      <Group justify="flex-end">
+        <Button
+          leftSection={<IconPlus size={16} />}
+          onClick={() => handleOpenModal()}
+          variant="light"
+        >
+          Add Requirement
+        </Button>
+      </Group>
 
       {/* Alerts */}
       {overdueRequirements.length > 0 && (
@@ -315,16 +503,38 @@ export function ComplianceTab({ grantId }: ComplianceTabProps) {
                         }}>
                           <Group justify="space-between" mb="xs">
                             <Group gap="xs" style={{ flex: 1 }}>
-                              <Checkbox checked={req.completed} readOnly />
+                              <Checkbox
+                                checked={req.completed}
+                                onChange={() => handleToggleComplete(req)}
+                              />
                               <Text size="sm" fw={500} style={{
                                 textDecoration: req.completed ? 'line-through' : 'none'
                               }}>
                                 {req.title}
                               </Text>
                             </Group>
-                            <Badge color={status.color} variant="light" size="sm">
-                              {status.label}
-                            </Badge>
+                            <Group gap="xs">
+                              <Badge color={status.color} variant="light" size="sm">
+                                {status.label}
+                              </Badge>
+                              <ActionIcon
+                                size="sm"
+                                variant="light"
+                                onClick={() => handleOpenModal(req)}
+                                title="Edit requirement"
+                              >
+                                <IconEdit size={14} />
+                              </ActionIcon>
+                              <ActionIcon
+                                size="sm"
+                                variant="light"
+                                color="red"
+                                onClick={() => handleDeleteRequirement(req.id)}
+                                title="Delete requirement"
+                              >
+                                <IconTrash size={14} />
+                              </ActionIcon>
+                            </Group>
                           </Group>
 
                           {req.description && (
@@ -404,6 +614,103 @@ export function ComplianceTab({ grantId }: ComplianceTabProps) {
           <Text size="sm">No compliance requirements have been defined yet. Add requirements to track compliance obligations for this grant.</Text>
         </Alert>
       )}
+
+      {/* Add/Edit Requirement Modal */}
+      <Modal
+        opened={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editingRequirement ? "Edit Compliance Requirement" : "Add Compliance Requirement"}
+        size="lg"
+      >
+        <Stack gap="md">
+          <Select
+            label="Requirement Type"
+            placeholder="Select type"
+            value={formData.requirement_type}
+            onChange={(value) => setFormData({ ...formData, requirement_type: value || 'federal_regulation' })}
+            data={[
+              { value: 'federal_regulation', label: 'Federal Regulation' },
+              { value: 'state_regulation', label: 'State Regulation' },
+              { value: 'indirect_cost_agreement', label: 'Indirect Cost Agreement' },
+              { value: 'match_requirement', label: 'Match Requirement' },
+              { value: 'audit_requirement', label: 'Audit Requirement' },
+              { value: 'reporting_requirement', label: 'Reporting Requirement' },
+              { value: 'certification', label: 'Certification' },
+              { value: 'policy', label: 'Policy Compliance' },
+              { value: 'other', label: 'Other' },
+            ]}
+            required
+          />
+
+          <TextInput
+            label="Title"
+            placeholder="Brief title of the requirement"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+          />
+
+          <Textarea
+            label="Description"
+            placeholder="Detailed description of the requirement"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            minRows={3}
+          />
+
+          <TextInput
+            label="Regulation Reference"
+            placeholder="e.g., 2 CFR 200.303"
+            value={formData.regulation_reference}
+            onChange={(e) => setFormData({ ...formData, regulation_reference: e.target.value })}
+          />
+
+          <TextInput
+            label="Policy URL"
+            placeholder="https://..."
+            value={formData.policy_url}
+            onChange={(e) => setFormData({ ...formData, policy_url: e.target.value })}
+          />
+
+          <DateInput
+            label="Due Date"
+            placeholder="Select due date"
+            value={formData.due_date}
+            onChange={(value) => setFormData({ ...formData, due_date: value })}
+            clearable
+          />
+
+          <Switch
+            label="Documentation Required"
+            checked={formData.documentation_required}
+            onChange={(e) => setFormData({ ...formData, documentation_required: e.currentTarget.checked })}
+          />
+
+          <Switch
+            label="Critical Requirement"
+            description="Mark as critical to highlight importance"
+            checked={formData.is_critical}
+            onChange={(e) => setFormData({ ...formData, is_critical: e.currentTarget.checked })}
+          />
+
+          <Textarea
+            label="Notes"
+            placeholder="Additional notes or instructions"
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            minRows={2}
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="subtle" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveRequirement} loading={isSaving}>
+              {editingRequirement ? 'Update' : 'Create'} Requirement
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

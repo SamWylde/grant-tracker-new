@@ -34,6 +34,7 @@ import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { useAuth } from "../contexts/AuthContext";
 import { printBoardPacket } from "../utils/printBoardPacket";
 import { supabase } from "../lib/supabase";
+import { stripHtml } from "../utils/htmlUtils";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -378,6 +379,18 @@ export function PipelinePage() {
                                 <Text size="xs" c="dimmed">
                                   {grant.agency}
                                 </Text>
+
+                                {/* Description preview */}
+                                {grant.description && (
+                                  <Text size="xs" c="dimmed" lineClamp={2}>
+                                    {(() => {
+                                      const cleanDesc = stripHtml(grant.description);
+                                      return cleanDesc.length > 150
+                                        ? cleanDesc.substring(0, 150) + '...'
+                                        : cleanDesc;
+                                    })()}
+                                  </Text>
+                                )}
 
                                 {/* Deadline */}
                                 {grant.close_date && (

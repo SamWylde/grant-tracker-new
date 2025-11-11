@@ -68,7 +68,9 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Deadline Indicators**: Color-coded visual indicators for approaching and overdue deadlines
 - **Assignment**: Assign grants to team members for accountability
 - **Stage Counts**: Real-time count of grants in each pipeline stage
-- **Grant Detail Drawer**: Click any grant card to open detailed view with tasks and notes
+- **Grant Detail Drawer**: Click any grant card to open detailed view with tasks, budget, payments, compliance, and notes
+  - **Notes Management**: Add and edit grant notes with rich text editing interface
+  - **Editable Notes Tab**: In-line text editing with save/cancel controls
 - **Task Management**: Break down each grant into actionable subtasks with progress tracking
 - **Default Task Templates**: Auto-created task list (Research, Narrative, Budget, Documents, Letters, Submission)
 - **Task Checklist**: Mark tasks complete with visual progress indicator
@@ -76,6 +78,10 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Task Due Dates**: Set deadlines for individual tasks
 - **Task Status**: Track task state (pending, in_progress, completed, blocked)
 - **Task Assignments**: Assign specific tasks to team members (coming soon)
+- **Description Previews**: Grant cards display truncated description preview (200 chars on SavedGrantsPage, 150 chars on PipelinePage)
+  - Automatically fetches and stores description when saving grants
+  - HTML content automatically stripped for clean display
+  - Line-clamped to 2 lines for consistent card layout
 
 ### Organization & Team Management
 - **Multi-Organization Support**: Switch between multiple organizations with persistent context
@@ -85,6 +91,10 @@ A comprehensive grant discovery and workflow management platform that helps orga
 
 ### Calendar & Integrations
 - **ICS Calendar Feed**: Subscribe to grant deadlines in any calendar app (Google Calendar, Outlook, Apple Calendar)
+  - Token-based authentication for secure calendar feeds
+  - Automatic event generation for all grant close dates
+  - VEVENT format with grant details, agency, and Grants.gov URLs
+  - Real-time updates as grants are saved or modified
 - **Microsoft Teams**: Connect Teams channels for deadline notifications via incoming webhooks
 - **Custom Webhooks**: Configure custom webhook endpoints to receive grant events
 - **Webhook Events**: grant.saved, grant.deadline_approaching, grant.deadline_passed, grant.updated
@@ -145,7 +155,11 @@ A comprehensive grant discovery and workflow management platform that helps orga
   - Documentation requirement badges
   - Policy reference links with external link icons
   - Overdue and upcoming compliance warnings
-  - Completion checkboxes with timestamp tracking
+  - Interactive completion checkboxes with timestamp tracking
+  - **Full CRUD Interface**: Add, edit, and delete compliance requirements
+  - **Add Requirement Modal**: Comprehensive form with 9 fields (type, title, description, regulation reference, policy URL, due date, documentation required, critical flag, notes)
+  - **Inline Editing**: Edit and delete icons on each requirement card
+  - **Real-time Updates**: Instant cache invalidation and UI refresh using React Query
 - **Backend Infrastructure**:
   - Disbursement tracking: Log expenses and payments with approval workflow
   - Payment methods: ACH, wire, check, credit card, in-kind contributions
@@ -220,7 +234,8 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250119_add_user_profiles_foreign_key.sql` - Adds foreign key from org_members to user_profiles for PostgREST joins and RPC function for large teams
 - `supabase/migrations/20250120_fix_grant_org_id.sql` - Ensures all grants have valid org_id (data integrity fix)
 - `supabase/migrations/20250121_add_activity_log.sql` - Creates grant_activity_log table with automatic triggers for all grant changes
-- `supabase/migrations/20250122_add_post_award_financials.sql` - Creates post-award budget tracking, disbursements, payment schedules, and compliance requirements with automatic calculations
+- `supabase/migrations/20250122_add_post_award_financials.sql` - Creates post-award budget tracking, disbursements, payment schedules, and compliance requirements with automatic calculations and null-safe triggers
+- `supabase/migrations/20250123_add_grant_description.sql` - Adds description column to org_grants_saved for card previews
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
@@ -234,6 +249,9 @@ grant-tracker-new/
 │   │   └── sync.ts          # Admin sync management (manual full/incremental sync)
 │   ├── alerts/
 │   │   └── check.ts         # Alert checking worker (cron job every 6 hours)
+│   ├── calendar/
+│   │   └── [orgId]/
+│   │       └── [token].ts   # ICS calendar feed endpoint (public with token auth)
 │   ├── cron/
 │   │   └── sync-grants.ts   # Automated nightly sync job (2 AM)
 │   ├── grants/
@@ -1796,6 +1814,55 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 - ✅ Admin-only API endpoints
 - ✅ Bearer token authentication
 - ✅ URL validation for webhooks
+
+### Recent Improvements (January 2025)
+
+**Calendar Feed & Integrations** *(Latest - Jan 2025)*
+- ✅ Created `/api/calendar/[orgId]/[token].ts` endpoint for ICS calendar feeds
+  - Token-based authentication validates organization ICS tokens
+  - Generates proper ICS/iCalendar format with VEVENT entries for all grant deadlines
+  - Includes grant title, agency, description preview, and Grants.gov URLs
+  - Sets appropriate HTTP headers for calendar subscription compatibility
+- ✅ Fixed database trigger null guard issue in post-award financials migration
+  - Restored `WHEN (NEW.line_item_id IS NOT NULL OR OLD.line_item_id IS NOT NULL)` clause
+  - Prevents trigger from firing when disbursement has no associated line item
+  - Eliminates potential errors when deleting unassigned disbursements
+  - Improves performance by avoiding unnecessary function calls
+
+**Grant Card Enhancements**
+- ✅ Added description preview feature to grant cards
+  - Shows 200-character preview on SavedGrantsPage cards
+  - Shows 150-character preview on PipelinePage cards (smaller card size)
+  - Automatically fetches grant description when saving from DiscoverPage
+  - Uses `stripHtml()` utility to clean HTML formatting from descriptions
+  - Line-clamped to 2 lines for consistent card layout
+  - Stores descriptions in database for instant display
+- ✅ Fixed grant card click behavior
+  - Clicking card body opens Grant Detail Drawer
+  - Clicking title or link icon opens Grants.gov URL in new tab
+  - Proper event propagation handling with stopPropagation()
+
+**Grant Detail Drawer & Compliance**
+- ✅ Added notes editing functionality to Grant Detail Drawer
+  - Editable notes tab with textarea and save/cancel controls
+  - Real-time save with loading states and error handling
+  - Updates grant object locally after successful save
+- ✅ Implemented full CRUD interface for compliance requirements
+  - "Add Requirement" button to create new compliance items
+  - Edit and delete action icons on each requirement card
+  - Interactive checkboxes to toggle completion status
+  - Comprehensive modal form with 9 fields:
+    - Requirement type (9 options: federal/state regulations, indirect costs, match, audit, reporting, certification, policy, other)
+    - Title (required)
+    - Description (rich text)
+    - Regulation reference (e.g., "2 CFR 200.303")
+    - Policy URL (external link)
+    - Due date (DateInput with calendar picker)
+    - Documentation required (Switch)
+    - Critical requirement flag (Switch)
+    - Notes (additional context)
+  - Real-time cache invalidation using React Query
+  - Instant UI updates without page refresh
 
 ### Recent Improvements (January 2025)
 
