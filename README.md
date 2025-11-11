@@ -50,6 +50,25 @@ CRON_SECRET=your-cron-secret
 OPEN_AI_API_KEY=your-openai-api-key  # Required for AI features
 ```
 
+**OAuth Integration Variables (Optional):**
+```bash
+# Google Calendar OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=https://grantcue.com/api/oauth/google/callback
+
+# Slack OAuth
+SLACK_CLIENT_ID=your-slack-client-id
+SLACK_CLIENT_SECRET=your-slack-client-secret
+SLACK_REDIRECT_URI=https://grantcue.com/api/oauth/slack/callback
+
+# Microsoft Teams OAuth
+MICROSOFT_CLIENT_ID=your-microsoft-client-id
+MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+MICROSOFT_TENANT_ID=common  # or your specific tenant ID
+MICROSOFT_REDIRECT_URI=https://grantcue.com/api/oauth/microsoft/callback
+```
+
 **Note**: Use `VITE_` prefix for client-side environment variables (Vite framework). The API routes use non-prefixed variables for server-side operations.
 
 ### Installation
@@ -89,7 +108,7 @@ Run the migrations in your Supabase SQL editor in the following order:
 10. `20250114_add_pipeline_fields.sql` - Pipeline status, priority, assignments
 11. `20250115_add_grant_tasks.sql` - Task management with templates
 12. `20250121_add_activity_log.sql` - Activity feed and audit trail
-13. `20250124_fix_activity_log_user_id.sql` - Allow system-generated activities
+13. `20250125_fix_activity_log_user_id.sql` - Allow system-generated activities
 
 #### Alerts & Notifications
 14. `20250116_add_grant_alerts.sql` - Alert system with email notifications
@@ -285,6 +304,11 @@ grant-tracker-new/
 - `POST /api/integrations` - Create integration
 - `GET /api/webhooks?org_id={id}` - List webhooks
 - `POST /api/webhooks` - Create webhook
+
+### OAuth Callbacks
+- `GET /api/oauth/google/callback` - Google Calendar OAuth callback
+- `GET /api/oauth/slack/callback` - Slack OAuth callback
+- `GET /api/oauth/microsoft/callback` - Microsoft Teams OAuth callback
 
 ## Cron Jobs
 

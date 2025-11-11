@@ -3,16 +3,19 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://grantcue.com/api/oauth/google/callback';
+const microsoftClientId = process.env.MICROSOFT_CLIENT_ID;
+const microsoftClientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+const microsoftRedirectUri = process.env.MICROSOFT_REDIRECT_URI || 'https://grantcue.com/api/oauth/microsoft/callback';
+const microsoftTenantId = process.env.MICROSOFT_TENANT_ID || 'common';
 
-interface GoogleTokenResponse {
+interface MicrosoftTokenResponse {
+  token_type: string;
+  scope: string;
+  expires_in: number;
+  ext_expires_in: number;
   access_token: string;
   refresh_token?: string;
-  expires_in: number;
-  scope: string;
-  token_type: string;
+  id_token?: string;
 }
 
 export default async function handler(
@@ -25,11 +28,11 @@ export default async function handler(
   }
 
   try {
-    const { code, state, error: oauthError } = req.query;
+    const { code, state, error: oauthError, error_description } = req.query;
 
     // Check for OAuth errors
     if (oauthError) {
-      console.error('Google OAuth error:', oauthError);
+      console.error('Microsoft OAuth error:', oauthError, error_description);
       return res.redirect(`/settings/integrations?error=${encodeURIComponent(oauthError as string)}`);
     }
 
@@ -49,8 +52,8 @@ export default async function handler(
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    if (!googleClientId || !googleClientSecret) {
-      return res.status(500).json({ error: 'Google OAuth not configured' });
+    if (!microsoftClientId || !microsoftClientSecret) {
+      return res.status(500).json({ error: 'Microsoft OAuth not configured' });
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -68,27 +71,29 @@ export default async function handler(
     }
 
     // Exchange code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    const tokenUrl = `https://login.microsoftonline.com/${microsoftTenantId}/oauth2/v2.0/token`;
+    const tokenResponse = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
+        client_id: microsoftClientId,
+        client_secret: microsoftClientSecret,
         code: code as string,
-        client_id: googleClientId,
-        client_secret: googleClientSecret,
-        redirect_uri: googleRedirectUri,
+        redirect_uri: microsoftRedirectUri,
         grant_type: 'authorization_code',
+        scope: 'https://graph.microsoft.com/.default offline_access',
       }),
     });
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Google token exchange failed:', errorText);
+      console.error('Microsoft token exchange failed:', errorText);
       return res.redirect('/settings/integrations?error=token_exchange_failed');
     }
 
-    const tokens: GoogleTokenResponse = await tokenResponse.json();
+    const tokens: MicrosoftTokenResponse = await tokenResponse.json();
 
     // Calculate token expiration
     const expiresAt = new Date();
@@ -99,7 +104,7 @@ export default async function handler(
       .from('integrations')
       .upsert({
         org_id: orgId,
-        integration_type: 'google_calendar',
+        integration_type: 'microsoft_teams',
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
         token_expires_at: expiresAt.toISOString(),
@@ -108,20 +113,21 @@ export default async function handler(
         is_active: true,
         settings: {
           scope: tokens.scope,
+          tenant_id: microsoftTenantId,
         },
       }, {
         onConflict: 'org_id,integration_type',
       });
 
     if (dbError) {
-      console.error('Error storing Google tokens:', dbError);
+      console.error('Error storing Microsoft tokens:', dbError);
       return res.redirect('/settings/integrations?error=database_error');
     }
 
     // Success! Redirect to settings page
-    return res.redirect('/settings/integrations?success=google_connected');
+    return res.redirect('/settings/integrations?success=microsoft_connected');
   } catch (error) {
-    console.error('Error in Google OAuth callback:', error);
+    console.error('Error in Microsoft OAuth callback:', error);
     return res.redirect('/settings/integrations?error=internal_error');
   }
 }
