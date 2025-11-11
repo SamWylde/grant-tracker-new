@@ -1,4 +1,4 @@
-import { Stack, Text, Group, Badge, Paper, Alert, Timeline, Divider } from "@mantine/core";
+import { Stack, Text, Group, Badge, Paper, Alert, Timeline, Divider, Button, Modal, TextInput, NumberInput, Select, Switch } from "@mantine/core";
 import {
   IconAlertCircle,
   IconCalendar,
@@ -7,9 +7,14 @@ import {
   IconFileReport,
   IconCurrencyDollar,
   IconAlertTriangle,
+  IconPlus,
 } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { notifications } from "@mantine/notifications";
+import { DateInput } from "@mantine/dates";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -37,7 +42,22 @@ interface PaymentSchedule {
   notes: string | null;
 }
 
-export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
+export function PaymentScheduleTab({ grantId, orgId }: PaymentScheduleTabProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [createModalOpened, setCreateModalOpened] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Form state
+  const [paymentName, setPaymentName] = useState("");
+  const [paymentType, setPaymentType] = useState<string>("reimbursement");
+  const [expectedAmount, setExpectedAmount] = useState<number>(0);
+  const [expectedDate, setExpectedDate] = useState<Date | null>(null);
+  const [deliverableRequired, setDeliverableRequired] = useState("");
+  const [reportRequired, setReportRequired] = useState(false);
+  const [reportDueDate, setReportDueDate] = useState<Date | null>(null);
+  const [notes, setNotes] = useState("");
+
   // Fetch budget first to get budget_id
   const { data: budgetData } = useQuery({
     queryKey: ['grantBudget', grantId],
@@ -74,6 +94,86 @@ export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
     enabled: !!budgetData?.budget?.id,
   });
 
+  const handleCreatePaymentSchedule = async () => {
+    if (!user || !orgId || !budgetData?.budget?.id) {
+      notifications.show({
+        title: "Error",
+        message: "Budget must be created first",
+        color: "red",
+      });
+      return;
+    }
+
+    if (!paymentName || !expectedAmount || !expectedDate) {
+      notifications.show({
+        title: "Error",
+        message: "Please fill in all required fields",
+        color: "red",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/payment-schedules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          budget_id: budgetData.budget.id,
+          org_id: orgId,
+          payment_name: paymentName,
+          payment_type: paymentType,
+          expected_amount: expectedAmount,
+          expected_date: expectedDate.toISOString().split('T')[0],
+          deliverable_required: deliverableRequired || null,
+          report_required: reportRequired,
+          report_due_date: reportDueDate ? reportDueDate.toISOString().split('T')[0] : null,
+          notes: notes || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create payment schedule');
+      }
+
+      notifications.show({
+        title: "Success",
+        message: "Payment schedule created successfully",
+        color: "green",
+      });
+
+      // Refresh payment schedules
+      queryClient.invalidateQueries({ queryKey: ['paymentSchedules', budgetData.budget.id] });
+      setCreateModalOpened(false);
+
+      // Reset form
+      setPaymentName("");
+      setPaymentType("reimbursement");
+      setExpectedAmount(0);
+      setExpectedDate(null);
+      setDeliverableRequired("");
+      setReportRequired(false);
+      setReportDueDate(null);
+      setNotes("");
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err instanceof Error ? err.message : "Failed to create payment schedule",
+        color: "red",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Stack gap="md">
@@ -84,9 +184,123 @@ export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
 
   if (error || !data) {
     return (
-      <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
-        <Text size="sm">No payment schedule has been created for this grant yet.</Text>
-      </Alert>
+      <>
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+          <Stack gap="sm">
+            <Text size="sm">No payment schedule has been created for this grant yet.</Text>
+            {budgetData?.budget?.id ? (
+              <Button
+                leftSection={<IconPlus size={16} />}
+                onClick={() => setCreateModalOpened(true)}
+                size="sm"
+              >
+                Create Payment Schedule
+              </Button>
+            ) : (
+              <Text size="xs" c="dimmed">Create a budget first to add payment schedules.</Text>
+            )}
+          </Stack>
+        </Alert>
+
+        {budgetData?.budget?.id && (
+          <Modal
+            opened={createModalOpened}
+            onClose={() => setCreateModalOpened(false)}
+            title="Create Payment Schedule"
+            size="lg"
+          >
+            <Stack gap="md">
+              <TextInput
+                label="Payment Name"
+                description="e.g., 'First Quarter Reimbursement'"
+                placeholder="Enter payment name"
+                value={paymentName}
+                onChange={(e) => setPaymentName(e.currentTarget.value)}
+                required
+              />
+
+              <Select
+                label="Payment Type"
+                data={[
+                  { value: 'advance', label: 'Advance' },
+                  { value: 'reimbursement', label: 'Reimbursement' },
+                  { value: 'cost_reimbursement', label: 'Cost Reimbursement' },
+                  { value: 'milestone', label: 'Milestone' },
+                  { value: 'quarterly', label: 'Quarterly' },
+                  { value: 'annual', label: 'Annual' },
+                ]}
+                value={paymentType}
+                onChange={(val) => setPaymentType(val || 'reimbursement')}
+              />
+
+              <NumberInput
+                label="Expected Amount"
+                placeholder="0"
+                value={expectedAmount}
+                onChange={(val) => setExpectedAmount(Number(val) || 0)}
+                prefix="$"
+                thousandSeparator=","
+                decimalScale={2}
+                required
+              />
+
+              <DateInput
+                label="Expected Date"
+                placeholder="Select date"
+                value={expectedDate}
+                onChange={setExpectedDate}
+                required
+              />
+
+              <TextInput
+                label="Deliverable Required (optional)"
+                placeholder="e.g., 'Quarterly Report'"
+                value={deliverableRequired}
+                onChange={(e) => setDeliverableRequired(e.currentTarget.value)}
+              />
+
+              <Switch
+                label="Report Required"
+                description="Does this payment require a report submission?"
+                checked={reportRequired}
+                onChange={(e) => setReportRequired(e.currentTarget.checked)}
+              />
+
+              {reportRequired && (
+                <DateInput
+                  label="Report Due Date"
+                  placeholder="Select date"
+                  value={reportDueDate}
+                  onChange={setReportDueDate}
+                />
+              )}
+
+              <TextInput
+                label="Notes (optional)"
+                placeholder="Additional notes"
+                value={notes}
+                onChange={(e) => setNotes(e.currentTarget.value)}
+              />
+
+              <Group justify="flex-end" mt="md">
+                <Button
+                  variant="outline"
+                  onClick={() => setCreateModalOpened(false)}
+                  disabled={isCreating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreatePaymentSchedule}
+                  loading={isCreating}
+                >
+                  Create Schedule
+                </Button>
+              </Group>
+            </Stack>
+          </Modal>
+        )}
+      </>
     );
   }
 
@@ -322,9 +536,116 @@ export function PaymentScheduleTab({ grantId }: PaymentScheduleTabProps) {
 
       {schedules.length === 0 && (
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
-          <Text size="sm">No payment schedules defined yet. Create a payment schedule to track drawdowns and disbursements.</Text>
+          <Stack gap="sm">
+            <Text size="sm">No payment schedules defined yet. Create a payment schedule to track drawdowns and disbursements.</Text>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => setCreateModalOpened(true)}
+              size="sm"
+            >
+              Create Payment Schedule
+            </Button>
+          </Stack>
         </Alert>
       )}
+
+      {/* Create Payment Schedule Modal */}
+      <Modal
+        opened={createModalOpened}
+        onClose={() => setCreateModalOpened(false)}
+        title="Create Payment Schedule"
+        size="lg"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Payment Name"
+            description="e.g., 'First Quarter Reimbursement'"
+            placeholder="Enter payment name"
+            value={paymentName}
+            onChange={(e) => setPaymentName(e.currentTarget.value)}
+            required
+          />
+
+          <Select
+            label="Payment Type"
+            data={[
+              { value: 'advance', label: 'Advance' },
+              { value: 'reimbursement', label: 'Reimbursement' },
+              { value: 'cost_reimbursement', label: 'Cost Reimbursement' },
+              { value: 'milestone', label: 'Milestone' },
+              { value: 'quarterly', label: 'Quarterly' },
+              { value: 'annual', label: 'Annual' },
+            ]}
+            value={paymentType}
+            onChange={(val) => setPaymentType(val || 'reimbursement')}
+          />
+
+          <NumberInput
+            label="Expected Amount"
+            placeholder="0"
+            value={expectedAmount}
+            onChange={(val) => setExpectedAmount(Number(val) || 0)}
+            prefix="$"
+            thousandSeparator=","
+            decimalScale={2}
+            required
+          />
+
+          <DateInput
+            label="Expected Date"
+            placeholder="Select date"
+            value={expectedDate}
+            onChange={setExpectedDate}
+            required
+          />
+
+          <TextInput
+            label="Deliverable Required (optional)"
+            placeholder="e.g., 'Quarterly Report'"
+            value={deliverableRequired}
+            onChange={(e) => setDeliverableRequired(e.currentTarget.value)}
+          />
+
+          <Switch
+            label="Report Required"
+            description="Does this payment require a report submission?"
+            checked={reportRequired}
+            onChange={(e) => setReportRequired(e.currentTarget.checked)}
+          />
+
+          {reportRequired && (
+            <DateInput
+              label="Report Due Date"
+              placeholder="Select date"
+              value={reportDueDate}
+              onChange={setReportDueDate}
+            />
+          )}
+
+          <TextInput
+            label="Notes (optional)"
+            placeholder="Additional notes"
+            value={notes}
+            onChange={(e) => setNotes(e.currentTarget.value)}
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="outline"
+              onClick={() => setCreateModalOpened(false)}
+              disabled={isCreating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreatePaymentSchedule}
+              loading={isCreating}
+            >
+              Create Schedule
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

@@ -1,7 +1,11 @@
-import { Stack, Text, Group, Progress, Badge, Paper, SimpleGrid, Alert, RingProgress, Center } from "@mantine/core";
-import { IconAlertCircle, IconCurrencyDollar, IconTrendingUp, IconTrendingDown } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
+import { Stack, Text, Group, Progress, Badge, Paper, SimpleGrid, Alert, RingProgress, Center, Button, Modal, NumberInput, Switch, TextInput } from "@mantine/core";
+import { IconAlertCircle, IconCurrencyDollar, IconTrendingUp, IconTrendingDown, IconPlus } from "@tabler/icons-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { notifications } from "@mantine/notifications";
+import { DateInput } from "@mantine/dates";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
 
 interface BudgetTabProps {
   grantId: string;
@@ -29,7 +33,21 @@ interface BudgetLineItem {
   spent_amount: number;
 }
 
-export function BudgetTab({ grantId }: BudgetTabProps) {
+export function BudgetTab({ grantId, orgId }: BudgetTabProps) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [createModalOpened, setCreateModalOpened] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Form state
+  const [proposedAmount, setProposedAmount] = useState<number>(0);
+  const [awardedAmount, setAwardedAmount] = useState<number>(0);
+  const [matchRequired, setMatchRequired] = useState(false);
+  const [matchAmount, setMatchAmount] = useState<number>(0);
+  const [budgetPeriodStart, setBudgetPeriodStart] = useState<Date | null>(null);
+  const [budgetPeriodEnd, setBudgetPeriodEnd] = useState<Date | null>(null);
+  const [notes, setNotes] = useState("");
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['grantBudget', grantId],
     queryFn: async () => {
@@ -46,6 +64,76 @@ export function BudgetTab({ grantId }: BudgetTabProps) {
     },
   });
 
+  const handleCreateBudget = async () => {
+    if (!user || !orgId) {
+      notifications.show({
+        title: "Error",
+        message: "Organization ID is required to create a budget",
+        color: "red",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          grant_id: grantId,
+          org_id: orgId,
+          proposed_amount: proposedAmount,
+          awarded_amount: awardedAmount,
+          match_required: matchRequired,
+          match_amount: matchRequired ? matchAmount : 0,
+          budget_period_start: budgetPeriodStart?.toISOString().split('T')[0],
+          budget_period_end: budgetPeriodEnd?.toISOString().split('T')[0],
+          notes,
+          status: 'draft',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create budget');
+      }
+
+      notifications.show({
+        title: "Success",
+        message: "Budget created successfully",
+        color: "green",
+      });
+
+      // Refresh budget data
+      queryClient.invalidateQueries({ queryKey: ['grantBudget', grantId] });
+      setCreateModalOpened(false);
+
+      // Reset form
+      setProposedAmount(0);
+      setAwardedAmount(0);
+      setMatchRequired(false);
+      setMatchAmount(0);
+      setBudgetPeriodStart(null);
+      setBudgetPeriodEnd(null);
+      setNotes("");
+    } catch (err) {
+      notifications.show({
+        title: "Error",
+        message: err instanceof Error ? err.message : "Failed to create budget",
+        color: "red",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Stack gap="md">
@@ -56,9 +144,110 @@ export function BudgetTab({ grantId }: BudgetTabProps) {
 
   if (error || !data?.budget) {
     return (
-      <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
-        <Text size="sm">No budget has been created for this grant yet.</Text>
-      </Alert>
+      <>
+        <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
+          <Stack gap="sm">
+            <Text size="sm">No budget has been created for this grant yet.</Text>
+            <Button
+              leftSection={<IconPlus size={16} />}
+              onClick={() => setCreateModalOpened(true)}
+              size="sm"
+            >
+              Create Budget
+            </Button>
+          </Stack>
+        </Alert>
+
+        <Modal
+          opened={createModalOpened}
+          onClose={() => setCreateModalOpened(false)}
+          title="Create Grant Budget"
+          size="lg"
+        >
+          <Stack gap="md">
+            <NumberInput
+              label="Proposed Amount"
+              description="The amount you plan to request"
+              placeholder="0"
+              value={proposedAmount}
+              onChange={(val) => setProposedAmount(Number(val) || 0)}
+              prefix="$"
+              thousandSeparator=","
+              decimalScale={2}
+            />
+
+            <NumberInput
+              label="Awarded Amount"
+              description="The amount actually awarded (if known)"
+              placeholder="0"
+              value={awardedAmount}
+              onChange={(val) => setAwardedAmount(Number(val) || 0)}
+              prefix="$"
+              thousandSeparator=","
+              decimalScale={2}
+            />
+
+            <Switch
+              label="Match Required"
+              description="Does this grant require matching funds?"
+              checked={matchRequired}
+              onChange={(event) => setMatchRequired(event.currentTarget.checked)}
+            />
+
+            {matchRequired && (
+              <NumberInput
+                label="Match Amount"
+                placeholder="0"
+                value={matchAmount}
+                onChange={(val) => setMatchAmount(Number(val) || 0)}
+                prefix="$"
+                thousandSeparator=","
+                decimalScale={2}
+              />
+            )}
+
+            <Group grow>
+              <DateInput
+                label="Budget Period Start"
+                placeholder="Select date"
+                value={budgetPeriodStart}
+                onChange={setBudgetPeriodStart}
+                clearable
+              />
+              <DateInput
+                label="Budget Period End"
+                placeholder="Select date"
+                value={budgetPeriodEnd}
+                onChange={setBudgetPeriodEnd}
+                clearable
+              />
+            </Group>
+
+            <TextInput
+              label="Notes"
+              placeholder="Additional notes about this budget"
+              value={notes}
+              onChange={(event) => setNotes(event.currentTarget.value)}
+            />
+
+            <Group justify="flex-end" mt="md">
+              <Button
+                variant="outline"
+                onClick={() => setCreateModalOpened(false)}
+                disabled={isCreating}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateBudget}
+                loading={isCreating}
+              >
+                Create Budget
+              </Button>
+            </Group>
+          </Stack>
+        </Modal>
+      </>
     );
   }
 

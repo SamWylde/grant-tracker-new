@@ -50,14 +50,13 @@ export default async function handler(
       const { grant_id, org_id, budget_id } = req.query;
 
       if (budget_id && typeof budget_id === 'string') {
-        // Get specific budget with line items and summary
+        // Get specific budget with line items
         const { data: budget, error: budgetError } = await supabase
           .from('grant_budgets')
           .select(`
             *,
             budget_line_items (*),
-            disbursements (*),
-            grant_budget_summary!inner (*)
+            disbursements (*)
           `)
           .eq('id', budget_id)
           .single();
@@ -80,7 +79,14 @@ export default async function handler(
           return res.status(403).json({ error: 'Access denied' });
         }
 
-        return res.status(200).json({ budget });
+        // Get budget summary separately (it's a view, not a table)
+        const { data: summary } = await supabase
+          .from('grant_budget_summary')
+          .select('*')
+          .eq('budget_id', budget_id)
+          .single();
+
+        return res.status(200).json({ budget: { ...budget, summary } });
       }
 
       if (grant_id && typeof grant_id === 'string') {
@@ -89,8 +95,7 @@ export default async function handler(
           .from('grant_budgets')
           .select(`
             *,
-            budget_line_items (*),
-            grant_budget_summary!inner (*)
+            budget_line_items (*)
           `)
           .eq('grant_id', grant_id)
           .maybeSingle();
@@ -109,9 +114,18 @@ export default async function handler(
           if (!membership) {
             return res.status(403).json({ error: 'Access denied' });
           }
+
+          // Get budget summary separately (it's a view, not a table)
+          const { data: summary } = await supabase
+            .from('grant_budget_summary')
+            .select('*')
+            .eq('budget_id', budget.id)
+            .single();
+
+          return res.status(200).json({ budget: { ...budget, summary } });
         }
 
-        return res.status(200).json({ budget });
+        return res.status(200).json({ budget: null });
       }
 
       if (org_id && typeof org_id === 'string') {
@@ -131,13 +145,29 @@ export default async function handler(
           .from('grant_budgets')
           .select(`
             *,
-            org_grants_saved!inner (title, external_id),
-            grant_budget_summary!inner (*)
+            org_grants_saved!inner (title, external_id)
           `)
           .eq('org_id', org_id)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
+
+        // Get summaries for all budgets
+        if (budgets && budgets.length > 0) {
+          const budgetIds = budgets.map(b => b.id);
+          const { data: summaries } = await supabase
+            .from('grant_budget_summary')
+            .select('*')
+            .in('budget_id', budgetIds);
+
+          // Merge summaries into budgets
+          const budgetsWithSummaries = budgets.map(budget => {
+            const summary = summaries?.find(s => s.budget_id === budget.id);
+            return { ...budget, summary };
+          });
+
+          return res.status(200).json({ budgets: budgetsWithSummaries });
+        }
 
         return res.status(200).json({ budgets: budgets || [] });
       }
