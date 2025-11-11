@@ -2,7 +2,7 @@ import { Group, MultiSelect, Button } from "@mantine/core";
 import { IconFilter, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "../contexts/OrganizationContext";
-import { supabase } from "../lib/supabase";
+import { fetchTeamMemberOptions } from "../utils/teamMembers";
 
 export interface GrantFilterValues {
   status?: string[];
@@ -47,24 +47,12 @@ export function GrantFilters({
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await supabase
-        .from("org_members")
-        .select(`
-          user_id,
-          user_profiles!inner (
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq("org_id", currentOrg.id);
-
-      if (error) throw error;
-
-      return data.map((member: any) => ({
-        value: member.user_profiles.id,
-        label: member.user_profiles.full_name || member.user_profiles.email,
-      }));
+      try {
+        return await fetchTeamMemberOptions(currentOrg.id);
+      } catch (error) {
+        console.error("[GrantFilters] Failed to load team members", error);
+        return [];
+      }
     },
     enabled: !!currentOrg?.id,
   });
