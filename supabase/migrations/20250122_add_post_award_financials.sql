@@ -521,7 +521,6 @@ DROP TRIGGER IF EXISTS trigger_update_line_item_totals ON disbursements;
 CREATE TRIGGER trigger_update_line_item_totals
   AFTER INSERT OR UPDATE OR DELETE ON disbursements
   FOR EACH ROW
-  WHEN (NEW.line_item_id IS NOT NULL OR OLD.line_item_id IS NOT NULL)
   EXECUTE FUNCTION update_line_item_totals();
 
 COMMENT ON FUNCTION update_line_item_totals IS 'Automatically updates line item totals when disbursements change';

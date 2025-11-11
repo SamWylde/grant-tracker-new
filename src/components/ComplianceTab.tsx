@@ -17,7 +17,7 @@ dayjs.extend(relativeTime);
 
 interface ComplianceTabProps {
   grantId: string;
-  orgId: string;
+  orgId?: string; // Optional, not currently used but may be needed for future access control
 }
 
 interface ComplianceSummary {
