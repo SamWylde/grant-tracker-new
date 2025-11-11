@@ -24,7 +24,8 @@
     "dayjs": "^1.11.19",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-router-dom": "^7.9.5"
+    "react-router-dom": "^7.9.5",
+    "resend": "^6.4.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.13",
