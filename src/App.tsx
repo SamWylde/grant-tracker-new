@@ -16,6 +16,7 @@ import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 import { PricingPage } from "./pages/PricingPage";
 import { FeaturesPage } from "./pages/FeaturesPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
+import { TermsPage } from "./pages/TermsPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { SupportPage } from "./pages/SupportPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
@@ -66,6 +67,7 @@ export default function App() {
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 <Route path="/security" element={<SecurityPage />} />
                 <Route path="/support" element={<SupportPage />} />
                 <Route path="/granthub-migration" element={<GrantHubMigrationPage />} />
