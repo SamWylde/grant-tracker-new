@@ -69,7 +69,10 @@ export function PipelinePage() {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`/api/saved/${grantId}/status`, {
+      const url = `/api/saved/${grantId}/status`;
+      console.log('[PipelinePage] PATCH request to:', url, 'with status:', newStatus);
+
+      const response = await fetch(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -77,8 +80,27 @@ export function PipelinePage() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!response.ok) throw new Error("Failed to update grant status");
-      return response.json();
+
+      console.log('[PipelinePage] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorMessage = "Failed to update grant status";
+        try {
+          const errorData = await response.json();
+          console.error('[PipelinePage] Error response:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          // If response body is not JSON, use status text
+          console.error('[PipelinePage] Failed to parse error response:', parseError);
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log('[PipelinePage] Success response:', data);
+      return data;
     },
     onMutate: async ({ grantId, newStatus }) => {
       // Cancel any outgoing refetches
@@ -109,14 +131,16 @@ export function PipelinePage() {
         color: "green",
       });
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
+      console.error('[PipelinePage] Mutation error:', error);
+
       // Rollback to previous state on error
       if (context?.previousData) {
         queryClient.setQueryData(["savedGrants"], context.previousData);
       }
       notifications.show({
         title: "Error",
-        message: "Failed to update grant status. Changes have been reverted.",
+        message: error instanceof Error ? error.message : "Failed to update grant status. Changes have been reverted.",
         color: "red",
       });
     },
@@ -264,7 +288,7 @@ export function PipelinePage() {
                 {PIPELINE_STAGES.map((stage) => (
                   <Box
                     key={stage.id}
-                    style={{ minWidth: 320, maxWidth: 320 }}
+                    style={{ minWidth: 280, maxWidth: 280 }}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, stage.id)}
                   >

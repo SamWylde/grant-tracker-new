@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { arrayToCSV, downloadCSV } from './csvUtils';
 
 interface Grant {
   id: string;
@@ -6,10 +7,14 @@ interface Grant {
   title: string;
   agency: string | null;
   aln: string | null;
+  open_date: string | null;
   close_date: string | null;
   status: string;
   priority: string | null;
   assigned_to: string | null;
+  notes: string | null;
+  saved_at: string;
+  stage_updated_at: string | null;
 }
 
 interface BoardPacketOptions {
@@ -290,6 +295,7 @@ export function printBoardPacket(
                 <th>Agency</th>
                 <th>Status</th>
                 <th>Priority</th>
+                <th>Assigned To</th>
                 <th>Days Left</th>
               </tr>
             </thead>
@@ -306,6 +312,7 @@ export function printBoardPacket(
                     <td>${grant.agency || 'N/A'}</td>
                     <td><span class="badge badge-${grant.status}">${grant.status.toUpperCase()}</span></td>
                     <td>${grant.priority ? `<span class="badge badge-${grant.priority}">${grant.priority.toUpperCase()}</span>` : ''}</td>
+                    <td>${grant.assigned_to || '—'}</td>
                     <td class="${isUrgent ? 'deadline-urgent' : 'deadline-soon'}">${daysLeft} days</td>
                   </tr>
                 `;
@@ -321,11 +328,13 @@ export function printBoardPacket(
           <table>
             <thead>
               <tr>
-                <th>Grant Title</th>
+                <th style="width: 25%;">Grant Title</th>
                 <th>Agency</th>
                 <th>ALN</th>
                 <th>Priority</th>
+                <th>Assigned To</th>
                 <th>Deadline</th>
+                <th style="width: 20%;">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -333,17 +342,23 @@ export function printBoardPacket(
                 const daysLeft = grant.close_date ? dayjs(grant.close_date).diff(dayjs(), 'days') : null;
                 const isOverdue = daysLeft !== null && daysLeft < 0;
                 const isUrgent = daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
+                // Truncate notes for display
+                const truncatedNotes = grant.notes
+                  ? (grant.notes.length > 100 ? grant.notes.substring(0, 100) + '...' : grant.notes)
+                  : '—';
                 return `
                   <tr>
                     <td><strong>${grant.title}</strong></td>
                     <td>${grant.agency || 'N/A'}</td>
                     <td>${grant.aln || 'N/A'}</td>
                     <td>${grant.priority ? `<span class="badge badge-${grant.priority}">${grant.priority.toUpperCase()}</span>` : ''}</td>
+                    <td>${grant.assigned_to || '—'}</td>
                     <td class="${isOverdue ? 'deadline-urgent' : isUrgent ? 'deadline-soon' : ''}">
                       ${grant.close_date ? dayjs(grant.close_date).format('MMM D, YYYY') : 'No deadline'}
                       ${daysLeft !== null && !isOverdue ? ` (${daysLeft}d)` : ''}
                       ${isOverdue ? ` (OVERDUE)` : ''}
                     </td>
+                    <td style="font-size: 8pt;">${truncatedNotes}</td>
                   </tr>
                 `;
               }).join('')}
@@ -387,4 +402,86 @@ export function printBoardPacket(
       printWindow.print();
     }, 250);
   };
+}
+
+/**
+ * Export grants as CSV with full pipeline context
+ */
+export function exportGrantsToCSV(
+  grants: Grant[],
+  organizationName: string = 'Organization'
+) {
+  // Define CSV headers with all pipeline context
+  const headers = [
+    'Title',
+    'Agency',
+    'ALN',
+    'External ID',
+    'Open Date',
+    'Close Date',
+    'Status',
+    'Priority',
+    'Assigned To',
+    'Notes',
+    'Saved At',
+    'Stage Updated At',
+    'Days Until Deadline',
+  ];
+
+  // Sort by close date for better readability
+  const sortedGrants = [...grants].sort((a, b) => {
+    if (!a.close_date) return 1;
+    if (!b.close_date) return -1;
+    return new Date(a.close_date).getTime() - new Date(b.close_date).getTime();
+  });
+
+  // Map grants to CSV rows with calculated fields
+  const csvData = sortedGrants.map(grant => {
+    const daysLeft = grant.close_date
+      ? dayjs(grant.close_date).diff(dayjs(), 'days')
+      : null;
+
+    return {
+      title: grant.title,
+      agency: grant.agency,
+      aln: grant.aln,
+      external_id: grant.external_id,
+      open_date: grant.open_date ? dayjs(grant.open_date).format('YYYY-MM-DD') : '',
+      close_date: grant.close_date ? dayjs(grant.close_date).format('YYYY-MM-DD') : '',
+      status: grant.status,
+      priority: grant.priority,
+      assigned_to: grant.assigned_to,
+      notes: grant.notes,
+      saved_at: dayjs(grant.saved_at).format('YYYY-MM-DD HH:mm:ss'),
+      stage_updated_at: grant.stage_updated_at
+        ? dayjs(grant.stage_updated_at).format('YYYY-MM-DD HH:mm:ss')
+        : '',
+      days_left: daysLeft !== null ? daysLeft.toString() : '',
+    };
+  });
+
+  // Generate CSV content
+  const csvContent = arrayToCSV(
+    csvData,
+    headers,
+    [
+      'title',
+      'agency',
+      'aln',
+      'external_id',
+      'open_date',
+      'close_date',
+      'status',
+      'priority',
+      'assigned_to',
+      'notes',
+      'saved_at',
+      'stage_updated_at',
+      'days_left',
+    ]
+  );
+
+  // Download CSV
+  const filename = `grants-pipeline-${organizationName}-${dayjs().format('YYYY-MM-DD')}`;
+  downloadCSV(csvContent, filename);
 }

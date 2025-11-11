@@ -1,4 +1,6 @@
-import { Container, Title, Text, Stack, Divider, Anchor, Box } from '@mantine/core';
+import { Container, Title, Text, Stack, Divider, Anchor, Box, Group, ThemeIcon } from '@mantine/core';
+import { Link } from 'react-router-dom';
+import { IconRocket } from '@tabler/icons-react';
 import { AppHeader } from '../components/AppHeader';
 
 export function PrivacyPage() {
@@ -380,6 +382,38 @@ export function PrivacyPage() {
           </Stack>
         </Stack>
       </Container>
+
+      {/* Footer */}
+      <Box bg="var(--mantine-color-dark-8)" py="xl" mt="xl">
+        <Container size="lg">
+          <Group justify="space-between" align="center">
+            <Stack gap={6}>
+              <Group gap={6}>
+                <ThemeIcon variant="light" color="grape" size={32} radius="xl">
+                  <IconRocket size={16} />
+                </ThemeIcon>
+                <Text fw={700} c="white">
+                  GrantCue
+                </Text>
+              </Group>
+              <Text size="sm" c="gray.4">
+                Purpose-built funding operations for ambitious teams.
+              </Text>
+            </Stack>
+            <Group gap="xl" visibleFrom="sm">
+              <Anchor size="sm" c="gray.4" component={Link} to="/privacy">
+                Privacy
+              </Anchor>
+              <Anchor size="sm" c="gray.4" component={Link} to="/security">
+                Security
+              </Anchor>
+              <Anchor size="sm" c="gray.4" component={Link} to="/support">
+                Support
+              </Anchor>
+            </Group>
+          </Group>
+        </Container>
+      </Box>
     </Box>
   );
 }

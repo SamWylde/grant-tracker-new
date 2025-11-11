@@ -28,6 +28,8 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
+import { arrayToCSV, downloadCSV } from '../../utils/csvUtils';
+import type { SavedGrant } from '../../hooks/useSavedGrants';
 
 export function DangerZonePage() {
   const { currentOrg, refreshOrgs } = useOrganization();
@@ -70,41 +72,67 @@ export function DangerZonePage() {
     enabled: !!currentOrg && isAdmin,
   });
 
-  // Export data mutation (stub for V1)
+  // Export data mutation with full field support and CSV escaping
   const exportMutation = useMutation({
     mutationFn: async () => {
       if (!currentOrg) throw new Error('No organization');
 
-      // In V1, this is a stub. In production, this would:
-      // 1. Call an API endpoint to generate CSV
-      // 2. Download the file
-      // For now, we'll just show a success message
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Fetch grants data
-      const { data: grants } = await supabase
+      // Fetch all saved grants data
+      const { data: grants, error } = await supabase
         .from('org_grants_saved')
         .select('*')
-        .eq('org_id', currentOrg.id);
+        .eq('org_id', currentOrg.id)
+        .order('saved_at', { ascending: false });
 
-      // Simple CSV generation (stub)
-      const csv = [
-        ['Title', 'Agency', 'Close Date', 'Saved At'].join(','),
-        ...(grants || []).map((g: any) =>
-          [g.title, g.agency, g.close_date, g.saved_at].join(',')
-        ),
-      ].join('\n');
+      if (error) throw error;
 
-      // Download CSV
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `grants-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Define CSV headers and corresponding field keys
+      const headers = [
+        'Title',
+        'Agency',
+        'ALN',
+        'External ID',
+        'External Source',
+        'Open Date',
+        'Close Date',
+        'Status',
+        'Priority',
+        'Assigned To',
+        'Notes',
+        'Saved At',
+        'Stage Updated At',
+        'Created At',
+        'Grant ID',
+        'Organization ID',
+        'User ID',
+      ];
+
+      const keys: (keyof SavedGrant)[] = [
+        'title',
+        'agency',
+        'aln',
+        'external_id',
+        'external_source',
+        'open_date',
+        'close_date',
+        'status',
+        'priority',
+        'assigned_to',
+        'notes',
+        'saved_at',
+        'stage_updated_at',
+        'created_at',
+        'id',
+        'org_id',
+        'user_id',
+      ];
+
+      // Generate CSV with proper escaping
+      const csvContent = arrayToCSV(grants || [], headers, keys);
+
+      // Download CSV with BOM for Excel UTF-8 support
+      const filename = `grants-export-${currentOrg.name}-${new Date().toISOString().split('T')[0]}`;
+      downloadCSV(csvContent, filename);
     },
     onSuccess: () => {
       setExportModal(false);

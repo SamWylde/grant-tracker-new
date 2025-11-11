@@ -56,6 +56,7 @@ import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
 import { supabase } from "../lib/supabase";
+import { stripHtml } from "../utils/htmlUtils";
 
 // Enable relative time plugin for dayjs
 dayjs.extend(relativeTime);
@@ -66,23 +67,6 @@ export function DiscoverPage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
-
-  // Utility function to strip HTML tags and decode entities
-  const stripHtml = (html: string): string => {
-    if (!html) return '';
-
-    // Create a temporary div to use browser's HTML parsing
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-
-    // Get text content (this automatically decodes entities and strips tags)
-    let text = tmp.textContent || tmp.innerText || '';
-
-    // Clean up extra whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    return text;
-  };
 
   // Filter state
   const [keyword, setKeyword] = useState("");
@@ -138,7 +122,7 @@ export function DiscoverPage() {
       sortBy,
       currentPage,
     ],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const response = await fetch("/api/grants/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -152,6 +136,7 @@ export function DiscoverPage() {
           rows: ITEMS_PER_PAGE,
           startRecordNum: (currentPage - 1) * ITEMS_PER_PAGE,
         }),
+        signal, // Add AbortSignal for request cancellation
       });
 
       if (!response.ok) {
@@ -190,7 +175,7 @@ export function DiscoverPage() {
     error: detailsError,
   } = useQuery<GrantDetail>({
     queryKey: ["grantDetails", selectedGrantId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
 
       const response = await fetch('/api/grants/details', {
@@ -199,6 +184,7 @@ export function DiscoverPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ id: selectedGrantId }),
+        signal, // Add AbortSignal for request cancellation
       });
       if (!response.ok) {
         const errorData = await response.json();

@@ -1,302 +1,560 @@
+import { Link } from 'react-router-dom';
 import {
   Container,
   Stack,
   Title,
   Text,
-  Paper,
   Button,
-  Group,
-  SimpleGrid,
   Card,
+  SimpleGrid,
   List,
   ThemeIcon,
+  Stepper,
+  Accordion,
+  Box,
+  Group,
   Badge,
+  Paper,
   Divider,
-  Timeline,
   Alert,
+  Anchor,
 } from '@mantine/core';
 import {
+  IconRocket,
   IconCheck,
+  IconUpload,
+  IconSearch,
+  IconUserCheck,
+  IconClock,
+  IconAlertCircle,
   IconArrowRight,
   IconFileImport,
-  IconRocket,
   IconShieldCheck,
-  IconClock,
-  IconTrendingUp,
-  IconAlertCircle,
-  IconDownload,
-  IconUpload,
-  IconChecklist,
 } from '@tabler/icons-react';
-import { Link } from 'react-router-dom';
-import { AppHeader } from '../components/AppHeader';
+import { MarketingHeader } from '../components/MarketingHeader';
+import { useAuth } from '../contexts/AuthContext';
 
 export function GrantHubMigrationPage() {
+  const { user } = useAuth();
+
   return (
-    <>
-      <AppHeader subtitle="" />
-      <Container size="xl" py="xl">
-        <Stack gap="xl">
-          {/* Hero Section */}
-          <Stack gap="md" align="center" mt="xl">
-            <Badge size="lg" variant="light" color="red">
-              GrantHub End-of-Life Notice
+    <Box>
+      <MarketingHeader user={user} />
+
+      {/* Hero Section */}
+      <Box
+        style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+        }}
+        py={80}
+      >
+        <Container size="lg">
+          <Stack gap="xl" align="center">
+            <Badge size="xl" variant="light" color="yellow" radius="sm">
+              GrantHub Shutting Down January 31, 2026
             </Badge>
-            <Title order={1} ta="center" size={48}>
-              Migrate from GrantHub to GrantCue
+
+            <Title order={1} size={48} ta="center" fw={800}>
+              Seamlessly Migrate from GrantHub to GrantCue
             </Title>
-            <Text size="xl" ta="center" c="dimmed" maw={700}>
-              Foundant is discontinuing GrantHub. Switch to GrantCue today for a modern,
-              affordable alternative with all the features you need.
+
+            <Text size="xl" ta="center" maw={700} opacity={0.95}>
+              Don't lose your grant pipeline. Import all your GrantHub data in minutes
+              and continue tracking opportunities without missing a beat.
             </Text>
-            <Group mt="md">
-              <Button size="lg" component={Link} to="/signin" rightSection={<IconRocket size={20} />}>
-                Start Free Trial
-              </Button>
-              <Button size="lg" variant="light" component={Link} to="/import/granthub">
-                Import Your Data
-              </Button>
+
+            <Group gap="md" mt="md">
+              {user ? (
+                <Button
+                  component={Link}
+                  to="/import/granthub"
+                  size="xl"
+                  color="white"
+                  variant="filled"
+                  rightSection={<IconArrowRight size={20} />}
+                  styles={{
+                    root: {
+                      color: '#667eea',
+                      '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
+                    },
+                  }}
+                >
+                  Start Migration Now
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    component={Link}
+                    to="/signup"
+                    size="xl"
+                    color="white"
+                    variant="filled"
+                    rightSection={<IconArrowRight size={20} />}
+                    styles={{
+                      root: {
+                        color: '#667eea',
+                        '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' },
+                      },
+                    }}
+                  >
+                    Get Started Free
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/signin"
+                    size="xl"
+                    variant="outline"
+                    color="white"
+                  >
+                    Sign In to Import
+                  </Button>
+                </>
+              )}
             </Group>
+
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              color="yellow"
+              variant="filled"
+              mt="xl"
+              maw={600}
+            >
+              <Text fw={600} size="sm">
+                Time-Sensitive: GrantHub users have until January 31, 2026 to export their data.
+                Migrate now to avoid last-minute data loss.
+              </Text>
+            </Alert>
           </Stack>
+        </Container>
+      </Box>
 
-          <Divider my="xl" />
-
-          {/* Timeline Alert */}
-          <Alert icon={<IconAlertCircle size={20} />} color="red" variant="light" title="Important Dates">
-            <Text size="sm">
-              GrantHub and GrantHub Pro will be discontinued by Foundant. Don't wait until the last
-              minute – migrate your data today and ensure continuity in your grant management.
-            </Text>
-          </Alert>
-
-          {/* Why Switch Section */}
-          <Stack gap="md">
+      {/* Why Choose GrantCue */}
+      <Container size="lg" py={80}>
+        <Stack gap="xl">
+          <Stack gap="sm" align="center">
             <Title order={2} ta="center">
-              Why GrantCue?
+              Why Choose GrantCue?
             </Title>
-            <Text ta="center" c="dimmed" size="lg" maw={700} mx="auto">
-              Built specifically for nonprofits switching from GrantHub
+            <Text size="lg" c="dimmed" ta="center" maw={600}>
+              Built by grant professionals who understand your workflow
             </Text>
-
-            <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg" mt="md">
-              <Card padding="lg" withBorder>
-                <Stack gap="md">
-                  <ThemeIcon size={48} radius="md" color="green">
-                    <IconFileImport size={24} />
-                  </ThemeIcon>
-                  <Title order={3} size="h4">
-                    Easy Migration
-                  </Title>
-                  <Text size="sm" c="dimmed">
-                    Import your entire GrantHub database with our one-click CSV importer. No data
-                    loss, no manual entry.
-                  </Text>
-                </Stack>
-              </Card>
-
-              <Card padding="lg" withBorder>
-                <Stack gap="md">
-                  <ThemeIcon size={48} radius="md" color="blue">
-                    <IconTrendingUp size={24} />
-                  </ThemeIcon>
-                  <Title order={3} size="h4">
-                    More Features
-                  </Title>
-                  <Text size="sm" c="dimmed">
-                    Fit scoring, automated alerts, smart recommendations, and integrations with
-                    your favorite tools.
-                  </Text>
-                </Stack>
-              </Card>
-
-              <Card padding="lg" withBorder>
-                <Stack gap="md">
-                  <ThemeIcon size={48} radius="md" color="grape">
-                    <IconShieldCheck size={24} />
-                  </ThemeIcon>
-                  <Title order={3} size="h4">
-                    Lower Cost
-                  </Title>
-                  <Text size="sm" c="dimmed">
-                    Transparent pricing starting at just $49/month. No hidden fees, no surprises.
-                    Cancel anytime.
-                  </Text>
-                </Stack>
-              </Card>
-            </SimpleGrid>
           </Stack>
 
-          <Divider my="xl" />
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="grape" variant="light">
+                  <IconFileImport size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Seamless Migration
+                </Title>
+                <Text c="dimmed">
+                  Import your entire GrantHub pipeline in minutes. Our CSV importer handles
+                  your grant titles, deadlines, agencies, notes, and statuses automatically.
+                </Text>
+              </Stack>
+            </Card>
 
-          {/* Migration Process */}
-          <Stack gap="md">
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="blue" variant="light">
+                  <IconSearch size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Enhanced Features
+                </Title>
+                <Text c="dimmed">
+                  Go beyond basic tracking with real-time Grants.gov integration, advanced
+                  filtering, board packets, team collaboration, and priority management.
+                </Text>
+              </Stack>
+            </Card>
+
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="green" variant="light">
+                  <IconClock size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Save Time
+                </Title>
+                <Text c="dimmed">
+                  Stop manually checking Grants.gov. GrantCue syncs opportunities daily and
+                  alerts you to relevant deadlines, status changes, and new postings.
+                </Text>
+              </Stack>
+            </Card>
+
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="orange" variant="light">
+                  <IconUserCheck size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Team Collaboration
+                </Title>
+                <Text c="dimmed">
+                  Assign grants, track progress, and coordinate with your team in one place.
+                  Perfect for organizations managing multiple applications.
+                </Text>
+              </Stack>
+            </Card>
+
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="violet" variant="light">
+                  <IconShieldCheck size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Secure & Reliable
+                </Title>
+                <Text c="dimmed">
+                  Your data is encrypted, backed up daily, and hosted on enterprise-grade
+                  infrastructure. Export anytime in CSV or print format.
+                </Text>
+              </Stack>
+            </Card>
+
+            <Card padding="xl" withBorder>
+              <Stack gap="md">
+                <ThemeIcon size={48} radius="md" color="pink" variant="light">
+                  <IconRocket size={24} />
+                </ThemeIcon>
+                <Title order={3} size="h4">
+                  Built for Nonprofits
+                </Title>
+                <Text c="dimmed">
+                  Affordable pricing designed for mission-driven organizations. Free tier
+                  available with essential features included.
+                </Text>
+              </Stack>
+            </Card>
+          </SimpleGrid>
+        </Stack>
+      </Container>
+
+      <Divider />
+
+      {/* Migration Steps */}
+      <Container size="lg" py={80}>
+        <Stack gap="xl">
+          <Stack gap="sm" align="center">
             <Title order={2} ta="center">
               How to Migrate in 3 Easy Steps
             </Title>
-            <Text ta="center" c="dimmed" size="lg" maw={700} mx="auto">
-              Get up and running in under 10 minutes
+            <Text size="lg" c="dimmed" ta="center" maw={700}>
+              Your complete grant pipeline transferred in under 10 minutes
             </Text>
-
-            <Timeline mt="xl" active={3} bulletSize={32}>
-              <Timeline.Item
-                bullet={<IconDownload size={16} />}
-                title="Export from GrantHub"
-                color="blue"
-              >
-                <Text size="sm" c="dimmed" mt={4}>
-                  Log in to GrantHub, navigate to your grants list, and click "Export CSV". Save
-                  the file to your computer.
-                </Text>
-              </Timeline.Item>
-
-              <Timeline.Item
-                bullet={<IconUpload size={16} />}
-                title="Import to GrantCue"
-                color="grape"
-              >
-                <Text size="sm" c="dimmed" mt={4}>
-                  Sign up for GrantCue, go to the import page, and upload your CSV file. We'll
-                  automatically map and import your data.
-                </Text>
-              </Timeline.Item>
-
-              <Timeline.Item
-                bullet={<IconChecklist size={16} />}
-                title="Review & Start Working"
-                color="green"
-              >
-                <Text size="sm" c="dimmed" mt={4}>
-                  Review your imported grants, invite your team, and start managing your pipeline
-                  with powerful new tools.
-                </Text>
-              </Timeline.Item>
-            </Timeline>
-
-            <Group justify="center" mt="xl">
-              <Button
-                size="lg"
-                component={Link}
-                to="/import/granthub"
-                rightSection={<IconArrowRight size={20} />}
-              >
-                Start Migration Now
-              </Button>
-            </Group>
           </Stack>
 
-          <Divider my="xl" />
-
-          {/* Feature Comparison */}
-          <Stack gap="md">
-            <Title order={2} ta="center">
-              What You Get with GrantCue
-            </Title>
-            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg" mt="md">
-              <Paper p="md" withBorder>
-                <Stack gap="sm">
-                  <Title order={4}>All GrantHub Features</Title>
-                  <List
-                    spacing="xs"
-                    size="sm"
-                    icon={
-                      <ThemeIcon color="green" size={20} radius="xl">
-                        <IconCheck size={12} />
-                      </ThemeIcon>
-                    }
-                  >
-                    <List.Item>Kanban pipeline management</List.Item>
-                    <List.Item>Task tracking and reminders</List.Item>
-                    <List.Item>Team collaboration</List.Item>
-                    <List.Item>Grant search and discovery</List.Item>
-                    <List.Item>Deadline tracking</List.Item>
-                    <List.Item>Notes and documentation</List.Item>
-                  </List>
-                </Stack>
-              </Paper>
-
-              <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
-                <Stack gap="sm">
-                  <Group gap="xs">
-                    <Title order={4}>Plus New Features</Title>
-                    <Badge color="grape">New!</Badge>
-                  </Group>
-                  <List
-                    spacing="xs"
-                    size="sm"
-                    icon={
-                      <ThemeIcon color="grape" size={20} radius="xl">
-                        <IconCheck size={12} />
-                      </ThemeIcon>
-                    }
-                  >
-                    <List.Item>AI-powered fit scoring</List.Item>
-                    <List.Item>Automated grant alerts</List.Item>
-                    <List.Item>Quick-add from URL</List.Item>
-                    <List.Item>Saved search views</List.Item>
-                    <List.Item>Success metrics tracking</List.Item>
-                    <List.Item>Webhook integrations</List.Item>
-                  </List>
-                </Stack>
-              </Paper>
-            </SimpleGrid>
-          </Stack>
-
-          <Divider my="xl" />
-
-          {/* CTA Section */}
-          <Paper p="xl" withBorder bg="var(--mantine-color-grape-0)">
-            <Stack gap="md" align="center">
-              <Title order={2} ta="center">
-                Ready to Make the Switch?
-              </Title>
-              <Text ta="center" size="lg" c="dimmed" maw={600}>
-                Join nonprofits already using GrantCue to manage their grant pipelines more
-                effectively.
-              </Text>
-              <Group mt="md">
-                <Button size="lg" component={Link} to="/signin" rightSection={<IconRocket size={20} />}>
-                  Start Free Trial
-                </Button>
-                <Button size="lg" variant="light" component={Link} to="/pricing">
-                  View Pricing
-                </Button>
-              </Group>
-              <Text size="sm" c="dimmed">
-                No credit card required • 14-day free trial • Cancel anytime
-              </Text>
-            </Stack>
-          </Paper>
-
-          {/* Support Section */}
-          <Card padding="lg" withBorder>
-            <Stack gap="sm">
-              <Group>
-                <ThemeIcon size={40} radius="md" color="blue">
-                  <IconClock size={20} />
-                </ThemeIcon>
-                <div>
-                  <Title order={4}>Need Help Migrating?</Title>
-                  <Text size="sm" c="dimmed">
-                    Our team is here to help you transition smoothly
+          <Paper withBorder p="xl" radius="md">
+            <Stepper active={-1} orientation="vertical" iconSize={48}>
+              <Stepper.Step
+                label="Export from GrantHub"
+                description="Download your data before it's gone"
+                icon={<IconUpload size={20} />}
+              >
+                <Stack gap="md" mt="md" ml="md">
+                  <Text>
+                    Log in to your GrantHub account and export your grants to CSV:
                   </Text>
-                </div>
-              </Group>
-              <Text size="sm">
-                We offer free migration assistance for GrantHub users. Schedule a call with our team
-                to get personalized help importing your data and setting up your account.
-              </Text>
-              <Group>
-                <Button variant="light" component="a" href="mailto:support@grantcue.com">
-                  Contact Support
-                </Button>
-                <Button variant="subtle" component={Link} to="/features">
-                  Learn More
-                </Button>
-              </Group>
-            </Stack>
-          </Card>
+                  <List withPadding>
+                    <List.Item>Navigate to your grants list</List.Item>
+                    <List.Item>Click "Export" or "Download CSV"</List.Item>
+                    <List.Item>Save the file to your computer</List.Item>
+                  </List>
+                  <Alert icon={<IconAlertCircle size={16} />} color="orange" variant="light">
+                    <Text size="sm">
+                      <strong>Important:</strong> Export your data before January 31, 2026.
+                      After this date, GrantHub data will no longer be accessible.
+                    </Text>
+                  </Alert>
+                </Stack>
+              </Stepper.Step>
+
+              <Stepper.Step
+                label="Create Your GrantCue Account"
+                description="Free signup, no credit card required"
+                icon={<IconUserCheck size={20} />}
+              >
+                <Stack gap="md" mt="md" ml="md">
+                  <Text>
+                    Get started with GrantCue in seconds:
+                  </Text>
+                  <List withPadding>
+                    <List.Item>Sign up with your email</List.Item>
+                    <List.Item>Create your organization</List.Item>
+                    <List.Item>Invite team members (optional)</List.Item>
+                  </List>
+                  {!user && (
+                    <Button
+                      component={Link}
+                      to="/signup"
+                      color="grape"
+                      leftSection={<IconRocket size={16} />}
+                      w="fit-content"
+                    >
+                      Create Free Account
+                    </Button>
+                  )}
+                </Stack>
+              </Stepper.Step>
+
+              <Stepper.Step
+                label="Import Your Grants"
+                description="Upload CSV and you're done"
+                icon={<IconFileImport size={20} />}
+              >
+                <Stack gap="md" mt="md" ml="md">
+                  <Text>
+                    Our importer handles the heavy lifting:
+                  </Text>
+                  <List withPadding>
+                    <List.Item>Upload your GrantHub CSV file</List.Item>
+                    <List.Item>Review and select grants to import</List.Item>
+                    <List.Item>Click "Import" and watch the magic happen</List.Item>
+                  </List>
+                  <Text size="sm" c="dimmed">
+                    Duplicate detection ensures you won't accidentally import the same grant twice.
+                    All your titles, agencies, deadlines, notes, and statuses transfer seamlessly.
+                  </Text>
+                  {user && (
+                    <Button
+                      component={Link}
+                      to="/import/granthub"
+                      color="grape"
+                      leftSection={<IconArrowRight size={16} />}
+                      w="fit-content"
+                    >
+                      Go to Import Tool
+                    </Button>
+                  )}
+                </Stack>
+              </Stepper.Step>
+            </Stepper>
+          </Paper>
         </Stack>
       </Container>
-    </>
+
+      <Divider />
+
+      {/* FAQ Section */}
+      <Container size="lg" py={80}>
+        <Stack gap="xl">
+          <Stack gap="sm" align="center">
+            <Title order={2} ta="center">
+              Frequently Asked Questions
+            </Title>
+            <Text size="lg" c="dimmed" ta="center">
+              Everything you need to know about migrating
+            </Text>
+          </Stack>
+
+          <Accordion variant="separated" radius="md">
+            <Accordion.Item value="cost">
+              <Accordion.Control icon={<IconCheck size={20} />}>
+                How much does GrantCue cost?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  GrantCue offers a free tier with essential features including grant tracking,
+                  pipeline management, and CSV imports. Paid plans start at $29/month for
+                  advanced features like team collaboration, automated Grants.gov syncing,
+                  and priority support.{' '}
+                  <Anchor component={Link} to="/pricing">
+                    View full pricing details
+                  </Anchor>
+                  .
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="data-safety">
+              <Accordion.Control icon={<IconShieldCheck size={20} />}>
+                Is my data safe during migration?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  Absolutely. GrantCue uses bank-level encryption (AES-256) for data at rest
+                  and TLS 1.3 for data in transit. Your GrantHub CSV never leaves your browser
+                  during upload, and all data is backed up daily to multiple geographic locations.
+                  You can export your data anytime in CSV or PDF format.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="fields">
+              <Accordion.Control icon={<IconFileImport size={20} />}>
+                What fields are imported from GrantHub?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text mb="sm">
+                  Our importer automatically maps common GrantHub fields:
+                </Text>
+                <List withPadding size="sm">
+                  <List.Item>Grant Title / Opportunity Title</List.Item>
+                  <List.Item>Agency / Funder / Organization</List.Item>
+                  <List.Item>Deadline / Due Date / Close Date</List.Item>
+                  <List.Item>Award Amount / Funding Amount</List.Item>
+                  <List.Item>Status / Stage</List.Item>
+                  <List.Item>Notes / Description</List.Item>
+                  <List.Item>ALN / CFDA Number</List.Item>
+                </List>
+                <Text size="sm" c="dimmed" mt="sm">
+                  The importer intelligently matches column names, so your data transfers
+                  correctly even if GrantHub uses different field names.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="duplicates">
+              <Accordion.Control icon={<IconAlertCircle size={20} />}>
+                What if I accidentally import duplicates?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  GrantCue's importer includes automatic duplicate detection. Before importing,
+                  we check if grants with the same title and agency already exist in your account
+                  and skip them automatically. You'll see a summary showing how many grants were
+                  imported, skipped, or failed.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="time">
+              <Accordion.Control icon={<IconClock size={20} />}>
+                How long does migration take?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  Most users complete their migration in under 10 minutes. Export from GrantHub
+                  takes 1-2 minutes, account creation takes 2-3 minutes, and the CSV import
+                  typically processes 50-100 grants per minute. A typical pipeline of 100 grants
+                  imports in about 2 minutes.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="help">
+              <Accordion.Control icon={<IconUserCheck size={20} />}>
+                What if I need help with migration?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  We're here to help! Our migration guide walks you through each step with
+                  screenshots. If you encounter any issues, reach out to support via the
+                  in-app chat or email us at support@grantcue.com. We typically respond
+                  within 2-4 hours during business days.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+
+            <Accordion.Item value="team">
+              <Accordion.Control icon={<IconUserCheck size={20} />}>
+                Can I migrate if I have a team?
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Text>
+                  Yes! After importing your grants, you can invite team members to your
+                  organization. Assign grants to specific team members, track who's working
+                  on what, and collaborate in real-time. Team features are available on all
+                  paid plans.
+                </Text>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+        </Stack>
+      </Container>
+
+      <Divider />
+
+      {/* Final CTA */}
+      <Box bg="var(--mantine-color-gray-0)" py={80}>
+        <Container size="lg">
+          <Card padding="xl" withBorder shadow="sm">
+            <Stack gap="xl" align="center">
+              <Badge size="lg" color="red" variant="filled">
+                Don't Wait Until It's Too Late
+              </Badge>
+
+              <Title order={2} ta="center">
+                Migrate Your Grants Today
+              </Title>
+
+              <Text size="lg" ta="center" c="dimmed" maw={700}>
+                Join hundreds of organizations who have already made the switch from GrantHub
+                to GrantCue. Your grant pipeline is too important to lose.
+              </Text>
+
+              <Group gap="md">
+                {user ? (
+                  <Button
+                    component={Link}
+                    to="/import/granthub"
+                    size="lg"
+                    color="grape"
+                    rightSection={<IconArrowRight size={20} />}
+                  >
+                    Start Import Now
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      component={Link}
+                      to="/signup"
+                      size="lg"
+                      color="grape"
+                      rightSection={<IconArrowRight size={20} />}
+                    >
+                      Get Started Free
+                    </Button>
+                    <Button
+                      component={Link}
+                      to="/pricing"
+                      size="lg"
+                      variant="light"
+                      color="grape"
+                    >
+                      View Pricing
+                    </Button>
+                  </>
+                )}
+              </Group>
+
+              <Text size="sm" c="dimmed" ta="center">
+                No credit card required • Free tier available • Import in minutes
+              </Text>
+            </Stack>
+          </Card>
+        </Container>
+      </Box>
+
+      {/* Footer */}
+      <Box bg="var(--mantine-color-dark-8)" py="xl">
+        <Container size="lg">
+          <Stack gap="sm" align="center">
+            <Group gap="xl">
+              <Anchor component={Link} to="/features" c="gray.5" size="sm">
+                Features
+              </Anchor>
+              <Anchor component={Link} to="/pricing" c="gray.5" size="sm">
+                Pricing
+              </Anchor>
+              <Anchor component={Link} to="/discover" c="gray.5" size="sm">
+                Discover Grants
+              </Anchor>
+              <Anchor component={Link} to="/import/granthub" c="gray.5" size="sm">
+                Import from GrantHub
+              </Anchor>
+            </Group>
+            <Text size="xs" c="gray.6">
+              © 2025 GrantCue. Built for nonprofits by grant professionals.
+            </Text>
+          </Stack>
+        </Container>
+      </Box>
+    </Box>
   );
 }

@@ -7,6 +7,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ScrollToTop } from "./components/ScrollToTop";
 import { HomePage } from "./pages/HomePage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
@@ -15,6 +16,8 @@ import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 import { PricingPage } from "./pages/PricingPage";
 import { FeaturesPage } from "./pages/FeaturesPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
+import { SecurityPage } from "./pages/SecurityPage";
+import { SupportPage } from "./pages/SupportPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
 import { PipelinePage } from "./pages/PipelinePage";
@@ -50,6 +53,7 @@ export default function App() {
         <AuthProvider>
           <OrganizationProvider>
             <BrowserRouter>
+              <ScrollToTop />
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
@@ -60,6 +64,8 @@ export default function App() {
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/features" element={<FeaturesPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/security" element={<SecurityPage />} />
+                <Route path="/support" element={<SupportPage />} />
                 <Route path="/granthub-migration" element={<GrantHubMigrationPage />} />
 
                 {/* Protected Routes */}

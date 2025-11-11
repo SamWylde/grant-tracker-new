@@ -10,6 +10,7 @@ import {
   Divider,
   Group,
   Loader,
+  Menu,
   Modal,
   ScrollArea,
   Select,
@@ -19,7 +20,8 @@ import {
 } from "@mantine/core";
 import {
   IconBookmarkFilled,
-  IconCalendar,
+  IconChevronDown,
+  IconDownload,
   IconExternalLink,
   IconFileText,
   IconTrash,
@@ -34,11 +36,12 @@ import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { ImportWizard } from "../components/ImportWizard";
 import { type GrantDetail } from "../types/grants";
-import { type SavedGrant } from "../hooks/useSavedGrants";
+import { useSavedGrants } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
-import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
-import { printBoardPacket } from "../utils/printBoardPacket";
+import { printBoardPacket, exportGrantsToCSV } from "../utils/printBoardPacket";
+import { stripHtml } from "../utils/htmlUtils";
+import { useOrganization } from "../contexts/OrganizationContext";
 
 export function SavedGrantsPage() {
   const queryClient = useQueryClient();
@@ -53,19 +56,8 @@ export function SavedGrantsPage() {
   });
   const [importWizardOpen, setImportWizardOpen] = useState(false);
 
-  // Fetch saved grants
-  const { data: savedGrants, isLoading } = useQuery<{ grants: SavedGrant[] }>({
-    queryKey: ["savedGrants", currentOrg?.id],
-    queryFn: async () => {
-      if (!currentOrg?.id) return { grants: [] };
-      const response = await fetch(`/api/saved?org_id=${currentOrg.id}`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch saved grants");
-      }
-      return response.json();
-    },
-    enabled: !!currentOrg?.id,
-  });
+  // Fetch saved grants using shared hook with auth headers
+  const { data: savedGrants, isLoading } = useSavedGrants();
 
   // Fetch grant details
   const {
@@ -74,7 +66,7 @@ export function SavedGrantsPage() {
     error: detailsError,
   } = useQuery<GrantDetail>({
     queryKey: ["grantDetails", selectedGrantId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!selectedGrantId) throw new Error("No grant ID selected");
 
       const response = await fetch('/api/grants/details', {
@@ -83,6 +75,7 @@ export function SavedGrantsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ id: selectedGrantId }),
+        signal, // Add AbortSignal for request cancellation
       });
       if (!response.ok) {
         const errorData = await response.json();
@@ -200,15 +193,33 @@ export function SavedGrantsPage() {
               >
                 Import Grants
               </Button>
-              <Button
-                leftSection={<IconPrinter size={16} />}
-                variant="light"
-                color="grape"
-                onClick={() => printBoardPacket(sortedGrants, { title: 'Saved Grants Report' })}
-                disabled={sortedGrants.length === 0}
-              >
-                Export Report
-              </Button>
+              <Menu shadow="md" width={200}>
+                <Menu.Target>
+                  <Button
+                    leftSection={<IconDownload size={16} />}
+                    rightSection={<IconChevronDown size={16} />}
+                    variant="light"
+                    color="grape"
+                    disabled={sortedGrants.length === 0}
+                  >
+                    Export Report
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconPrinter size={16} />}
+                    onClick={() => printBoardPacket(sortedGrants, { title: 'Saved Grants Report' })}
+                  >
+                    Print Report
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconDownload size={16} />}
+                    onClick={() => exportGrantsToCSV(sortedGrants, currentOrg?.name || 'Organization')}
+                  >
+                    Download CSV
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <Button variant="light" color="grape" component={Link} to="/discover">
                 Discover More Grants
               </Button>
@@ -280,10 +291,38 @@ export function SavedGrantsPage() {
                 const isClosingSoon = daysUntilClose !== null && daysUntilClose >= 0 && daysUntilClose <= 30;
 
                 return (
-                  <Card key={grant.id} padding="md" withBorder>
-                    <Stack gap="sm">
-                      <Group justify="space-between" align="flex-start">
-                        <Stack gap={4} style={{ flex: 1 }}>
+                  <Card
+                    key={grant.id}
+                    padding="lg"
+                    withBorder
+                    style={{
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "";
+                      e.currentTarget.style.transform = "";
+                    }}
+                  >
+                    <Stack gap="md">
+                      {/* Header */}
+                      <Group justify="space-between" align="flex-start" wrap="nowrap">
+                        <Stack gap={8} style={{ flex: 1 }}>
+                          <Group gap="xs" wrap="wrap">
+                            <Badge variant="filled" size="sm" color="grape">
+                              Saved
+                            </Badge>
+                            {grant.aln && (
+                              <Badge variant="outline" size="sm" color="gray">
+                                {grant.aln}
+                              </Badge>
+                            )}
+                          </Group>
+
                           <Anchor
                             href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
                             target="_blank"
@@ -292,43 +331,40 @@ export function SavedGrantsPage() {
                             size="lg"
                             c="dark"
                             style={{ textDecoration: "none" }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Group gap="xs">
-                              {grant.title}
-                              <IconExternalLink size={16} />
+                            <Group gap="xs" wrap="nowrap">
+                              <Text lineClamp={2}>{grant.title}</Text>
+                              <IconExternalLink size={16} style={{ flexShrink: 0 }} />
                             </Group>
                           </Anchor>
-                          <Group gap="xs">
-                            <Text size="sm" c="dimmed">
-                              {grant.agency}
-                            </Text>
-                            {grant.aln && (
-                              <>
-                                <Text size="sm" c="dimmed">
-                                  •
-                                </Text>
-                                <Badge variant="light" size="sm">
-                                  ALN: {grant.aln}
-                                </Badge>
-                              </>
-                            )}
-                          </Group>
+
+                          <Text size="sm" c="dimmed" fw={500}>
+                            {grant.agency}
+                          </Text>
                         </Stack>
-                        <Group gap="xs">
-                          <ActionIcon
+
+                        <Group gap="xs" style={{ flexShrink: 0 }}>
+                          <Button
                             variant="light"
                             color="blue"
-                            size="lg"
-                            onClick={() => handleViewDetails(grant.external_id)}
-                            title="View details"
+                            size="sm"
+                            leftSection={<IconFileText size={16} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDetails(grant.external_id);
+                            }}
                           >
-                            <IconFileText size={20} />
-                          </ActionIcon>
+                            Details
+                          </Button>
                           <ActionIcon
                             variant="light"
                             color="red"
                             size="lg"
-                            onClick={() => handleRemoveGrant(grant.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveGrant(grant.id);
+                            }}
                             title="Remove from pipeline"
                           >
                             <IconTrash size={20} />
@@ -336,21 +372,64 @@ export function SavedGrantsPage() {
                         </Group>
                       </Group>
 
-                      <Group gap="md">
-                        {grant.close_date && (
-                          <Badge
-                            variant="light"
-                            color={isOverdue ? "red" : isClosingSoon ? "orange" : "green"}
-                            leftSection={<IconCalendar size={14} />}
-                          >
-                            {isOverdue
-                              ? `Closed ${Math.abs(daysUntilClose!)} days ago`
-                              : `Closes ${dayjs(grant.close_date).format("MMM D, YYYY")} (${daysUntilClose} days)`}
-                          </Badge>
+                      <Divider />
+
+                      {/* Dates */}
+                      <Group gap="xl">
+                        {grant.open_date && (
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                              Posted
+                            </Text>
+                            <Text size="sm" fw={500}>
+                              {dayjs(grant.open_date).format("MMM D, YYYY")}
+                            </Text>
+                          </Stack>
                         )}
-                        <Badge variant="light" color="gray" size="sm">
-                          Saved {dayjs(grant.saved_at).format("MMM D, YYYY")}
-                        </Badge>
+                        <Stack gap={4}>
+                          <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                            {isOverdue ? "Closed" : "Closes"}
+                          </Text>
+                          {grant.close_date ? (
+                            <Group gap="xs">
+                              <Text
+                                size="sm"
+                                fw={600}
+                                c={
+                                  isOverdue
+                                    ? "red"
+                                    : isClosingSoon
+                                      ? "orange"
+                                      : "dark"
+                                }
+                              >
+                                {dayjs(grant.close_date).format("MMM D, YYYY")}
+                              </Text>
+                              {daysUntilClose !== null && !isOverdue && (
+                                <Badge
+                                  size="sm"
+                                  color={isClosingSoon ? "orange" : "gray"}
+                                  variant="light"
+                                >
+                                  {daysUntilClose === 0
+                                    ? "Today"
+                                    : daysUntilClose === 1
+                                      ? "Tomorrow"
+                                      : `${daysUntilClose} days`}
+                                </Badge>
+                              )}
+                              {isOverdue && (
+                                <Badge size="sm" color="red" variant="light">
+                                  Overdue
+                                </Badge>
+                              )}
+                            </Group>
+                          ) : (
+                            <Text size="sm" c="dimmed">
+                              TBD
+                            </Text>
+                          )}
+                        </Stack>
                       </Group>
                     </Stack>
                   </Card>
@@ -420,7 +499,7 @@ export function SavedGrantsPage() {
                     Description
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.description}
+                    {stripHtml(grantDetails.description)}
                   </Text>
                 </Stack>
               )}
@@ -507,7 +586,7 @@ export function SavedGrantsPage() {
                     Eligible Applicants
                   </Text>
                   <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                    {grantDetails.eligibility}
+                    {stripHtml(grantDetails.eligibility)}
                   </Text>
                 </Stack>
               )}
