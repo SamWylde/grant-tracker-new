@@ -102,10 +102,16 @@ export class GrantsGovAdapter extends BaseGrantAdapter {
 
   async fetchSingleGrant(externalId: string): Promise<RawGrantData | null> {
     const baseUrl = this.source.api_base_url || 'https://api.grants.gov/v1/api';
-    const endpoint = `${baseUrl}/opportunity/${externalId}`;
+    const endpoint = `${baseUrl}/fetchOpportunity`;
 
     try {
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ opportunityId: Number(externalId) }),
+      });
 
       if (!response.ok) {
         if (response.status === 404) return null;
