@@ -4,7 +4,9 @@ import { IconRocket } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
 import { OrgSwitcher } from './OrgSwitcher';
 import { UserMenu } from './UserMenu';
+import { MentionBell } from './MentionBell';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 
 interface AppHeaderProps {
   subtitle?: string;
@@ -12,6 +14,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ subtitle }: AppHeaderProps) {
   const { user } = useAuth();
+  const { currentOrg } = useOrganization();
   const location = useLocation();
   const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
 
@@ -103,9 +106,10 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
           {/* Right side - Desktop: Org + User, Mobile: Burger */}
           {user && (
             <>
-              {/* Desktop: OrgSwitcher + UserMenu */}
+              {/* Desktop: OrgSwitcher + MentionBell + UserMenu */}
               <Group gap="md" visibleFrom="md">
                 <OrgSwitcher />
+                <MentionBell orgId={currentOrg?.id} />
                 <UserMenu />
               </Group>
 

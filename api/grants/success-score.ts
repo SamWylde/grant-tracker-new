@@ -276,21 +276,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const { grant_id, org_id } = req.query;
+    const { grant_id, external_id, org_id } = req.query;
 
-    if (!grant_id) {
-      return res.status(400).json({ error: 'grant_id is required' });
+    if (!grant_id && !external_id) {
+      return res.status(400).json({ error: 'grant_id or external_id is required' });
     }
 
     if (!org_id) {
       return res.status(400).json({ error: 'org_id is required' });
     }
 
+    let catalogGrantId = grant_id as string;
+
+    // If external_id provided, lookup catalog grant UUID
+    if (external_id && !grant_id) {
+      const { data: catalogGrant, error: lookupError } = await supabase
+        .from('grants_catalog')
+        .select('id')
+        .eq('external_id', external_id)
+        .single();
+
+      if (lookupError || !catalogGrant) {
+        return res.status(404).json({
+          error: 'Grant not found in catalog',
+          details: 'This grant may not have been synced yet. Success scoring requires grant to be in catalog.'
+        });
+      }
+
+      catalogGrantId = catalogGrant.id;
+    }
+
     // Check for cached score
     const { data: cachedScore } = await supabase
       .from('grant_success_scores')
       .select('*')
-      .eq('grant_id', grant_id)
+      .eq('grant_id', catalogGrantId)
       .eq('org_id', org_id)
       .gte('expires_at', new Date().toISOString())
       .order('calculated_at', { ascending: false })
@@ -298,7 +318,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (cachedScore) {
-      console.log(`[Success Score] Returning cached score for grant ${grant_id}`);
+      console.log(`[Success Score] Returning cached score for grant ${catalogGrantId}`);
       return res.status(200).json({
         ...cachedScore,
         cached: true,
@@ -309,11 +329,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: grant, error: grantError } = await supabase
       .from('grants_catalog')
       .select('*')
-      .eq('id', grant_id)
+      .eq('id', catalogGrantId)
       .single();
 
     if (grantError || !grant) {
-      return res.status(404).json({ error: 'Grant not found' });
+      return res.status(404).json({ error: 'Grant not found in catalog' });
     }
 
     console.log(`[Success Score] Calculating score for grant: ${grant.title}`);

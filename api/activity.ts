@@ -51,7 +51,71 @@ export default async function handler(
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { grant_id, org_id, user_id, action, limit = '50', offset = '0' } = req.query;
+    const { grant_id, org_id, user_id, action, limit = '50', offset = '0', stream = 'false' } = req.query;
+
+    // =====================================================
+    // NEW: Collaboration Activity Stream
+    // =====================================================
+    if (stream === 'true') {
+      if (!org_id) {
+        return res.status(400).json({ error: 'org_id is required for activity stream' });
+      }
+
+      // Verify user is org member
+      const { data: membership } = await supabase
+        .from('org_members')
+        .select('id')
+        .eq('org_id', org_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const limitNum = Math.min(parseInt(limit as string, 10) || 50, 100);
+
+      // Get activity from the activity_stream view
+      let streamQuery = supabase
+        .from('activity_stream')
+        .select('*')
+        .eq('org_id', org_id)
+        .order('created_at', { ascending: false })
+        .limit(limitNum);
+
+      // Filter by activity type if specified
+      if (action) {
+        streamQuery = streamQuery.eq('activity_type', action);
+      }
+
+      const { data: activities, error: activitiesError } = await streamQuery;
+
+      if (activitiesError) throw activitiesError;
+
+      // Group by date for UI display
+      const groupedByDate: Record<string, any[]> = {};
+
+      activities?.forEach(activity => {
+        const date = new Date(activity.created_at).toISOString().split('T')[0];
+
+        if (!groupedByDate[date]) {
+          groupedByDate[date] = [];
+        }
+
+        groupedByDate[date].push(activity);
+      });
+
+      return res.status(200).json({
+        activities: activities || [],
+        grouped_by_date: groupedByDate,
+        total: activities?.length || 0,
+        source: 'activity_stream',
+      });
+    }
+
+    // =====================================================
+    // ORIGINAL: Grant Activity Log
+    // =====================================================
 
     // Build query based on filters
     let query = supabase

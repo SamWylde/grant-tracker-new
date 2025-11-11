@@ -36,6 +36,8 @@ import { PaymentScheduleTab } from "./PaymentScheduleTab";
 import { ComplianceTab } from "./ComplianceTab";
 import { AISummaryTab } from "./AISummaryTab";
 import { MentionTextarea } from "./MentionTextarea";
+import { CommentThread } from "./CommentThread";
+import { CommentInput } from "./CommentInput";
 import { printGrantBrief } from "../utils/printGrant";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
@@ -78,6 +80,8 @@ export function GrantDetailDrawer({
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<Array<{ userId: string; userName: string }>>([]);
+  const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
+  const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null);
 
   // Fetch tasks for this grant
   const { data: tasksData } = useQuery({
@@ -97,6 +101,32 @@ export function GrantDetailDrawer({
         },
       });
       if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
+    enabled: opened && !!grant,
+  });
+
+  // Fetch comments for this grant
+  const { data: commentsData, refetch: refetchComments } = useQuery({
+    queryKey: ['grantComments', grant?.id],
+    queryFn: async () => {
+      if (!grant) return { comments: [], total_count: 0 };
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/comments/grant-comments?grant_id=${grant.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch comments');
+      }
+
       return response.json();
     },
     enabled: opened && !!grant,
@@ -184,6 +214,64 @@ export function GrantDetailDrawer({
   const handlePrintBrief = () => {
     if (!grant) return;
     printGrantBrief(grant, tasksData?.tasks);
+  };
+
+  // Comment handlers
+  const handleReply = (commentId: string, authorName?: string) => {
+    setReplyingToCommentId(commentId);
+    setReplyingToAuthor(authorName || null);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToCommentId(null);
+    setReplyingToAuthor(null);
+  };
+
+  const handleCommentSuccess = () => {
+    refetchComments();
+    handleCancelReply();
+  };
+
+  const handleEditComment = async (commentId: string, content: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update comment");
+
+      refetchComments();
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to delete comment");
+
+      refetchComments();
+    } catch (error) {
+      throw error;
+    }
   };
 
   return (
@@ -326,7 +414,7 @@ export function GrantDetailDrawer({
 
         <Divider />
 
-        {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, and Notes */}
+        {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Notes, and Comments */}
         <Tabs defaultValue="tasks">
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
@@ -343,6 +431,10 @@ export function GrantDetailDrawer({
               AI Summary
             </Tabs.Tab>
             <Tabs.Tab value="notes">Notes</Tabs.Tab>
+            <Tabs.Tab value="comments">
+              Comments
+              {commentsData?.total_count ? ` (${commentsData.total_count})` : ''}
+            </Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="tasks" pt="md">
@@ -429,6 +521,28 @@ export function GrantDetailDrawer({
                   </Group>
                 </>
               )}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="comments" pt="md">
+            <Stack gap="md">
+              {/* Comment Input */}
+              <CommentInput
+                grantId={grant.id}
+                orgId={grant.org_id}
+                parentCommentId={replyingToCommentId || undefined}
+                parentCommentAuthor={replyingToAuthor || undefined}
+                onSuccess={handleCommentSuccess}
+                onCancel={replyingToCommentId ? handleCancelReply : undefined}
+              />
+
+              {/* Comment Thread */}
+              <CommentThread
+                comments={commentsData?.comments || []}
+                onReply={handleReply}
+                onEdit={handleEditComment}
+                onDelete={handleDeleteComment}
+              />
             </Stack>
           </Tabs.Panel>
         </Tabs>
