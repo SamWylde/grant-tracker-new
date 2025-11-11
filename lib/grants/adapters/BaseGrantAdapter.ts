@@ -120,7 +120,7 @@ export abstract class BaseGrantAdapter {
         // Process each grant
         for (const raw of response.grants) {
           try {
-            const _normalized = this.normalizeGrant(raw);
+            this.normalizeGrant(raw); // Normalize to validate structure
             // This would be handled by the sync service
             // For now, just count it
             result.grants_created++;
@@ -175,7 +175,7 @@ export abstract class BaseGrantAdapter {
 
       for (const raw of response.grants) {
         try {
-          const _normalized = this.normalizeGrant(raw);
+          this.normalizeGrant(raw); // Normalize to validate structure
           result.grants_updated++;
         } catch (error) {
           result.errors.push({
