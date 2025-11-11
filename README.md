@@ -119,28 +119,40 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Page**: `/activity` - Centralized activity feed for your organization
 
 ### Post-Award Financials & Compliance
-- **Budget Tracking**: Track proposed vs. awarded vs. spent amounts by cost category
-- **Cost Categories**: Personnel, fringe benefits, travel, equipment, supplies, contractual, construction, other direct costs, indirect costs
-- **Match/Cost Share**: Track match requirements (cash and in-kind) with completion percentage
-- **Budget Line Items**: Detailed line-item budgeting with variance indicators
-- **Variance Analysis**: Automatic calculation of proposed vs. awarded vs. spent with visual indicators
-- **Burn-Down Tracking**: Monitor remaining budget and spending rate
-- **Disbursement Tracking**: Log expenses and payments received with approval workflow
-- **Payment Methods**: Track ACH, wire, check, credit card, in-kind contributions
-- **Receipt Management**: Attach receipt URLs and documentation
-- **Reconciliation**: Mark disbursements as reconciled for accounting
-- **Payment Schedules**: Model scheduled payments by quarter, milestone, or deliverable
-- **Drawdown Planning**: Track expected vs. actual payment dates and amounts
-- **Payment Types**: Advance, reimbursement, cost reimbursement, milestone-based, quarterly, annual
-- **Report Requirements**: Link required reports to payment schedules with submission tracking
-- **Compliance Checklists**: Associate federal regs, policies, and requirements with each grant
-- **Compliance Types**: Federal/state regulations, indirect cost agreements, match requirements, audit requirements, reporting, certifications
-- **Compliance Scoring**: Visual compliance completeness percentage per grant
-- **Critical Requirements**: Flag critical compliance items with separate tracking
-- **Due Date Tracking**: Monitor compliance deadlines with configurable reminder periods
-- **Documentation Links**: Attach policy URLs and regulation references
-- **Automatic Calculations**: Database triggers update budget totals when disbursements are added/approved
-- **Summary Views**: Pre-built views for budget summaries and compliance status
+- **Budget Tab**: Comprehensive budget management integrated into Grant Detail Drawer
+  - Mini P&L showing proposed vs. awarded vs. spent by cost category
+  - Burn-down chart with visual progress bars and remaining budget
+  - 11 cost categories: Personnel, fringe benefits, travel, equipment, supplies, contractual, construction, other direct costs, indirect costs, in-kind match, cash match
+  - Variance indicators with color-coded alerts (green/yellow/red)
+  - Match & cost share tracking with ring progress visualization
+  - Average daily spending rate with depletion estimates
+  - Budget line items with detailed breakdowns and descriptions
+- **Payment Schedule Tab**: Drawdown planning and payment tracking
+  - Upcoming payments with deadline-style indicators (overdue/due soon/future)
+  - Color-coded status badges for payment status
+  - Report submission requirement tracking with warnings
+  - Deliverable requirements display
+  - Received payments timeline with actual vs. expected amounts
+  - Alerts for payments requiring reports within 30 days
+  - Relative time displays ("due in 5 days", "overdue by 3 days")
+  - Payment types: Advance, reimbursement, cost reimbursement, milestone-based, quarterly, annual
+- **Compliance Tab**: Regulatory and policy compliance tracking
+  - Visual compliance completeness progress bar showing percentage complete
+  - Critical requirements section with prominent red alerts
+  - Requirements grouped by type in accordion interface
+  - Compliance types: Federal/state regulations, indirect cost agreements, match requirements, audit requirements, reporting, certifications, policies
+  - Due dates with relative time indicators
+  - Documentation requirement badges
+  - Policy reference links with external link icons
+  - Overdue and upcoming compliance warnings
+  - Completion checkboxes with timestamp tracking
+- **Backend Infrastructure**:
+  - Disbursement tracking: Log expenses and payments with approval workflow
+  - Payment methods: ACH, wire, check, credit card, in-kind contributions
+  - Receipt management: Attach receipt URLs and documentation
+  - Automatic calculations: Database triggers update totals when disbursements are added/approved
+  - Summary views: Pre-built views for budget summaries and compliance status
+  - Row Level Security: All data isolated by organization membership
 
 ### Settings & Management
 - **7 Settings Pages**: Profile, Organization, Team, Notifications, Alerts, Calendar & Integrations, Billing, Danger Zone
@@ -261,8 +273,11 @@ grant-tracker-new/
 │   │   ├── ProtectedRoute.tsx    # Route guard with permission checks
 │   │   ├── QuickSearchModal.tsx  # cmd/ctrl+K quick search modal
 │   │   ├── SavedViewsPanel.tsx   # Saved filter views panel
-│   │   ├── GrantDetailDrawer.tsx # Grant details with tasks and notes
+│   │   ├── GrantDetailDrawer.tsx # Grant details with tasks, budget, payments, compliance, and notes
 │   │   ├── TaskList.tsx          # Task management component with progress tracking
+│   │   ├── BudgetTab.tsx         # Budget tracking with mini P&L, burn-down chart, and variance indicators
+│   │   ├── PaymentScheduleTab.tsx # Payment schedules with deadline indicators and report tracking
+│   │   ├── ComplianceTab.tsx     # Compliance requirements with completeness bar and critical alerts
 │   │   ├── CustomGrantForm.tsx   # Manual grant entry form with validation
 │   │   ├── GrantFilters.tsx      # Reusable filter component for status/priority/assignee
 │   │   ├── SaveToPipelineModal.tsx # Modal for configuring grant on save
@@ -326,6 +341,9 @@ grant-tracker-new/
 │       ├── 20250117_multi_source_ingestion.sql
 │       ├── 20250118_fix_status_constraint.sql
 │       ├── 20250119_add_user_profiles_foreign_key.sql
+│       ├── 20250120_fix_grant_org_id.sql
+│       ├── 20250121_add_activity_log.sql
+│       ├── 20250122_add_post_award_financials.sql
 │       └── add_integrations.sql
 ├── vercel.json              # Vercel deployment config (includes cron jobs)
 └── package.json
