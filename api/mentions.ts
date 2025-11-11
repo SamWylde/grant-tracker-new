@@ -84,27 +84,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...new Set(notifications?.map(n => n.mentioned_by_user_id) || [])
       ];
 
-      const orgIds = [...new Set(notifications?.map(n => n.org_id) || [])];
+      // Get user profiles for mentioned_by users
+      const { data: profiles } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', userIds);
 
-      const { data: members } = await supabase
-        .from('org_members')
-        .select('user_id, org_id, full_name, avatar_url')
-        .in('user_id', userIds)
-        .in('org_id', orgIds);
-
-      const memberMap = new Map(
-        members?.map(m => [`${m.user_id}-${m.org_id}`, m]) || []
+      const profileMap = new Map(
+        profiles?.map(p => [p.id, p]) || []
       );
 
       // Enrich notifications
       const enrichedNotifications = notifications?.map(notification => {
-        const memberKey = `${notification.mentioned_by_user_id}-${notification.org_id}`;
-        const member = memberMap.get(memberKey);
+        const profile = profileMap.get(notification.mentioned_by_user_id);
 
         return {
           ...notification,
-          mentioned_by_name: member?.full_name || notification.mentioned_by.email,
-          mentioned_by_avatar: member?.avatar_url,
+          mentioned_by_name: profile?.full_name || notification.mentioned_by.email,
+          mentioned_by_avatar: profile?.avatar_url,
         };
       }) || [];
 
