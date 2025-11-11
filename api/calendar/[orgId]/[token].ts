@@ -56,10 +56,10 @@ export default async function handler(
 
     if (grantsError) {
       console.error('Error fetching grants:', grantsError);
-      return res.status(500).json({ error: 'Failed to fetch grants' });
+      // Return empty calendar instead of error
     }
 
-    // Generate ICS file
+    // Generate ICS file (even if empty)
     const icsLines: string[] = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -71,7 +71,7 @@ export default async function handler(
       'X-WR-CALDESC:Grant deadlines from GrantCue',
     ];
 
-    // Add events for each grant
+    // Add events for each grant (if any)
     for (const grant of grants || []) {
       if (!grant.close_date) continue;
 
