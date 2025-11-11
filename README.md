@@ -54,6 +54,11 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Migration Landing Page**: Comprehensive `/granthub-migration` guide with deadline messaging, FAQs, and step-by-step instructions
 - **PDF/Print Export**: Generate professional grant briefs and board packets for presentations
 - **CSV Export**: Export saved grants and pipeline data with proper escaping and full field support
+  - Exports all fields: title, agency, ALN, status, priority, dates, assigned to, notes, external ID
+  - Proper CSV escaping for commas, quotes, and newlines
+  - Filename includes current date: `grants-export-2025-01-21.csv`
+  - Perfect for board reports, Excel analysis, and data archival
+  - Usage: `GET /api/saved?org_id={uuid}&format=csv`
 
 ### Pipeline & Workflow Management
 - **Kanban Board**: Visual pipeline with 4 stages (Researching → Drafting → Submitted → Awarded)
@@ -87,13 +92,34 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Slack**: OAuth integration (coming soon)
 
 ### Notifications & Reminders
+- **Grant Alerts**: Create custom alerts for new grants matching specific criteria (keyword, category, agency, amount range, due date)
+- **Email Alert Notifications**: Automatic email notifications when new grants match your saved alerts
+- **Alert Frequency**: Choose how often alerts are checked (realtime, daily, weekly)
+- **Alert Channels**: Notify via email, in-app notifications, or custom webhooks
+- **Automated Alert Checking**: Cron job runs every 6 hours to check for new matching grants
+- **Alert Match Tracking**: Track which grants triggered which alerts with match history
+- **In-App Notifications**: Real-time notification center for grant alerts, deadlines, and team updates
 - **Email Reminders**: Customizable deadline reminder cadence (30d, 14d, 7d, 3d, 1d, day-of) via Resend
 - **Daily Task Emails**: Optional daily summary emails
 - **User Preferences**: Control email notification preferences
 - **Transactional Emails**: Team invitations, password resets, and notifications
 
+### Activity Feed & Audit Log
+- **Comprehensive Activity Tracking**: Automatic logging of all changes to grants
+- **Timeline View**: Beautiful timeline interface with user avatars and color-coded actions
+- **Tracked Actions**: Grant saved, status changed, priority changed, assigned, notes added/updated/deleted
+- **Change History**: See old value → new value for all field updates
+- **User Attribution**: Every action is tied to the user who performed it
+- **Filter Controls**: Filter by action type (status changed, priority changed, assigned, etc.)
+- **Grant History**: View full activity log for individual grants
+- **Organization-Wide View**: See all activity across your organization
+- **Real-Time Updates**: Refresh to see latest changes from your team
+- **Database Triggers**: Automatic capture of all changes with no manual logging required
+- **Access Control**: Activity logs respect organization membership via RLS policies
+- **Page**: `/activity` - Centralized activity feed for your organization
+
 ### Settings & Management
-- **7 Settings Pages**: Profile, Organization, Team, Notifications, Calendar & Integrations, Billing, Danger Zone
+- **7 Settings Pages**: Profile, Organization, Team, Notifications, Alerts, Calendar & Integrations, Billing, Danger Zone
 - **Responsive Design**: Built with Mantine UI for a modern, mobile-friendly experience
 - **Mobile Navigation**: Burger menu with drawer navigation on mobile devices
 - **Role-Based Access**: Admin-only controls for sensitive settings
@@ -156,6 +182,8 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250117_multi_source_ingestion.sql` - Creates multi-source grant ingestion system (grant_sources, grants_catalog, sync_jobs, de-duplication)
 - `supabase/migrations/20250118_fix_status_constraint.sql` - Fixes status check constraint
 - `supabase/migrations/20250119_add_user_profiles_foreign_key.sql` - Adds foreign key from org_members to user_profiles for PostgREST joins and RPC function for large teams
+- `supabase/migrations/20250120_fix_grant_org_id.sql` - Ensures all grants have valid org_id (data integrity fix)
+- `supabase/migrations/20250121_add_activity_log.sql` - Creates grant_activity_log table with automatic triggers for all grant changes
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
@@ -167,20 +195,22 @@ grant-tracker-new/
 ├── api/                      # Vercel serverless functions
 │   ├── admin/
 │   │   └── sync.ts          # Admin sync management (manual full/incremental sync)
+│   ├── alerts/
+│   │   └── check.ts         # Alert checking worker (cron job every 6 hours)
 │   ├── cron/
 │   │   └── sync-grants.ts   # Automated nightly sync job (2 AM)
 │   ├── grants/
 │   │   ├── search.ts        # Proxy to Grants.gov Search2 API
 │   │   ├── details.ts       # Proxy to Grants.gov fetchOpportunity API
 │   │   └── custom.ts        # Custom grant entry endpoint
-│   ├── saved/
-│   │   └── [id]/
-│   │       └── status.ts    # Update grant status/priority/assignment (auth required)
-│   ├── saved.ts             # CRUD for saved grants (auth required, auto-creates default tasks)
+│   ├── saved-status.ts      # Update grant status/priority/assignment (auth required)
+│   ├── saved.ts             # CRUD for saved grants with CSV export (auth required)
+│   ├── activity.ts          # Activity log / audit trail API (auth required)
 │   ├── import.ts            # Bulk grant import endpoint (auth required)
 │   ├── tasks.ts             # CRUD for grant tasks (auth required)
 │   ├── views.ts             # CRUD for saved filter views (auth required)
 │   ├── recent-searches.ts   # Recent search history tracking
+│   ├── alerts.ts            # CRUD for grant alerts (auth required)
 │   ├── webhooks.ts          # CRUD for custom webhooks
 │   └── integrations.ts      # CRUD for integrations (Teams, Slack, etc.)
 ├── lib/
@@ -230,9 +260,10 @@ grant-tracker-new/
 │   │   ├── SavedGrantsPage.tsx     # Saved grants list view
 │   │   ├── PipelinePage.tsx        # Kanban board for grant workflow
 │   │   ├── MetricsPage.tsx         # Value metrics and analytics
+│   │   ├── ActivityPage.tsx        # Activity feed / audit log timeline view
 │   │   ├── FeaturesPage.tsx        # Product features and roadmap
 │   │   ├── PricingPage.tsx         # Pricing tiers and plans
-│   │   ├── PrivacyPage.tsx         # Privacy policy
+│   │   ├── PrivacyPage.tsx         # Privacy policy with public header
 │   │   ├── GrantHubImportPage.tsx  # GrantHub CSV import wizard with field mapping and validation
 │   │   ├── GrantHubMigrationPage.tsx # GrantHub migration landing page with deadline messaging and FAQs
 │   │   ├── admin/
@@ -438,9 +469,29 @@ Automated nightly sync job (scheduled via Vercel cron at 2 AM). Syncs all enable
 
 ### Saved Grants
 
-#### `GET /api/saved?org_id={uuid}`
+#### `GET /api/saved?org_id={uuid}&format={json|csv}`
 
 Get all saved grants for an organization. Returns grants with status, priority, and assignment fields.
+
+**Query parameters:**
+- `org_id` (required): Organization UUID
+- `format` (optional): Response format - `json` (default) or `csv`
+
+**CSV Export:**
+When `format=csv`, returns a CSV file with all grant fields:
+- Headers: Title, Agency, ALN, Status, Priority, Open Date, Close Date, Assigned To, Notes, Saved At, External ID, External Source
+- Proper CSV escaping for commas, quotes, and newlines
+- Filename: `grants-export-YYYY-MM-DD.csv`
+- Content-Type: `text/csv`
+
+**Example:**
+```bash
+# Get JSON
+GET /api/saved?org_id={uuid}
+
+# Export CSV
+GET /api/saved?org_id={uuid}&format=csv
+```
 
 #### `POST /api/saved`
 
@@ -578,6 +629,145 @@ Delete a saved view.
 #### `PATCH /api/views?id={uuid}`
 
 Increment use_count when a view is loaded.
+
+### Grant Alerts
+
+#### `GET /api/alerts?org_id={uuid}`
+
+Get all grant alerts for an organization.
+
+**Response:**
+```json
+{
+  "alerts": [
+    {
+      "id": "uuid",
+      "name": "Education grants over $100K",
+      "description": "Alert for large education grants",
+      "keyword": "education",
+      "category": "ED",
+      "min_amount": 100000,
+      "frequency": "daily",
+      "notify_email": true,
+      "notify_in_app": true,
+      "is_active": true,
+      "alert_count": 5,
+      "last_alert_sent_at": "2025-01-20T14:30:00Z"
+    }
+  ]
+}
+```
+
+#### `POST /api/alerts`
+
+Create a new grant alert.
+
+**Request body:**
+```json
+{
+  "org_id": "uuid",
+  "name": "Alert Name",
+  "description": "Optional description",
+  "keyword": "climate",
+  "category": "EN",
+  "agency": "EPA",
+  "status_posted": true,
+  "status_forecasted": false,
+  "due_in_days": 60,
+  "min_amount": 50000,
+  "max_amount": 500000,
+  "frequency": "daily",
+  "notify_email": true,
+  "notify_in_app": true,
+  "notify_webhook": false
+}
+```
+
+#### `PUT /api/alerts?alert_id={uuid}`
+
+Update an existing alert.
+
+#### `DELETE /api/alerts?alert_id={uuid}`
+
+Delete a grant alert.
+
+#### `POST /api/alerts/check`
+
+Check all active alerts for new matching grants. This endpoint is called automatically by a cron job every 6 hours, but can also be triggered manually.
+
+**Response:**
+```json
+{
+  "message": "Alert check completed",
+  "alerts_checked": 12,
+  "matches_created": 3,
+  "emails_queued": 2,
+  "alerts_with_matches": [
+    {
+      "alert_name": "Education grants over $100K",
+      "matches_count": 2
+    }
+  ]
+}
+```
+
+**Behavior:**
+- Checks grants added since last check (or last 24 hours for new alerts)
+- Creates `grant_alert_matches` records
+- Triggers in-app notifications via database trigger
+- Queues emails for alerts with `notify_email: true`
+- Updates `last_checked_at`, `last_alert_sent_at`, and `alert_count`
+
+### Activity Log
+
+#### `GET /api/activity?grant_id={uuid}&org_id={uuid}&user_id={uuid}&action={action}&limit={50}&offset={0}`
+
+Get activity log entries with optional filtering.
+
+**Query parameters:**
+- `grant_id` (optional): Filter by specific grant
+- `org_id` (optional): Filter by organization
+- `user_id` (optional): Filter by user
+- `action` (optional): Filter by action type (`saved`, `status_changed`, `priority_changed`, `assigned`, `note_added`, etc.)
+- `limit` (optional, default 50): Number of results
+- `offset` (optional, default 0): Pagination offset
+
+**Response:**
+```json
+{
+  "activities": [
+    {
+      "id": "uuid",
+      "action": "status_changed",
+      "field_name": "status",
+      "old_value": "researching",
+      "new_value": "drafting",
+      "description": "Grant status changed from researching to drafting",
+      "created_at": "2025-01-21T10:30:00Z",
+      "user_profiles": {
+        "full_name": "John Doe",
+        "avatar_url": "https://..."
+      },
+      "org_grants_saved": {
+        "title": "Education Grant 2025",
+        "external_id": "ED-2025-001"
+      }
+    }
+  ],
+  "total": 42,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Tracked Actions:**
+- `saved` - Grant added to pipeline
+- `status_changed` - Pipeline stage changed
+- `priority_changed` - Priority updated
+- `assigned` - Grant assigned to team member
+- `note_added` - Note added
+- `note_updated` - Note modified
+- `note_deleted` - Note removed
 
 ### Recent Searches
 
