@@ -248,10 +248,10 @@ export default async function handler(
                 batch.map(async (grant) => {
                   try {
                     console.log(`[Search API] Fetching details for grant ${grant.id}`);
-                    const detailsResponse = await fetch('https://api.grants.gov/v1/api/opportunity2', {
+                    const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: grant.id }),
+                      body: JSON.stringify({ opportunityId: Number(grant.id) }),
                     });
 
                     console.log(`[Search API] Details response status for ${grant.id}: ${detailsResponse.status}`);
