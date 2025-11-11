@@ -75,7 +75,7 @@ export default async function handler(
       aln,
       dueInDays,
       sortBy,
-      rows = 25,
+      rows = 15,
       startRecordNum = 0,
     } = req.body;
 
@@ -200,26 +200,87 @@ export default async function handler(
         }
       }
 
-      // Enrich with descriptions from grants_catalog (if available)
+      // Enrich with descriptions (hybrid: catalog + live fetch)
       if (supabaseUrl && supabaseServiceKey && normalizedGrants.length > 0) {
         try {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           const grantIds = normalizedGrants.map(g => g.id);
 
+          // Step 1: Check catalog first
           const { data: catalogGrants } = await supabase
             .from('grants_catalog')
             .select('external_id, description')
             .in('external_id', grantIds);
 
-          if (catalogGrants && catalogGrants.length > 0) {
-            const descriptionMap = new Map(
-              catalogGrants.map(g => [g.external_id, g.description])
-            );
+          const descriptionMap = new Map(
+            catalogGrants?.map(g => [g.external_id, g.description]) || []
+          );
 
-            normalizedGrants = normalizedGrants.map(grant => ({
-              ...grant,
-              description: descriptionMap.get(grant.id) || null,
-            }));
+          // Apply cached descriptions
+          normalizedGrants = normalizedGrants.map(grant => ({
+            ...grant,
+            description: descriptionMap.get(grant.id) || null,
+          }));
+
+          // Step 2: Fetch missing descriptions live from Grants.gov
+          const grantsWithoutDescriptions = normalizedGrants.filter(g => !g.description);
+
+          if (grantsWithoutDescriptions.length > 0) {
+            console.log(`Fetching ${grantsWithoutDescriptions.length} descriptions live from Grants.gov`);
+
+            // Fetch details in parallel (limit to 10 concurrent to avoid overwhelming API)
+            const batchSize = 10;
+            for (let i = 0; i < grantsWithoutDescriptions.length; i += batchSize) {
+              const batch = grantsWithoutDescriptions.slice(i, i + batchSize);
+
+              await Promise.all(
+                batch.map(async (grant) => {
+                  try {
+                    const detailsResponse = await fetch('https://api.grants.gov/v1/api/opportunity2', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: grant.id }),
+                    });
+
+                    if (detailsResponse.ok) {
+                      const detailsData = await detailsResponse.json();
+                      const description = detailsData?.data?.synopsis?.synopsisDesc || null;
+
+                      if (description) {
+                        // Update in-memory grant
+                        grant.description = description;
+
+                        // Cache in database asynchronously (don't wait)
+                        supabase
+                          .from('grants_catalog')
+                          .upsert({
+                            source_id: '00000000-0000-0000-0000-000000000001', // Placeholder source ID
+                            source_key: 'grants_gov',
+                            external_id: grant.id,
+                            title: grant.title,
+                            description: description,
+                            agency: grant.agency,
+                            opportunity_number: grant.number,
+                            close_date: grant.closeDate,
+                            open_date: grant.openDate,
+                            opportunity_status: grant.status as any,
+                            first_seen_at: new Date().toISOString(),
+                            last_updated_at: new Date().toISOString(),
+                            last_synced_at: new Date().toISOString(),
+                            is_active: true,
+                          }, {
+                            onConflict: 'source_key,external_id',
+                          })
+                          .then(() => console.log(`Cached description for grant ${grant.id}`))
+                          .catch(err => console.warn(`Failed to cache description:`, err));
+                      }
+                    }
+                  } catch (err) {
+                    console.warn(`Failed to fetch description for grant ${grant.id}:`, err);
+                  }
+                })
+              );
+            }
           }
         } catch (dbError) {
           // Silently fail - descriptions are optional enhancement
