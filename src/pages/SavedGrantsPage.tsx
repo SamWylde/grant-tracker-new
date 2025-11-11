@@ -34,8 +34,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
+import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { ImportWizard } from "../components/ImportWizard";
-import { type GrantDetail } from "../types/grants";
+import { type GrantDetail, type SavedGrant } from "../types/grants";
 import { useSavedGrants } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
 import { supabase } from "../lib/supabase";
@@ -47,6 +48,7 @@ export function SavedGrantsPage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const [sortBy, setSortBy] = useState<string>("deadline-asc");
+  const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [filters, setFilters] = useState<GrantFilterValues>({
@@ -299,6 +301,7 @@ export function SavedGrantsPage() {
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                     }}
+                    onClick={() => setSelectedGrant(grant)}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                       e.currentTarget.style.transform = "translateY(-2px)";
@@ -649,6 +652,13 @@ export function SavedGrantsPage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
         }}
+      />
+
+      {/* Grant Detail Drawer */}
+      <GrantDetailDrawer
+        grant={selectedGrant}
+        opened={!!selectedGrant}
+        onClose={() => setSelectedGrant(null)}
       />
     </Box>
   );
