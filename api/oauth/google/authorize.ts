@@ -15,12 +15,12 @@ export default async function handler(
   }
 
   // Get OAuth credentials from environment
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || `${process.env.VITE_APP_URL || 'http://localhost:3000'}/api/oauth/google/callback`;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'https://grantcue.com/api/oauth/google/callback';
 
   if (!clientId) {
     return res.status(500).json({
-      error: 'Google OAuth not configured. Please set GOOGLE_OAUTH_CLIENT_ID environment variable.'
+      error: 'Google OAuth not configured. Please set GOOGLE_CLIENT_ID environment variable.'
     });
   }
 
