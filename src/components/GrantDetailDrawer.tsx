@@ -117,17 +117,15 @@ export function GrantDetailDrawer({
       // Send notifications for mentioned users
       for (const mention of mentionedUsers) {
         try {
-          await supabase.from('notifications').insert({
+          await supabase.from('in_app_notifications').insert({
             user_id: mention.userId,
-            type: 'mention',
+            org_id: grant.org_id,
+            type: 'team_update',
             title: `${user?.email || 'Someone'} mentioned you in notes`,
             message: `You were mentioned in notes for grant: ${grant.title}`,
-            link: `/saved?grant=${grant.id}`,
-            data: {
-              grant_id: grant.id,
-              grant_title: grant.title,
-              mentioned_by: user?.id,
-            } as any,
+            related_grant_id: grant.external_id,
+            action_url: `/saved?grant=${grant.id}`,
+            action_label: 'View Grant',
           } as any);
         } catch (notifError) {
           console.error('Failed to send mention notification:', notifError);
