@@ -698,6 +698,12 @@ export function DiscoverPage() {
                           <Text size="sm" c="dimmed" fw={500}>
                             {grant.agency}
                           </Text>
+
+                          {grant.description && (
+                            <Text size="sm" c="dimmed" lineClamp={2} mt={4}>
+                              {stripHtml(grant.description)}
+                            </Text>
+                          )}
                         </Stack>
 
                         <Group gap="xs" style={{ flexShrink: 0 }}>

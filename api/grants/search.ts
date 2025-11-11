@@ -1,4 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 interface GrantsGovOpportunity {
   id?: string;
@@ -31,6 +35,7 @@ interface NormalizedGrant {
   closeDate: string | null;
   status: string;
   aln: string | null;
+  description?: string | null;
 }
 
 // Normalize a single opportunity
@@ -192,6 +197,33 @@ export default async function handler(
               });
             }
             break;
+        }
+      }
+
+      // Enrich with descriptions from grants_catalog (if available)
+      if (supabaseUrl && supabaseServiceKey && normalizedGrants.length > 0) {
+        try {
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          const grantIds = normalizedGrants.map(g => g.id);
+
+          const { data: catalogGrants } = await supabase
+            .from('grants_catalog')
+            .select('external_id, description')
+            .in('external_id', grantIds);
+
+          if (catalogGrants && catalogGrants.length > 0) {
+            const descriptionMap = new Map(
+              catalogGrants.map(g => [g.external_id, g.description])
+            );
+
+            normalizedGrants = normalizedGrants.map(grant => ({
+              ...grant,
+              description: descriptionMap.get(grant.id) || null,
+            }));
+          }
+        } catch (dbError) {
+          // Silently fail - descriptions are optional enhancement
+          console.warn('Could not fetch descriptions from database:', dbError);
         }
       }
 

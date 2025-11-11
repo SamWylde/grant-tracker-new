@@ -36,6 +36,7 @@ export interface NormalizedGrant {
   closeDate: string | null;
   status: string;
   aln: string | null;
+  description?: string | null;
 }
 
 // Search response for our API
