@@ -42,6 +42,8 @@ import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { ImportWizard } from "../components/ImportWizard";
+import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
+import { GrantTagBadges } from "../components/GrantTagBadges";
 import { type GrantDetail, type SavedGrant } from "../types/grants";
 import { useSavedGrants } from "../hooks/useSavedGrants";
 import { notifications } from "@mantine/notifications";
@@ -586,7 +588,13 @@ export function SavedGrantsPage() {
                                 {grant.aln}
                               </Badge>
                             )}
+                            <SuccessScoreBadge
+                              grantId={grant.external_id}
+                              orgId={grant.org_id}
+                              compact
+                            />
                           </Group>
+                          <GrantTagBadges grantId={grant.external_id} maxTags={4} />
 
                           <Anchor
                             href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
