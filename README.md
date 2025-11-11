@@ -120,16 +120,16 @@ Run the migrations in your Supabase SQL editor in the following order:
 
 #### Collaboration Features
 17. `20250125_add_collaboration_features.sql` - Threaded comments, @mentions, activity stream
-18. `20250125_fix_collaboration_full_name.sql` - Fix schema references (user_profiles vs org_members)
 
 #### Integrations
-19. `add_integrations.sql` - Calendar feeds, webhooks, Teams/Slack
+18. `add_integrations.sql` - Calendar feeds, webhooks, Teams/Slack
 
 #### Data Fixes
-20. `20250118_fix_status_constraint.sql` - Status field constraint fix
-21. `20250119_add_user_profiles_foreign_key.sql` - Foreign key for PostgREST joins
-22. `20250120_fix_grant_org_id.sql` - Data integrity fix for org_id
-23. `20250126_fix_activity_log_user_id.sql` - Allow system-generated activities
+19. `20250118_fix_status_constraint.sql` - Status field constraint fix
+20. `20250119_add_user_profiles_foreign_key.sql` - Foreign key for PostgREST joins
+21. `20250120_fix_grant_org_id.sql` - Data integrity fix for org_id
+22. `20250126_fix_activity_log_user_id.sql` - Allow system-generated activities
+23. `20250127_fix_collaboration_full_name.sql` - Fix schema references (user_profiles vs org_members)
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
 
