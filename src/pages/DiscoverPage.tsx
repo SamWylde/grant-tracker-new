@@ -52,6 +52,9 @@ import { SavedViewsPanel } from "../components/SavedViewsPanel";
 import { FitScoreBadge } from "../components/FitScoreBadge";
 import { QuickAddGrantModal } from "../components/QuickAddGrantModal";
 import { SaveToPipelineModal, type SaveToPipelineData } from "../components/SaveToPipelineModal";
+import { RecommendationsSection } from "../components/RecommendationsSection";
+import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
+import { GrantTagBadges } from "../components/GrantTagBadges";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
@@ -460,6 +463,17 @@ export function DiscoverPage() {
             onLoadView={handleLoadSearch}
           />
 
+          {/* AI Recommendations */}
+          <RecommendationsSection
+            onSaveGrant={(externalId) => {
+              // Find the grant in search results
+              const grant = sortedGrants.find(g => g.id === externalId);
+              if (grant) {
+                handleSaveToggle(grant, false);
+              }
+            }}
+          />
+
           {/* Filters */}
           <Paper p="md" withBorder>
             <Stack gap="md">
@@ -655,7 +669,15 @@ export function DiscoverPage() {
                             <FitScoreBadge
                               grantCategory={category || undefined}
                             />
+                            {currentOrg?.id && (
+                              <SuccessScoreBadge
+                                grantId={grant.id}
+                                orgId={currentOrg.id}
+                                compact
+                              />
+                            )}
                           </Group>
+                          <GrantTagBadges grantId={grant.id} maxTags={3} />
 
                           <Anchor
                             href={`https://www.grants.gov/search-results-detail/${grant.id}`}
