@@ -22,6 +22,7 @@ import { DiscoverPage } from "./pages/DiscoverPage";
 import { SavedGrantsPage } from "./pages/SavedGrantsPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { MetricsPage } from "./pages/MetricsPage";
+import { ActivityPage } from "./pages/ActivityPage";
 import { GrantHubImportPage } from "./pages/GrantHubImportPage";
 import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -74,6 +75,7 @@ export default function App() {
                 <Route path="/saved" element={<ProtectedRoute><SavedGrantsPage /></ProtectedRoute>} />
                 <Route path="/pipeline" element={<ProtectedRoute><PipelinePage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
+                <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
                 <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />
 
                 {/* Protected Settings Routes */}

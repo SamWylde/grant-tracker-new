@@ -54,6 +54,11 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Migration Landing Page**: Comprehensive `/granthub-migration` guide with deadline messaging, FAQs, and step-by-step instructions
 - **PDF/Print Export**: Generate professional grant briefs and board packets for presentations
 - **CSV Export**: Export saved grants and pipeline data with proper escaping and full field support
+  - Exports all fields: title, agency, ALN, status, priority, dates, assigned to, notes, external ID
+  - Proper CSV escaping for commas, quotes, and newlines
+  - Filename includes current date: `grants-export-2025-01-21.csv`
+  - Perfect for board reports, Excel analysis, and data archival
+  - Usage: `GET /api/saved?org_id={uuid}&format=csv`
 
 ### Pipeline & Workflow Management
 - **Kanban Board**: Visual pipeline with 4 stages (Researching → Drafting → Submitted → Awarded)
@@ -87,13 +92,58 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Slack**: OAuth integration (coming soon)
 
 ### Notifications & Reminders
+- **Grant Alerts**: Create custom alerts for new grants matching specific criteria (keyword, category, agency, amount range, due date)
+- **Email Alert Notifications**: Automatic email notifications when new grants match your saved alerts
+- **Alert Frequency**: Choose how often alerts are checked (realtime, daily, weekly)
+- **Alert Channels**: Notify via email, in-app notifications, or custom webhooks
+- **Automated Alert Checking**: Cron job runs every 6 hours to check for new matching grants
+- **Alert Match Tracking**: Track which grants triggered which alerts with match history
+- **In-App Notifications**: Real-time notification center for grant alerts, deadlines, and team updates
 - **Email Reminders**: Customizable deadline reminder cadence (30d, 14d, 7d, 3d, 1d, day-of) via Resend
 - **Daily Task Emails**: Optional daily summary emails
 - **User Preferences**: Control email notification preferences
 - **Transactional Emails**: Team invitations, password resets, and notifications
 
+### Activity Feed & Audit Log
+- **Comprehensive Activity Tracking**: Automatic logging of all changes to grants
+- **Timeline View**: Beautiful timeline interface with user avatars and color-coded actions
+- **Tracked Actions**: Grant saved, status changed, priority changed, assigned, notes added/updated/deleted
+- **Change History**: See old value → new value for all field updates
+- **User Attribution**: Every action is tied to the user who performed it
+- **Filter Controls**: Filter by action type (status changed, priority changed, assigned, etc.)
+- **Grant History**: View full activity log for individual grants
+- **Organization-Wide View**: See all activity across your organization
+- **Real-Time Updates**: Refresh to see latest changes from your team
+- **Database Triggers**: Automatic capture of all changes with no manual logging required
+- **Access Control**: Activity logs respect organization membership via RLS policies
+- **Page**: `/activity` - Centralized activity feed for your organization
+
+### Post-Award Financials & Compliance
+- **Budget Tracking**: Track proposed vs. awarded vs. spent amounts by cost category
+- **Cost Categories**: Personnel, fringe benefits, travel, equipment, supplies, contractual, construction, other direct costs, indirect costs
+- **Match/Cost Share**: Track match requirements (cash and in-kind) with completion percentage
+- **Budget Line Items**: Detailed line-item budgeting with variance indicators
+- **Variance Analysis**: Automatic calculation of proposed vs. awarded vs. spent with visual indicators
+- **Burn-Down Tracking**: Monitor remaining budget and spending rate
+- **Disbursement Tracking**: Log expenses and payments received with approval workflow
+- **Payment Methods**: Track ACH, wire, check, credit card, in-kind contributions
+- **Receipt Management**: Attach receipt URLs and documentation
+- **Reconciliation**: Mark disbursements as reconciled for accounting
+- **Payment Schedules**: Model scheduled payments by quarter, milestone, or deliverable
+- **Drawdown Planning**: Track expected vs. actual payment dates and amounts
+- **Payment Types**: Advance, reimbursement, cost reimbursement, milestone-based, quarterly, annual
+- **Report Requirements**: Link required reports to payment schedules with submission tracking
+- **Compliance Checklists**: Associate federal regs, policies, and requirements with each grant
+- **Compliance Types**: Federal/state regulations, indirect cost agreements, match requirements, audit requirements, reporting, certifications
+- **Compliance Scoring**: Visual compliance completeness percentage per grant
+- **Critical Requirements**: Flag critical compliance items with separate tracking
+- **Due Date Tracking**: Monitor compliance deadlines with configurable reminder periods
+- **Documentation Links**: Attach policy URLs and regulation references
+- **Automatic Calculations**: Database triggers update budget totals when disbursements are added/approved
+- **Summary Views**: Pre-built views for budget summaries and compliance status
+
 ### Settings & Management
-- **7 Settings Pages**: Profile, Organization, Team, Notifications, Calendar & Integrations, Billing, Danger Zone
+- **7 Settings Pages**: Profile, Organization, Team, Notifications, Alerts, Calendar & Integrations, Billing, Danger Zone
 - **Responsive Design**: Built with Mantine UI for a modern, mobile-friendly experience
 - **Mobile Navigation**: Burger menu with drawer navigation on mobile devices
 - **Role-Based Access**: Admin-only controls for sensitive settings
@@ -156,6 +206,9 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250117_multi_source_ingestion.sql` - Creates multi-source grant ingestion system (grant_sources, grants_catalog, sync_jobs, de-duplication)
 - `supabase/migrations/20250118_fix_status_constraint.sql` - Fixes status check constraint
 - `supabase/migrations/20250119_add_user_profiles_foreign_key.sql` - Adds foreign key from org_members to user_profiles for PostgREST joins and RPC function for large teams
+- `supabase/migrations/20250120_fix_grant_org_id.sql` - Ensures all grants have valid org_id (data integrity fix)
+- `supabase/migrations/20250121_add_activity_log.sql` - Creates grant_activity_log table with automatic triggers for all grant changes
+- `supabase/migrations/20250122_add_post_award_financials.sql` - Creates post-award budget tracking, disbursements, payment schedules, and compliance requirements with automatic calculations
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
@@ -167,20 +220,26 @@ grant-tracker-new/
 ├── api/                      # Vercel serverless functions
 │   ├── admin/
 │   │   └── sync.ts          # Admin sync management (manual full/incremental sync)
+│   ├── alerts/
+│   │   └── check.ts         # Alert checking worker (cron job every 6 hours)
 │   ├── cron/
 │   │   └── sync-grants.ts   # Automated nightly sync job (2 AM)
 │   ├── grants/
 │   │   ├── search.ts        # Proxy to Grants.gov Search2 API
 │   │   ├── details.ts       # Proxy to Grants.gov fetchOpportunity API
 │   │   └── custom.ts        # Custom grant entry endpoint
-│   ├── saved/
-│   │   └── [id]/
-│   │       └── status.ts    # Update grant status/priority/assignment (auth required)
-│   ├── saved.ts             # CRUD for saved grants (auth required, auto-creates default tasks)
+│   ├── saved-status.ts      # Update grant status/priority/assignment (auth required)
+│   ├── saved.ts             # CRUD for saved grants with CSV export (auth required)
+│   ├── activity.ts          # Activity log / audit trail API (auth required)
 │   ├── import.ts            # Bulk grant import endpoint (auth required)
 │   ├── tasks.ts             # CRUD for grant tasks (auth required)
 │   ├── views.ts             # CRUD for saved filter views (auth required)
 │   ├── recent-searches.ts   # Recent search history tracking
+│   ├── alerts.ts            # CRUD for grant alerts (auth required)
+│   ├── budgets.ts           # Budget tracking with line items and summaries
+│   ├── disbursements.ts     # Expense and payment tracking with approval
+│   ├── payment-schedules.ts # Payment schedules and drawdown planning
+│   ├── compliance.ts        # Compliance requirements and tracking
 │   ├── webhooks.ts          # CRUD for custom webhooks
 │   └── integrations.ts      # CRUD for integrations (Teams, Slack, etc.)
 ├── lib/
@@ -230,9 +289,10 @@ grant-tracker-new/
 │   │   ├── SavedGrantsPage.tsx     # Saved grants list view
 │   │   ├── PipelinePage.tsx        # Kanban board for grant workflow
 │   │   ├── MetricsPage.tsx         # Value metrics and analytics
+│   │   ├── ActivityPage.tsx        # Activity feed / audit log timeline view
 │   │   ├── FeaturesPage.tsx        # Product features and roadmap
 │   │   ├── PricingPage.tsx         # Pricing tiers and plans
-│   │   ├── PrivacyPage.tsx         # Privacy policy
+│   │   ├── PrivacyPage.tsx         # Privacy policy with public header
 │   │   ├── GrantHubImportPage.tsx  # GrantHub CSV import wizard with field mapping and validation
 │   │   ├── GrantHubMigrationPage.tsx # GrantHub migration landing page with deadline messaging and FAQs
 │   │   ├── admin/
@@ -438,9 +498,29 @@ Automated nightly sync job (scheduled via Vercel cron at 2 AM). Syncs all enable
 
 ### Saved Grants
 
-#### `GET /api/saved?org_id={uuid}`
+#### `GET /api/saved?org_id={uuid}&format={json|csv}`
 
 Get all saved grants for an organization. Returns grants with status, priority, and assignment fields.
+
+**Query parameters:**
+- `org_id` (required): Organization UUID
+- `format` (optional): Response format - `json` (default) or `csv`
+
+**CSV Export:**
+When `format=csv`, returns a CSV file with all grant fields:
+- Headers: Title, Agency, ALN, Status, Priority, Open Date, Close Date, Assigned To, Notes, Saved At, External ID, External Source
+- Proper CSV escaping for commas, quotes, and newlines
+- Filename: `grants-export-YYYY-MM-DD.csv`
+- Content-Type: `text/csv`
+
+**Example:**
+```bash
+# Get JSON
+GET /api/saved?org_id={uuid}
+
+# Export CSV
+GET /api/saved?org_id={uuid}&format=csv
+```
 
 #### `POST /api/saved`
 
@@ -579,6 +659,145 @@ Delete a saved view.
 
 Increment use_count when a view is loaded.
 
+### Grant Alerts
+
+#### `GET /api/alerts?org_id={uuid}`
+
+Get all grant alerts for an organization.
+
+**Response:**
+```json
+{
+  "alerts": [
+    {
+      "id": "uuid",
+      "name": "Education grants over $100K",
+      "description": "Alert for large education grants",
+      "keyword": "education",
+      "category": "ED",
+      "min_amount": 100000,
+      "frequency": "daily",
+      "notify_email": true,
+      "notify_in_app": true,
+      "is_active": true,
+      "alert_count": 5,
+      "last_alert_sent_at": "2025-01-20T14:30:00Z"
+    }
+  ]
+}
+```
+
+#### `POST /api/alerts`
+
+Create a new grant alert.
+
+**Request body:**
+```json
+{
+  "org_id": "uuid",
+  "name": "Alert Name",
+  "description": "Optional description",
+  "keyword": "climate",
+  "category": "EN",
+  "agency": "EPA",
+  "status_posted": true,
+  "status_forecasted": false,
+  "due_in_days": 60,
+  "min_amount": 50000,
+  "max_amount": 500000,
+  "frequency": "daily",
+  "notify_email": true,
+  "notify_in_app": true,
+  "notify_webhook": false
+}
+```
+
+#### `PUT /api/alerts?alert_id={uuid}`
+
+Update an existing alert.
+
+#### `DELETE /api/alerts?alert_id={uuid}`
+
+Delete a grant alert.
+
+#### `POST /api/alerts/check`
+
+Check all active alerts for new matching grants. This endpoint is called automatically by a cron job every 6 hours, but can also be triggered manually.
+
+**Response:**
+```json
+{
+  "message": "Alert check completed",
+  "alerts_checked": 12,
+  "matches_created": 3,
+  "emails_queued": 2,
+  "alerts_with_matches": [
+    {
+      "alert_name": "Education grants over $100K",
+      "matches_count": 2
+    }
+  ]
+}
+```
+
+**Behavior:**
+- Checks grants added since last check (or last 24 hours for new alerts)
+- Creates `grant_alert_matches` records
+- Triggers in-app notifications via database trigger
+- Queues emails for alerts with `notify_email: true`
+- Updates `last_checked_at`, `last_alert_sent_at`, and `alert_count`
+
+### Activity Log
+
+#### `GET /api/activity?grant_id={uuid}&org_id={uuid}&user_id={uuid}&action={action}&limit={50}&offset={0}`
+
+Get activity log entries with optional filtering.
+
+**Query parameters:**
+- `grant_id` (optional): Filter by specific grant
+- `org_id` (optional): Filter by organization
+- `user_id` (optional): Filter by user
+- `action` (optional): Filter by action type (`saved`, `status_changed`, `priority_changed`, `assigned`, `note_added`, etc.)
+- `limit` (optional, default 50): Number of results
+- `offset` (optional, default 0): Pagination offset
+
+**Response:**
+```json
+{
+  "activities": [
+    {
+      "id": "uuid",
+      "action": "status_changed",
+      "field_name": "status",
+      "old_value": "researching",
+      "new_value": "drafting",
+      "description": "Grant status changed from researching to drafting",
+      "created_at": "2025-01-21T10:30:00Z",
+      "user_profiles": {
+        "full_name": "John Doe",
+        "avatar_url": "https://..."
+      },
+      "org_grants_saved": {
+        "title": "Education Grant 2025",
+        "external_id": "ED-2025-001"
+      }
+    }
+  ],
+  "total": 42,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+**Tracked Actions:**
+- `saved` - Grant added to pipeline
+- `status_changed` - Pipeline stage changed
+- `priority_changed` - Priority updated
+- `assigned` - Grant assigned to team member
+- `note_added` - Note added
+- `note_updated` - Note modified
+- `note_deleted` - Note removed
+
 ### Recent Searches
 
 #### `GET /api/recent-searches?org_id={uuid}&user_id={uuid}`
@@ -603,6 +822,190 @@ Get recent search history for a user.
 #### `POST /api/recent-searches`
 
 Record a new search (deduplicates and increments count for existing searches).
+
+### Post-Award Financials
+
+#### `GET /api/budgets?grant_id={uuid}&org_id={uuid}&budget_id={uuid}`
+
+Get budget(s) with line items and summary metrics.
+
+**Query parameters:**
+- `grant_id` (optional): Get budget for specific grant
+- `org_id` (optional): List all budgets for organization
+- `budget_id` (optional): Get specific budget by ID
+
+**Response:**
+```json
+{
+  "budget": {
+    "id": "uuid",
+    "grant_id": "uuid",
+    "proposed_amount": 500000,
+    "awarded_amount": 450000,
+    "total_spent": 125000,
+    "total_committed": 50000,
+    "match_required": true,
+    "match_amount": 90000,
+    "match_received": 45000,
+    "status": "active",
+    "budget_line_items": [...],
+    "grant_budget_summary": {
+      "remaining_amount": 325000,
+      "percent_spent": 27.78,
+      "match_percent_complete": 50
+    }
+  }
+}
+```
+
+#### `POST /api/budgets`
+
+Create a new budget for a grant.
+
+**Request body:**
+```json
+{
+  "grant_id": "uuid",
+  "org_id": "uuid",
+  "proposed_amount": 500000,
+  "awarded_amount": 450000,
+  "match_required": true,
+  "match_amount": 90000,
+  "budget_period_start": "2025-01-01",
+  "budget_period_end": "2025-12-31",
+  "line_items": [
+    {
+      "category": "personnel",
+      "description": "Project Director (1.0 FTE)",
+      "proposed_amount": 120000,
+      "awarded_amount": 110000,
+      "line_number": 1
+    },
+    {
+      "category": "travel",
+      "description": "Conference travel",
+      "proposed_amount": 15000,
+      "awarded_amount": 12000,
+      "line_number": 2
+    }
+  ]
+}
+```
+
+#### `PATCH /api/budgets?budget_id={uuid}`
+
+Update a budget.
+
+#### `DELETE /api/budgets?budget_id={uuid}`
+
+Delete a budget.
+
+#### `GET /api/disbursements?budget_id={uuid}&org_id={uuid}`
+
+List disbursements (expenses and payments).
+
+#### `POST /api/disbursements`
+
+Create a new disbursement.
+
+**Request body:**
+```json
+{
+  "budget_id": "uuid",
+  "org_id": "uuid",
+  "disbursement_type": "expense",
+  "amount": 5000,
+  "disbursement_date": "2025-01-15",
+  "category": "travel",
+  "line_item_id": "uuid",
+  "payment_method": "credit_card",
+  "vendor_payee": "Conference Registration",
+  "description": "Annual conference registration and hotel",
+  "receipt_url": "https://...",
+  "approved": false
+}
+```
+
+**Disbursement types:** `payment_received`, `expense`, `adjustment`
+**Categories:** `personnel`, `fringe_benefits`, `travel`, `equipment`, `supplies`, `contractual`, `construction`, `other_direct`, `indirect_costs`, `match_in_kind`, `match_cash`
+
+#### `GET /api/payment-schedules?budget_id={uuid}&upcoming=true`
+
+List payment schedules and drawdowns.
+
+**Query parameters:**
+- `budget_id`: Filter by budget
+- `upcoming=true`: Only show upcoming payments in next 90 days
+
+#### `POST /api/payment-schedules`
+
+Create a payment schedule.
+
+**Request body:**
+```json
+{
+  "budget_id": "uuid",
+  "org_id": "uuid",
+  "payment_name": "Q1 Reimbursement",
+  "payment_type": "reimbursement",
+  "expected_amount": 112500,
+  "expected_date": "2025-04-30",
+  "report_required": "Quarterly Progress Report",
+  "report_due_date": "2025-04-15"
+}
+```
+
+**Payment types:** `advance`, `reimbursement`, `cost_reimbursement`, `milestone`, `quarterly`, `annual`
+
+#### `GET /api/compliance?grant_id={uuid}&org_id={uuid}`
+
+List compliance requirements with summary.
+
+**Response:**
+```json
+{
+  "requirements": [
+    {
+      "id": "uuid",
+      "requirement_type": "federal_regulation",
+      "title": "2 CFR 200 Uniform Guidance",
+      "description": "Federal procurement standards compliance",
+      "status": "completed",
+      "is_critical": true,
+      "completed": true,
+      "due_date": "2025-01-31"
+    }
+  ],
+  "summary": {
+    "total_requirements": 8,
+    "completed_requirements": 5,
+    "critical_requirements": 3,
+    "critical_incomplete": 1,
+    "overdue_requirements": 0,
+    "compliance_percentage": 62.5
+  }
+}
+```
+
+#### `POST /api/compliance`
+
+Create a compliance requirement.
+
+**Request body:**
+```json
+{
+  "grant_id": "uuid",
+  "org_id": "uuid",
+  "requirement_type": "match_requirement",
+  "title": "20% Cost Share Requirement",
+  "description": "Minimum 20% cost share required",
+  "is_critical": true,
+  "due_date": "2025-12-31",
+  "documentation_required": true
+}
+```
+
+**Requirement types:** `federal_regulation`, `state_regulation`, `indirect_cost_agreement`, `match_requirement`, `audit_requirement`, `reporting_requirement`, `certification`, `policy`, `other`
 
 ### Grant Tasks
 
