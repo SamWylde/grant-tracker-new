@@ -58,7 +58,7 @@ export function CommentInput({
         return;
       }
 
-      const userIds = membersData?.map(m => m.user_id) || [];
+      const userIds: string[] = membersData?.map((m: { user_id: string }) => m.user_id) || [];
       if (userIds.length === 0) {
         setOrgMembers([]);
         return;
@@ -77,7 +77,7 @@ export function CommentInput({
 
       // Get emails from the session/auth (we'll use a workaround)
       // Since we can't easily get all user emails, we'll use full_name primarily
-      const members = profilesData?.map((profile: any) => ({
+      const members: OrgMember[] = profilesData?.map((profile: any) => ({
         user_id: profile.id,
         full_name: profile.full_name || 'Unknown User',
         avatar_url: profile.avatar_url,
