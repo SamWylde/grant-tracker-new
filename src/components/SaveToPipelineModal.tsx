@@ -2,7 +2,7 @@ import { Modal, Stack, Select, Button, Group, Text } from "@mantine/core";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "../contexts/OrganizationContext";
-import { supabase } from "../lib/supabase";
+import { fetchTeamMemberOptions } from "../utils/teamMembers";
 
 const PIPELINE_STAGES = [
   { value: "researching", label: "Researching" },
