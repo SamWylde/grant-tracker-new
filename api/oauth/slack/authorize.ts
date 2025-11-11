@@ -15,12 +15,12 @@ export default async function handler(
   }
 
   // Get OAuth credentials from environment
-  const clientId = process.env.SLACK_OAUTH_CLIENT_ID;
-  const redirectUri = process.env.SLACK_OAUTH_REDIRECT_URI || `${process.env.VITE_APP_URL || 'http://localhost:3000'}/api/oauth/slack/callback`;
+  const clientId = process.env.SLACK_CLIENT_ID;
+  const redirectUri = process.env.SLACK_REDIRECT_URI || 'https://grantcue.com/api/oauth/slack/callback';
 
   if (!clientId) {
     return res.status(500).json({
-      error: 'Slack OAuth not configured. Please set SLACK_OAUTH_CLIENT_ID environment variable.'
+      error: 'Slack OAuth not configured. Please set SLACK_CLIENT_ID environment variable.'
     });
   }
 

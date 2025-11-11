@@ -79,6 +79,30 @@ export function GrantDetailDrawer({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<Array<{ userId: string; userName: string }>>([]);
 
+  // Fetch tasks for this grant
+  const { data: tasksData } = useQuery({
+    queryKey: ['grantTasks', grant?.id],
+    queryFn: async () => {
+      if (!grant) return { tasks: [] };
+
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/tasks?grant_id=${grant.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
+    enabled: opened && !!grant,
+  });
+
+  // Early return after all hooks
   if (!grant) return null;
 
   const daysUntilDeadline = grant.close_date
@@ -157,28 +181,8 @@ export function GrantDetailDrawer({
     }
   };
 
-  // Fetch tasks for this grant
-  const { data: tasksData } = useQuery({
-    queryKey: ['grantTasks', grant.id],
-    queryFn: async () => {
-      // Get auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/tasks?grant_id=${grant.id}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch tasks');
-      return response.json();
-    },
-    enabled: opened,
-  });
-
   const handlePrintBrief = () => {
+    if (!grant) return;
     printGrantBrief(grant, tasksData?.tasks);
   };
 
