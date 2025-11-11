@@ -316,6 +316,82 @@ export default async function handler(
         return res.status(201).json({ grant: data });
       }
 
+      case 'PATCH': {
+        // Update a saved grant (notes, status, priority, etc.)
+        const { id } = req.query;
+        const updates = req.body;
+
+        if (!id || typeof id !== 'string') {
+          return res.status(400).json({ error: 'id is required' });
+        }
+
+        // Get the grant to verify access
+        const { data: grant } = await supabase
+          .from('org_grants_saved')
+          .select('org_id')
+          .eq('id', id)
+          .single();
+
+        if (!grant) {
+          return res.status(404).json({ error: 'Grant not found' });
+        }
+
+        // Verify user is a member of the organization
+        const { data: membership } = await supabase
+          .from('org_members')
+          .select('*')
+          .eq('org_id', grant.org_id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!membership) {
+          return res.status(403).json({ error: 'Access denied to this grant' });
+        }
+
+        // Build the update object - only update allowed fields
+        const allowedFields = [
+          'notes',
+          'status',
+          'priority',
+          'assigned_to',
+          'description',
+          'title',
+          'agency',
+          'aln',
+          'open_date',
+          'close_date'
+        ];
+
+        const updateData: any = {};
+        for (const field of allowedFields) {
+          if (field in updates) {
+            updateData[field] = updates[field];
+          }
+        }
+
+        if (Object.keys(updateData).length === 0) {
+          return res.status(400).json({ error: 'No valid fields to update' });
+        }
+
+        // Perform the update
+        const { data: updated, error } = await supabase
+          .from('org_grants_saved')
+          .update(updateData)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating grant:', error);
+          return res.status(500).json({
+            error: 'Failed to update grant',
+            details: error.message
+          });
+        }
+
+        return res.status(200).json({ grant: updated });
+      }
+
       case 'DELETE': {
         // Delete a saved grant by ID
         const { id } = req.query;
