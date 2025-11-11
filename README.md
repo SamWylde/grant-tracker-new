@@ -464,9 +464,12 @@ Save a grant to the pipeline. Automatically sets status to 'researching'.
 
 Remove a saved grant from the pipeline.
 
-#### `PATCH /api/saved/[id]/status`
+#### `PATCH /api/saved-status?id={grant_id}`
 
 Update grant status, priority, or assignment.
+
+**Query parameters:**
+- `id` (required): Grant UUID
 
 **Request body:**
 ```json
