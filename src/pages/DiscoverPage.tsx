@@ -64,7 +64,7 @@ import { stripHtml } from "../utils/htmlUtils";
 // Enable relative time plugin for dayjs
 dayjs.extend(relativeTime);
 
-const ITEMS_PER_PAGE = 25;
+const ITEMS_PER_PAGE = 15;
 
 export function DiscoverPage() {
   const queryClient = useQueryClient();
