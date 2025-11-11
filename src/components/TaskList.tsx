@@ -85,23 +85,19 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
     assigned_to: "",
   });
 
-  // Fetch team members for assignment
+  // Fetch team members for assignment using RPC function
   const { data: teamMembers } = useQuery({
     queryKey: ["teamMembers", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("org_members")
-        .select(`
-          user_id,
-          role,
-          user_profiles (
-            id,
-            full_name
-          )
-        `)
-        .eq("org_id", orgId);
+      if (!orgId) return [];
 
-      if (error) throw error;
+      const { data, error } = await (supabase.rpc as any)("get_org_team_members", { org_uuid: orgId });
+
+      if (error) {
+        console.error("Failed to fetch team members:", error);
+        return [];
+      }
+
       return data || [];
     },
     enabled: !!orgId,
@@ -462,7 +458,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
             data={
               teamMembers?.map((m: any) => ({
                 value: m.user_id,
-                label: m.user_profiles?.full_name || "Unknown",
+                label: m.full_name || m.email || "Unknown",
               })) || []
             }
           />
@@ -558,7 +554,7 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
               data={
                 teamMembers?.map((m: any) => ({
                   value: m.user_id,
-                  label: m.user_profiles?.full_name || "Unknown",
+                  label: m.full_name || m.email || "Unknown",
                 })) || []
               }
             />

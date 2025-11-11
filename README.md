@@ -117,47 +117,29 @@ A comprehensive grant discovery and workflow management platform that helps orga
 
 ## Getting Started
 
-### Prerequisites
+### Environment Variables
 
-- Node.js 18+
-- Yarn 4.10+
-- Supabase account and project
-- Vercel account (for deployment)
+Set up the following environment variables in your `.env` file:
 
-### Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd grant-tracker-new
-```
-
-2. Install dependencies:
-```bash
-yarn install
-```
-
-3. Set up environment variables:
-```bash
-cp .env.example .env
-```
-
-Then edit `.env` and add your Supabase credentials:
+**Client-side variables (Vite):**
 ```
 VITE_SUPABASE_URL=your-project-url.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-For the API routes (serverless functions), also set:
+**Server-side variables (API routes):**
 ```
 SUPABASE_URL=your-project-url.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 RESEND_API_KEY=your-resend-api-key
+CRON_SECRET=your-cron-secret
 ```
 
-**Note**: Use `VITE_` prefix for client-side environment variables (Vite framework). The API routes use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for server-side operations.
+**Note**: Use `VITE_` prefix for client-side environment variables (Vite framework). The API routes use non-prefixed variables for server-side operations.
 
-4. Set up the database:
+### Database Setup
+
+Set up the database by running the migrations in your Supabase SQL editor:
 
 Run the migrations in your Supabase SQL editor (in order):
 
@@ -177,59 +159,6 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
-
-5. Create your first admin user:
-
-After creating a user in Supabase Auth dashboard, run the SQL setup script (see Database Setup section below).
-
-6. Start the development server:
-```bash
-yarn dev
-```
-
-Visit `http://localhost:5173` to see the app.
-
-## Database Setup
-
-### Creating Your First Admin User
-
-1. Go to Supabase Dashboard → Authentication → Users
-2. Click "Add user" → "Create new user"
-3. Enter email and password, check "Auto Confirm User"
-4. Copy the generated UUID
-5. Run this SQL in Supabase SQL Editor:
-
-```sql
--- Replace 'YOUR_USER_UUID' with the actual UUID from step 4
-DO $$
-DECLARE
-  user_uuid uuid := 'YOUR_USER_UUID';
-  org_uuid uuid := '00000000-0000-0000-0000-000000000001';
-BEGIN
-  -- Create organization
-  INSERT INTO organizations (id, name, slug, created_at, updated_at)
-  VALUES (
-    org_uuid,
-    'My Organization',
-    'my-org',
-    now(),
-    now()
-  )
-  ON CONFLICT (id) DO UPDATE
-  SET name = EXCLUDED.name, slug = EXCLUDED.slug, updated_at = now();
-
-  -- Create user profile
-  INSERT INTO user_profiles (id, full_name, created_at, updated_at)
-  VALUES (user_uuid, 'Admin User', now(), now())
-  ON CONFLICT (id) DO UPDATE
-  SET full_name = EXCLUDED.full_name, updated_at = now();
-
-  -- Add user to organization as admin
-  INSERT INTO org_members (org_id, user_id, role, joined_at)
-  VALUES (org_uuid, user_uuid, 'admin', now())
-  ON CONFLICT (org_id, user_id) DO UPDATE SET role = 'admin';
-END $$;
-```
 
 ## Project Structure
 
@@ -1296,15 +1225,6 @@ Triggered when grant information is updated.
 
 ## Deployment
 
-### Production Setup
-
-**Grantcue** is deployed on Vercel with the following infrastructure:
-
-- **Frontend**: Deployed to Vercel's Edge Network (grantcue.com)
-- **API Routes**: Serverless Functions on Vercel
-- **Database**: Supabase PostgreSQL with automatic backups
-- **Email**: Resend for transactional and notification emails
-
 ### Vercel Deployment
 
 1. Install Vercel CLI:
@@ -1452,6 +1372,39 @@ Run migrations in your Supabase SQL editor in the order listed in the Getting St
 - ✅ Admin-only API endpoints
 - ✅ Bearer token authentication
 - ✅ URL validation for webhooks
+
+### Recent Improvements (January 2025)
+
+**Team Scalability & Performance**
+- ✅ Fixed PostgREST schema cache error by adding foreign key from org_members → user_profiles
+- ✅ Created `get_org_team_members()` RPC function to prevent URL length issues with large teams (50+ members)
+- ✅ Updated GrantFilters, SaveToPipelineModal, and TaskList components to use RPC instead of PostgREST joins
+- ✅ Eliminates 414 Request-URI Too Large errors when organizations have many team members
+
+**GrantHub Import Enhancements**
+- ✅ Flexible field mapping UI with visual column-to-field mapping
+- ✅ Intelligent auto-detection of CSV column names with user-adjustable mapping
+- ✅ Enhanced validation with error and warning severity levels:
+  - Required field validation with clear error messages
+  - Date format validation with helpful feedback
+  - Missing field warnings for optional but recommended fields
+  - Row-level issue tracking with line numbers
+- ✅ Data preview table with visual quality indicators (OK/Warning badges)
+- ✅ Validates data before import to prevent issues
+
+**User Experience & Navigation**
+- ✅ Created ScrollToTop component to fix scroll position on route changes
+- ✅ Added footer to PrivacyPage for consistent branding across all pages
+- ✅ Implemented friendly 404 NotFoundPage with:
+  - Gradient background matching brand identity
+  - User-aware navigation (different CTAs for logged-in vs logged-out users)
+  - Quick links to key pages (Features, Pricing, Pipeline/Sign In)
+  - Professional error messaging
+
+**Debugging & Developer Experience**
+- ✅ Added comprehensive console logging to PipelinePage PATCH requests
+- ✅ Enhanced error handling and troubleshooting capabilities
+- ✅ Improved visibility into status update operations
 
 ### Future Enhancements
 

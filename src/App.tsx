@@ -24,6 +24,7 @@ import { PipelinePage } from "./pages/PipelinePage";
 import { MetricsPage } from "./pages/MetricsPage";
 import { GrantHubImportPage } from "./pages/GrantHubImportPage";
 import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import {
   ProfilePage,
   OrganizationPage,
@@ -84,6 +85,9 @@ export default function App() {
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />
+
+                {/* 404 Catch-all Route */}
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </BrowserRouter>
           </OrganizationProvider>
