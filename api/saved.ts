@@ -64,7 +64,7 @@ export default async function handler(
     switch (req.method) {
       case 'GET': {
         // List saved grants for an organization
-        const { org_id } = req.query;
+        const { org_id, format } = req.query;
 
         if (!org_id || typeof org_id !== 'string') {
           return res.status(400).json({ error: 'org_id is required' });
@@ -86,7 +86,7 @@ export default async function handler(
           .from('org_grants_saved')
           .select('*')
           .eq('org_id', org_id)
-          .order('saved_at', { ascending: false });
+          .order('saved_at', { ascending: false});
 
         if (error) {
           console.error('Error fetching saved grants:', error);
@@ -104,6 +104,61 @@ export default async function handler(
 
         if (validGrants.length !== data?.length) {
           console.warn(`[saved API] Filtered out ${(data?.length || 0) - validGrants.length} grants with null org_id`);
+        }
+
+        // CSV export
+        if (format === 'csv') {
+          // Convert to CSV
+          const csvHeader = [
+            'Title',
+            'Agency',
+            'ALN',
+            'Status',
+            'Priority',
+            'Open Date',
+            'Close Date',
+            'Assigned To',
+            'Notes',
+            'Saved At',
+            'External ID',
+            'External Source'
+          ].join(',');
+
+          const csvRows = validGrants.map(grant => {
+            // Escape CSV values
+            const escape = (val: any) => {
+              if (val === null || val === undefined) return '';
+              const str = String(val);
+              // Escape quotes and wrap in quotes if contains comma, quote, or newline
+              if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+              }
+              return str;
+            };
+
+            return [
+              escape(grant.title),
+              escape(grant.agency),
+              escape(grant.aln),
+              escape(grant.status),
+              escape(grant.priority),
+              escape(grant.open_date),
+              escape(grant.close_date),
+              escape(grant.assigned_to),
+              escape(grant.notes),
+              escape(grant.saved_at),
+              escape(grant.external_id),
+              escape(grant.external_source)
+            ].join(',');
+          });
+
+          const csv = [csvHeader, ...csvRows].join('\n');
+
+          // Set CSV headers
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader('Content-Disposition', `attachment; filename="grants-export-${new Date().toISOString().split('T')[0]}.csv"`);
+
+          return res.status(200).send(csv);
         }
 
         return res.status(200).json({ grants: validGrants });
