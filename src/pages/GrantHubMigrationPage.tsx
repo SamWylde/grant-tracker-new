@@ -548,6 +548,18 @@ export function GrantHubMigrationPage() {
               <Anchor component={Link} to="/import/granthub" c="gray.5" size="sm">
                 Import from GrantHub
               </Anchor>
+              <Anchor component={Link} to="/terms" c="gray.5" size="sm">
+                Terms
+              </Anchor>
+              <Anchor component={Link} to="/privacy" c="gray.5" size="sm">
+                Privacy
+              </Anchor>
+              <Anchor component={Link} to="/security" c="gray.5" size="sm">
+                Security
+              </Anchor>
+              <Anchor component={Link} to="/support" c="gray.5" size="sm">
+                Support
+              </Anchor>
             </Group>
             <Text size="xs" c="gray.6">
               © 2025 GrantCue. Built for nonprofits by grant professionals.

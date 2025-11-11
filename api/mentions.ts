@@ -50,10 +50,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .from('mention_notifications')
         .select(`
           *,
-          mentioned_by:mentioned_by_user_id (
-            id,
-            email
-          ),
           grant_comment:grant_comment_id (
             id,
             content
@@ -79,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (notificationsError) throw notificationsError;
 
-      // Get org member info for mentioned_by users
+      // Get user IDs for enrichment
       const userIds = [
         ...new Set(notifications?.map(n => n.mentioned_by_user_id) || [])
       ];
@@ -90,6 +86,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .select('id, full_name, avatar_url')
         .in('id', userIds);
 
+      // Get emails from auth.users
+      const { data: authUsers } = await supabase.auth.admin.listUsers();
+      const emailMap = new Map(
+        authUsers.users?.map(u => [u.id, u.email]) || []
+      );
+
       const profileMap = new Map(
         profiles?.map(p => [p.id, p]) || []
       );
@@ -97,10 +99,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Enrich notifications
       const enrichedNotifications = notifications?.map(notification => {
         const profile = profileMap.get(notification.mentioned_by_user_id);
+        const email = emailMap.get(notification.mentioned_by_user_id);
 
         return {
           ...notification,
-          mentioned_by_name: profile?.full_name || notification.mentioned_by.email,
+          mentioned_by_name: profile?.full_name || email || 'Unknown User',
           mentioned_by_avatar: profile?.avatar_url,
         };
       }) || [];
