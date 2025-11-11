@@ -647,6 +647,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@mantine/dates@npm:^8.3.7":
+  version: 8.3.7
+  resolution: "@mantine/dates@npm:8.3.7"
+  dependencies:
+    clsx: "npm:^2.1.1"
+  peerDependencies:
+    "@mantine/core": 8.3.7
+    "@mantine/hooks": 8.3.7
+    dayjs: ">=1.0.0"
+    react: ^18.x || ^19.x
+    react-dom: ^18.x || ^19.x
+  checksum: 10c0/403160f1ca45b6e2eefe5057a0f354a3ea0db396c185875a313447de261105c0bef27d5cddc4e4d28034f8b18fd4c53c6b1da866f2a12340a95c433658deac3a
+  languageName: node
+  linkType: hard
+
 "@mantine/hooks@npm:8.3.6":
   version: 8.3.6
   resolution: "@mantine/hooks@npm:8.3.6"
@@ -2225,6 +2240,7 @@ __metadata:
     "@dnd-kit/sortable": "npm:^8.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@mantine/core": "npm:8.3.6"
+    "@mantine/dates": "npm:^8.3.7"
     "@mantine/hooks": "npm:8.3.6"
     "@mantine/notifications": "npm:^8.3.6"
     "@supabase/supabase-js": "npm:^2.80.0"

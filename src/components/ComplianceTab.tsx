@@ -676,7 +676,7 @@ export function ComplianceTab({ grantId }: ComplianceTabProps) {
             label="Due Date"
             placeholder="Select due date"
             value={formData.due_date}
-            onChange={(value) => setFormData({ ...formData, due_date: value })}
+            onChange={(value) => setFormData({ ...formData, due_date: value as Date | null })}
             clearable
           />
 

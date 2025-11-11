@@ -16,6 +16,7 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@mantine/core": "8.3.6",
+    "@mantine/dates": "^8.3.7",
     "@mantine/hooks": "8.3.6",
     "@mantine/notifications": "^8.3.6",
     "@supabase/supabase-js": "^2.80.0",
