@@ -41,29 +41,24 @@ export function GrantFilters({
 }: GrantFiltersProps) {
   const { currentOrg } = useOrganization();
 
-  // Fetch team members for assignee filter
+  // Fetch team members for assignee filter using RPC function
   const { data: teamMembers } = useQuery({
     queryKey: ["teamMembers", currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await supabase
-        .from("org_members")
-        .select(`
-          user_id,
-          user_profiles!inner (
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq("org_id", currentOrg.id);
+      const { data, error } = await (supabase.rpc as any)("get_org_team_members", { org_uuid: currentOrg.id });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Failed to fetch team members:", error);
+        return [];
+      }
+
+      if (!data) return [];
 
       return data.map((member: any) => ({
-        value: member.user_profiles.id,
-        label: member.user_profiles.full_name || member.user_profiles.email,
+        value: member.user_id,
+        label: member.full_name || member.email,
       }));
     },
     enabled: !!currentOrg?.id,
