@@ -7,6 +7,97 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
+
+/**
+ * Generates HTML email for grant alert notifications
+ */
+function generateAlertEmailHTML(alert: {
+  alert_name: string;
+  user_name: string;
+  org_name: string;
+  matches_count: number;
+  matches: Array<{
+    title: string;
+    agency: string;
+    close_date: string | null;
+  }>;
+}): string {
+  const matchesHTML = alert.matches
+    .map(
+      (match) => `
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+        <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">${match.title}</div>
+        <div style="font-size: 14px; color: #6b7280;">
+          ${match.agency}
+          ${match.close_date ? ` • Closes ${new Date(match.close_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Grant Matches</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 32px 24px; border-bottom: 1px solid #e5e7eb;">
+              <h1 style="margin: 0; font-size: 24px; color: #111827;">🔔 New Grant Matches</h1>
+              <p style="margin: 8px 0 0; font-size: 16px; color: #6b7280;">
+                ${alert.matches_count} new ${alert.matches_count === 1 ? 'grant matches' : 'grants match'} your alert: <strong>${alert.alert_name}</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Matches List -->
+          <tr>
+            <td style="padding: 0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${matchesHTML}
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA Button -->
+          <tr>
+            <td style="padding: 32px; text-align: center;">
+              <a href="https://grantcue.com/alerts" style="display: inline-block; padding: 12px 32px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">
+                View All Matches
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; border-top: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0; font-size: 14px; color: #6b7280; text-align: center;">
+                You're receiving this email because you have an active alert for ${alert.org_name}.
+                <br>
+                <a href="https://grantcue.com/settings/alerts" style="color: #7c3aed; text-decoration: none;">Manage your alerts</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST' && req.method !== 'GET') {
@@ -182,21 +273,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Log email details (actual email sending would happen here with Resend/SendGrid)
+    // Send email notifications using Resend
     if (emailsQueued > 0) {
-      console.log('[Alert Check] Emails queued for sending:', alertsWithMatches);
-      console.log('[Alert Check] TODO: Integrate email service (Resend, SendGrid, etc.) to send alerts');
-      // TODO: Integrate with email service
-      // Example with Resend:
-      // const resend = new Resend(process.env.RESEND_API_KEY);
-      // for (const alert of alertsWithMatches) {
-      //   await resend.emails.send({
-      //     from: 'alerts@grantcue.com',
-      //     to: alert.user_email,
-      //     subject: `${alert.matches_count} New Grants Match Your Alert: ${alert.alert_name}`,
-      //     html: generateAlertEmailHTML(alert),
-      //   });
-      // }
+      const resendApiKey = process.env.RESEND_API_KEY;
+
+      if (!resendApiKey) {
+        console.error('[Alert Check] RESEND_API_KEY not configured - emails cannot be sent');
+        console.log('[Alert Check] Alerts with matches (not sent):', alertsWithMatches);
+      } else {
+        const resend = new Resend(resendApiKey);
+        let emailsSent = 0;
+        let emailsFailed = 0;
+
+        for (const alert of alertsWithMatches) {
+          try {
+            await resend.emails.send({
+              from: 'GrantCue Alerts <alerts@grantcue.com>',
+              to: alert.user_email,
+              subject: `${alert.matches_count} New Grant${alert.matches_count === 1 ? '' : 's'} Match Your Alert: ${alert.alert_name}`,
+              html: generateAlertEmailHTML(alert),
+            });
+            emailsSent++;
+            console.log(`[Alert Check] Email sent to ${alert.user_email} for alert "${alert.alert_name}"`);
+          } catch (error) {
+            emailsFailed++;
+            console.error(`[Alert Check] Failed to send email to ${alert.user_email}:`, error);
+          }
+        }
+
+        console.log(`[Alert Check] Email summary: ${emailsSent} sent, ${emailsFailed} failed out of ${emailsQueued} queued`);
+      }
     }
 
     return res.status(200).json({

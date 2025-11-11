@@ -24,6 +24,7 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
+import type { Database } from '../../lib/database.types';
 
 const ROLES = [
   { value: 'contributor', label: 'Contributor' },
@@ -89,13 +90,15 @@ export function TeamPage() {
     mutationFn: async () => {
       if (!currentOrg || !user) throw new Error('No organization or user');
 
-      // @ts-ignore - Supabase type inference issue
-      const { error } = await supabase.from('team_invitations').insert({
+      const invitation: Database['public']['Tables']['team_invitations']['Insert'] = {
         org_id: currentOrg.id,
         email: inviteEmail,
         role: inviteRole,
         invited_by: user.id,
-      });
+      };
+
+      // @ts-expect-error - Supabase PostgREST type inference limitation with generated Database types
+      const { error } = await supabase.from('team_invitations').insert(invitation);
 
       if (error) throw error;
     },
@@ -121,10 +124,14 @@ export function TeamPage() {
   // Revoke invitation mutation
   const revokeMutation = useMutation({
     mutationFn: async (invitationId: string) => {
+      const update: Database['public']['Tables']['team_invitations']['Update'] = {
+        revoked_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from('team_invitations')
-        // @ts-ignore - Supabase type inference issue
-        .update({ revoked_at: new Date().toISOString() })
+        // @ts-expect-error - Supabase PostgREST type inference limitation with generated Database types
+        .update(update)
         .eq('id', invitationId);
 
       if (error) throw error;
@@ -160,8 +167,12 @@ export function TeamPage() {
   // Change role mutation
   const changeRoleMutation = useMutation({
     mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
-      // @ts-ignore - Supabase type inference issue
-      const { error } = await supabase.from('org_members').update({ role }).eq('id', memberId);
+      const update: Database['public']['Tables']['org_members']['Update'] = {
+        role,
+      };
+
+      // @ts-expect-error - Supabase PostgREST type inference limitation with generated Database types
+      const { error } = await supabase.from('org_members').update(update).eq('id', memberId);
 
       if (error) throw error;
     },
