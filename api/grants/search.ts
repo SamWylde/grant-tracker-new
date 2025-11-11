@@ -251,28 +251,33 @@ export default async function handler(
                         grant.description = description;
 
                         // Cache in database asynchronously (don't wait)
-                        supabase
-                          .from('grants_catalog')
-                          .upsert({
-                            source_id: '00000000-0000-0000-0000-000000000001', // Placeholder source ID
-                            source_key: 'grants_gov',
-                            external_id: grant.id,
-                            title: grant.title,
-                            description: description,
-                            agency: grant.agency,
-                            opportunity_number: grant.number,
-                            close_date: grant.closeDate,
-                            open_date: grant.openDate,
-                            opportunity_status: grant.status as any,
-                            first_seen_at: new Date().toISOString(),
-                            last_updated_at: new Date().toISOString(),
-                            last_synced_at: new Date().toISOString(),
-                            is_active: true,
-                          }, {
-                            onConflict: 'source_key,external_id',
-                          })
-                          .then(() => console.log(`Cached description for grant ${grant.id}`))
-                          .catch(err => console.warn(`Failed to cache description:`, err));
+                        void (async () => {
+                          try {
+                            await supabase
+                              .from('grants_catalog')
+                              .upsert({
+                                source_id: '00000000-0000-0000-0000-000000000001', // Placeholder source ID
+                                source_key: 'grants_gov',
+                                external_id: grant.id,
+                                title: grant.title,
+                                description: description,
+                                agency: grant.agency,
+                                opportunity_number: grant.number,
+                                close_date: grant.closeDate,
+                                open_date: grant.openDate,
+                                opportunity_status: grant.status as any,
+                                first_seen_at: new Date().toISOString(),
+                                last_updated_at: new Date().toISOString(),
+                                last_synced_at: new Date().toISOString(),
+                                is_active: true,
+                              }, {
+                                onConflict: 'source_key,external_id',
+                              });
+                            console.log(`Cached description for grant ${grant.id}`);
+                          } catch (err) {
+                            console.warn(`Failed to cache description:`, err);
+                          }
+                        })();
                       }
                     }
                   } catch (err) {
