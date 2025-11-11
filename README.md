@@ -68,8 +68,22 @@ A comprehensive grant discovery and workflow management platform that helps orga
 - **Deadline Indicators**: Color-coded visual indicators for approaching and overdue deadlines
 - **Assignment**: Assign grants to team members for accountability
 - **Stage Counts**: Real-time count of grants in each pipeline stage
+- **Bulk Grant Operations**: Select multiple grants and perform batch actions
+  - **Multi-Select UI**: Checkboxes on each grant card with select all/deselect all controls
+  - **Bulk Status Update**: Change status for multiple grants at once (researching, preparing, submitted, awarded, declined)
+  - **Bulk Priority Assignment**: Set priority level (low, medium, high, urgent) for multiple grants
+  - **Bulk Delete**: Remove multiple grants from pipeline in one operation
+  - **Selection Toolbar**: Dynamic toolbar appears when grants are selected, showing count and actions
+  - **Visual Selection Feedback**: Selected grants highlighted with colored background
+  - **Progress Tracking**: Loading states and success/error notifications for bulk operations
 - **Grant Detail Drawer**: Click any grant card to open detailed view with tasks, budget, payments, compliance, and notes
   - **Notes Management**: Add and edit grant notes with rich text editing interface
+  - **@Mentions in Notes**: Type @ to mention team members with autocomplete dropdown
+    - Real-time autocomplete showing team member names and emails
+    - Automatic notifications sent to mentioned users when notes are saved
+    - Visual mention preview before saving ("Will notify: John Doe, Jane Smith")
+    - In-app notifications with grant context and direct links
+    - Search team members by name or email
   - **Editable Notes Tab**: In-line text editing with save/cancel controls
 - **Task Management**: Break down each grant into actionable subtasks with progress tracking
 - **Default Task Templates**: Auto-created task list (Research, Narrative, Budget, Documents, Letters, Submission)
