@@ -216,14 +216,13 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
       <Group justify="space-between">
         <Group gap="xs">
           <IconSparkles size={20} style={{ color: "var(--mantine-color-violet-6)" }} />
-          <Text size="sm" fw={500}>
-            Generated {summaryData.generated_at ? dayjs(summaryData.generated_at).fromNow() : "recently"}
-          </Text>
-          {summaryData.provider && (
-            <Badge size="sm" variant="light" color="violet">
-              {summaryData.provider} · {summaryData.model}
-            </Badge>
-          )}
+          <div>
+            <Text size="sm" fw={600}>AI Summary</Text>
+            <Text size="xs" c="dimmed">
+              Generated {summaryData.generated_at ? dayjs(summaryData.generated_at).fromNow() : "recently"}
+              {summaryData.provider && ` · ${summaryData.provider}`}
+            </Text>
+          </div>
         </Group>
         <Button
           size="xs"

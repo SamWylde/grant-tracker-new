@@ -105,7 +105,7 @@ export function RecommendationsSection({ onSaveGrant }: RecommendationsSectionPr
         <Group gap="xs">
           <IconBrain size={24} style={{ color: "var(--mantine-color-grape-6)" }} />
           <div>
-            <Title order={4}>Recommended for You</Title>
+            <Title order={4}>AI Recommendations</Title>
             <Text size="sm" c="dimmed">
               Based on your organization's interests and similar organizations
             </Text>

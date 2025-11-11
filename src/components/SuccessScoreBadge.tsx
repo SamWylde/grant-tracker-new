@@ -13,10 +13,10 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
   const { data, isLoading, error } = useQuery({
     queryKey: ["successScore", grantId, orgId],
     queryFn: async () => {
-      if (!orgId) throw new Error('No organization selected');
+      if (!orgId) return null; // Silently handle missing org
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session) return null; // Silently handle missing session
 
       // Use external_id parameter since grantId is typically the Grants.gov ID, not catalog UUID
       const response = await fetch(
@@ -28,10 +28,12 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
         }
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.details || errorData.error || 'Failed to fetch success score');
-      }
+      // 404 is expected when grant not in catalog - return null silently without error
+      if (response.status === 404) return null;
+
+      // Other errors - return null to show N/A badge
+      if (!response.ok) return null;
+
       return response.json();
     },
     enabled: !!grantId && !!orgId,
@@ -53,7 +55,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
       <Tooltip
         label={
           <div>
-            <Text size="xs" fw={600}>Success score unavailable</Text>
+            <Text size="xs" fw={600}>AI Success Score unavailable</Text>
             <Text size="xs" c="dimmed">Grant may not be in catalog yet</Text>
           </div>
         }
@@ -61,7 +63,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
         w={200}
       >
         <Badge size={compact ? "sm" : "md"} variant="outline" color="gray">
-          N/A
+          AI Success Score: N/A
         </Badge>
       </Tooltip>
     );
@@ -86,7 +88,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
       <Tooltip
         label={
           <div>
-            <Text size="xs" fw={600}>{percentage}% Success Probability</Text>
+            <Text size="xs" fw={600}>AI Success Score: {percentage}%</Text>
             <Text size="xs" c="dimmed">Match Level: {matchLevel}</Text>
             <Text size="xs" mt={4}>{data.recommendation_text}</Text>
           </div>
@@ -100,7 +102,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
           color={color}
           leftSection={<IconChartDots size={12} />}
         >
-          {percentage}%
+          AI: {percentage}%
         </Badge>
       </Tooltip>
     );
@@ -110,7 +112,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
     <Tooltip
       label={
         <div>
-          <Text size="xs" fw={600}>Success Factors:</Text>
+          <Text size="xs" fw={600}>AI Success Score Factors:</Text>
           <Text size="xs" mt={4}>Agency History: {(data.score_factors.agency_history * 100).toFixed(0)}%</Text>
           <Text size="xs">Competition: {(data.score_factors.competition_level * 100).toFixed(0)}%</Text>
           <Text size="xs">Org Fit: {(data.score_factors.org_fit * 100).toFixed(0)}%</Text>
@@ -134,7 +136,7 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
           color={color}
           leftSection={<IconChartDots size={14} />}
         >
-          {percentage}% {matchLevel}
+          AI: {percentage}% {matchLevel}
         </Badge>
       </Group>
     </Tooltip>

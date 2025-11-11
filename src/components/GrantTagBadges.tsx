@@ -33,10 +33,16 @@ export function GrantTagBadges({ grantId, maxTags = 3 }: GrantTagBadgesProps) {
         }
       );
 
+      // 404 is expected when grant not in catalog - return null silently
+      if (response.status === 404) return null;
+
+      // Other errors - return null without logging
       if (!response.ok) return null;
+
       return response.json();
     },
     enabled: !!grantId,
+    retry: false, // Don't retry on 404 (grant not in catalog)
     staleTime: 1000 * 60 * 60, // 1 hour
   });
 
