@@ -173,6 +173,7 @@ Run the migrations in your Supabase SQL editor (in order):
 - `supabase/migrations/20250116_add_grant_alerts.sql` - Creates grant alerts and notification system
 - `supabase/migrations/20250117_multi_source_ingestion.sql` - Creates multi-source grant ingestion system (grant_sources, grants_catalog, sync_jobs, de-duplication)
 - `supabase/migrations/20250118_fix_status_constraint.sql` - Fixes status check constraint
+- `supabase/migrations/20250119_add_user_profiles_foreign_key.sql` - Adds foreign key from org_members to user_profiles for PostgREST joins and RPC function for large teams
 - `supabase/migrations/add_integrations.sql` - Creates integrations, webhooks, and webhook_deliveries tables
 
 **Note**: All migrations are idempotent and can be run multiple times safely.
@@ -335,6 +336,7 @@ grant-tracker-new/
 │       ├── 20250116_add_grant_alerts.sql
 │       ├── 20250117_multi_source_ingestion.sql
 │       ├── 20250118_fix_status_constraint.sql
+│       ├── 20250119_add_user_profiles_foreign_key.sql
 │       └── add_integrations.sql
 ├── vercel.json              # Vercel deployment config (includes cron jobs)
 └── package.json
