@@ -2,7 +2,7 @@ import { Group, MultiSelect, Button } from "@mantine/core";
 import { IconFilter, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "../contexts/OrganizationContext";
-import { fetchTeamMemberOptions } from "../utils/teamMembers";
+import { supabase } from "../lib/supabase";
 
 export interface GrantFilterValues {
   status?: string[];
