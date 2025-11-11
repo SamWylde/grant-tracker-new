@@ -165,16 +165,155 @@ export class SyncService {
    */
   private async processSyncResult(
     result: SyncResult,
-    _source: GrantSource,
-    _adapter: any
+    source: GrantSource,
+    adapter: any
   ): Promise<SyncResult> {
-    // This would iterate through fetched grants and:
-    // 1. Normalize them
-    // 2. Check for duplicates
-    // 3. Insert or update in catalog
+    // Since the adapter's performFullSync/Incremental don't return raw grants,
+    // we need to fetch them again and process them
+    // This is inefficient but works with the current architecture
 
-    // For now, just return the result
-    // Full implementation would require iterating through raw grants
+    try {
+      let page = 1;
+      let hasMore = true;
+      const processedIds = new Set<string>();
+
+      while (hasMore && page <= 10) { // Limit to 10 pages for safety
+        const response = await adapter.fetchGrants({
+          page,
+          limit: 50,
+        });
+
+        if (!response.grants || response.grants.length === 0) {
+          break;
+        }
+
+        // Process each grant
+        for (const rawGrant of response.grants) {
+          try {
+            // Normalize the grant using the adapter
+            const normalized = adapter.normalizeGrant(rawGrant);
+
+            // Generate content hash
+            const contentHash = adapter.generateContentHash(normalized);
+
+            // Check if grant already exists
+            const { data: existing } = await this.supabase
+              .from('grants_catalog')
+              .select('id, content_hash, last_updated_at')
+              .eq('source_key', source.source_key)
+              .eq('external_id', normalized.external_id)
+              .maybeSingle();
+
+            const now = new Date().toISOString();
+
+            if (existing) {
+              // Check if content has changed
+              if (existing.content_hash !== contentHash) {
+                // Update existing grant
+                await this.supabase
+                  .from('grants_catalog')
+                  .update({
+                    title: normalized.title,
+                    description: normalized.description,
+                    agency: normalized.agency,
+                    opportunity_number: normalized.opportunity_number,
+                    estimated_funding: normalized.estimated_funding,
+                    award_floor: normalized.award_floor,
+                    award_ceiling: normalized.award_ceiling,
+                    expected_awards: normalized.expected_awards,
+                    funding_category: normalized.funding_category,
+                    eligibility_applicants: normalized.eligibility_applicants,
+                    cost_sharing_required: normalized.cost_sharing_required,
+                    posted_date: normalized.posted_date,
+                    open_date: normalized.open_date,
+                    close_date: normalized.close_date,
+                    opportunity_status: normalized.opportunity_status,
+                    cfda_numbers: normalized.cfda_numbers,
+                    aln_codes: normalized.aln_codes,
+                    source_url: normalized.source_url,
+                    application_url: normalized.application_url,
+                    content_hash: contentHash,
+                    last_updated_at: now,
+                    last_synced_at: now,
+                  })
+                  .eq('id', existing.id);
+
+                result.grants_updated++;
+              } else {
+                // No changes, just update sync timestamp
+                await this.supabase
+                  .from('grants_catalog')
+                  .update({ last_synced_at: now })
+                  .eq('id', existing.id);
+
+                result.grants_skipped++;
+              }
+            } else {
+              // Insert new grant
+              await this.supabase
+                .from('grants_catalog')
+                .insert({
+                  source_id: source.id,
+                  source_key: source.source_key,
+                  external_id: normalized.external_id,
+                  title: normalized.title,
+                  description: normalized.description,
+                  agency: normalized.agency,
+                  opportunity_number: normalized.opportunity_number,
+                  estimated_funding: normalized.estimated_funding,
+                  award_floor: normalized.award_floor,
+                  award_ceiling: normalized.award_ceiling,
+                  expected_awards: normalized.expected_awards,
+                  funding_category: normalized.funding_category,
+                  eligibility_applicants: normalized.eligibility_applicants,
+                  cost_sharing_required: normalized.cost_sharing_required,
+                  posted_date: normalized.posted_date,
+                  open_date: normalized.open_date,
+                  close_date: normalized.close_date,
+                  opportunity_status: normalized.opportunity_status,
+                  cfda_numbers: normalized.cfda_numbers,
+                  aln_codes: normalized.aln_codes,
+                  source_url: normalized.source_url,
+                  application_url: normalized.application_url,
+                  content_hash: contentHash,
+                  first_seen_at: now,
+                  last_updated_at: now,
+                  last_synced_at: now,
+                  is_active: true,
+                });
+
+              result.grants_created++;
+            }
+
+            processedIds.add(normalized.external_id);
+          } catch (error) {
+            result.errors.push({
+              error_code: 'PROCESSING_ERROR',
+              error_message: error instanceof Error ? error.message : 'Unknown error',
+              timestamp: new Date().toISOString(),
+            });
+          }
+        }
+
+        hasMore = response.pagination.has_more;
+        page++;
+
+        // Respect rate limits
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Update the result counts to reflect actual operations
+      result.grants_fetched = processedIds.size;
+    } catch (error) {
+      result.errors.push({
+        error_code: 'SYNC_ERROR',
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     return result;
   }
 
