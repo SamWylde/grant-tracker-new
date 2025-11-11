@@ -68,7 +68,17 @@ export default async function handler(
       .single();
 
     if (grantError || !grant) {
+      console.error('[status API] Grant fetch error:', grantError, 'grantId:', grantId);
       return res.status(404).json({ error: 'Grant not found' });
+    }
+
+    // Check if org_id is valid
+    if (!grant.org_id) {
+      console.error('[status API] Grant missing org_id:', { grantId, grant });
+      return res.status(400).json({
+        error: 'Grant is missing organization ID. Please contact support.',
+        details: 'This grant has no associated organization and cannot be updated.'
+      });
     }
 
     const { data: membership } = await supabase

@@ -1,12 +1,129 @@
-import { Container, Title, Text, Stack, Divider, Anchor, Box, Group, ThemeIcon } from '@mantine/core';
+import { Container, Title, Text, Stack, Divider, Anchor, Box, Group, ThemeIcon, Burger, Drawer, Button } from '@mantine/core';
 import { Link } from 'react-router-dom';
 import { IconRocket } from '@tabler/icons-react';
 import { AppHeader } from '../components/AppHeader';
+import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
 
 export function PrivacyPage() {
+  const { user } = useAuth();
+  const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
+
   return (
     <Box bg="var(--mantine-color-gray-0)" mih="100vh">
-      <AppHeader subtitle="Privacy Policy" />
+      {user ? (
+        <AppHeader subtitle="Privacy Policy" />
+      ) : (
+        <Box
+          component="header"
+          px="md"
+          py="lg"
+          style={{
+            backdropFilter: "blur(18px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+          }}
+        >
+          <Container size="lg">
+            <Group justify="space-between">
+              <Group gap={6}>
+                <ThemeIcon variant="light" color="grape" size={38} radius="xl">
+                  <IconRocket size={20} />
+                </ThemeIcon>
+                <Stack gap={0}>
+                  <Text fw={700}>GrantCue</Text>
+                  <Text size="xs" c="dimmed">
+                    Funding visibility for every team
+                  </Text>
+                </Stack>
+              </Group>
+
+              <Group gap="sm" visibleFrom="sm">
+                <Anchor size="sm" c="dark" component={Link} to="/discover">
+                  Discover Grants
+                </Anchor>
+                <Anchor size="sm" c="dark" component={Link} to="/features">
+                  Features
+                </Anchor>
+                <Anchor size="sm" c="dark" component={Link} to="/pricing">
+                  Pricing
+                </Anchor>
+                <Button variant="light" color="grape" component={Link} to="/signin">
+                  Sign in
+                </Button>
+                <Button color="grape" component={Link} to="/signup">
+                  Get started
+                </Button>
+              </Group>
+
+              <Burger
+                opened={mobileMenuOpened}
+                onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
+                hiddenFrom="sm"
+                size="sm"
+              />
+            </Group>
+
+            <Drawer
+              opened={mobileMenuOpened}
+              onClose={() => setMobileMenuOpened(false)}
+              size="xs"
+              padding="md"
+              title="Menu"
+              hiddenFrom="sm"
+              position="right"
+            >
+              <Stack gap="lg">
+                <Anchor
+                  component={Link}
+                  to="/discover"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Discover Grants
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/features"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Features
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/pricing"
+                  c="dark"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Pricing
+                </Anchor>
+                <Divider />
+                <Button
+                  variant="light"
+                  color="grape"
+                  component={Link}
+                  to="/signin"
+                  fullWidth
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Sign in
+                </Button>
+                <Button
+                  color="grape"
+                  component={Link}
+                  to="/signup"
+                  fullWidth
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Get started
+                </Button>
+              </Stack>
+            </Drawer>
+          </Container>
+        </Box>
+      )}
 
       <Container size="md" py="xl">
         <Stack gap="xl">

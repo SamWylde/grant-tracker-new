@@ -93,7 +93,20 @@ export default async function handler(
           return res.status(500).json({ error: 'Failed to fetch saved grants' });
         }
 
-        return res.status(200).json({ grants: data });
+        // Filter out any grants with null org_id and log them
+        const validGrants = (data || []).filter(grant => {
+          if (!grant.org_id) {
+            console.error('[saved API] Found grant with null org_id:', grant.id);
+            return false;
+          }
+          return true;
+        });
+
+        if (validGrants.length !== data?.length) {
+          console.warn(`[saved API] Filtered out ${(data?.length || 0) - validGrants.length} grants with null org_id`);
+        }
+
+        return res.status(200).json({ grants: validGrants });
       }
 
       case 'POST': {
