@@ -39,21 +39,69 @@ interface TestResult {
   duration?: number;
 }
 
+// Helper function to build comprehensive grant text from Grants.gov data
+function buildComprehensiveGrantText(details: any): string {
+  const sections = [];
+
+  sections.push(`GRANT OPPORTUNITY: ${details.title || 'Untitled'}`);
+  sections.push(`Opportunity Number: ${details.number || 'N/A'}`);
+  sections.push(`Agency: ${details.agency || 'Unknown'}\n`);
+
+  if (details.description && details.description !== 'No description available.') {
+    sections.push(`DESCRIPTION:\n${details.description}\n`);
+  }
+
+  if (details.postDate || details.closeDate) {
+    sections.push(`KEY DATES:`);
+    if (details.postDate) sections.push(`Posted: ${details.postDate}`);
+    if (details.closeDate) sections.push(`Application Deadline: ${details.closeDate}`);
+    sections.push('');
+  }
+
+  const hasFundingInfo = details.estimatedFunding || details.awardCeiling ||
+                         details.awardFloor || details.expectedAwards;
+  if (hasFundingInfo) {
+    sections.push(`FUNDING INFORMATION:`);
+    if (details.estimatedFunding) sections.push(`Total Program Funding: ${details.estimatedFunding}`);
+    if (details.expectedAwards) sections.push(`Expected Number of Awards: ${details.expectedAwards}`);
+    if (details.awardCeiling) sections.push(`Maximum Award Amount: ${details.awardCeiling}`);
+    if (details.awardFloor) sections.push(`Minimum Award Amount: ${details.awardFloor}`);
+    if (details.costSharing) sections.push(`Cost Sharing Required: ${details.costSharing}`);
+    sections.push('');
+  }
+
+  if (details.eligibility) {
+    sections.push(`ELIGIBILITY:`);
+    sections.push(details.eligibility);
+    sections.push('');
+  }
+
+  if (details.fundingInstrument) {
+    sections.push(`FUNDING INSTRUMENT: ${details.fundingInstrument}\n`);
+  }
+  if (details.category) {
+    sections.push(`PROGRAM CATEGORY: ${details.category}\n`);
+  }
+
+  return sections.join('\n');
+}
+
 // Internal Backend API Tests
 const INTERNAL_API_TESTS = [
   {
     id: 'ai-nofo-summary-generate',
-    name: '📄 AI NOFO Summary - Generate from PDF',
+    name: '📄 AI NOFO Summary - Generate from PDF or Grant ID',
     endpoint: '/api/grants/nofo-summary',
     method: 'POST',
     requiresAuth: true,
     requiresFileUpload: true,
+    requiresGrantId: true,
     defaultBody: JSON.stringify({
       grant_title: 'Test Grant NOFO',
       grant_id: 'test-grant-' + Date.now(),
-      pdf_text: '[PDF text will be extracted from uploaded file]',
+      pdf_text: '[PDF text will be extracted from uploaded file OR fetched from Grants.gov]',
     }, null, 2),
-    description: '⭐ Upload PDF to extract deadlines, eligibility, funding amounts, and priorities',
+    description: '⭐ Upload PDF OR enter a Grant ID (e.g., 357304) to analyze NOFO',
     highlighted: true,
   },
   {
@@ -197,6 +245,7 @@ export function APITestingPage() {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+  const [grantIds, setGrantIds] = useState<Record<string, string>>({});
 
   // Extract text from PDF file
   const extractTextFromPdf = async (file: File): Promise<string> => {
@@ -251,8 +300,50 @@ export function APITestingPage() {
         }
       }
 
+      // Handle grant ID (fetch from Grants.gov and build comprehensive text)
+      if (test.requiresGrantId && grantIds[test.id]) {
+        const grantId = grantIds[test.id].trim();
+
+        // Fetch grant details from Grants.gov
+        notifications.show({
+          id: 'fetching-grant',
+          title: 'Fetching grant details...',
+          message: `Retrieving data for grant ID: ${grantId}`,
+          loading: true,
+          autoClose: false,
+        });
+
+        const detailsResponse = await fetch(`/api/grants/details?opportunityId=${grantId}`, {
+          headers: options.headers,
+        });
+
+        if (!detailsResponse.ok) {
+          notifications.hide('fetching-grant');
+          throw new Error(`Failed to fetch grant details: ${detailsResponse.statusText}`);
+        }
+
+        const grantDetails = await detailsResponse.json();
+
+        notifications.hide('fetching-grant');
+        notifications.show({
+          title: 'Grant details fetched',
+          message: `Building comprehensive analysis for: ${grantDetails.title || grantId}`,
+          color: 'blue',
+          icon: <IconCheck size={16} />,
+        });
+
+        // Build comprehensive text from all available data
+        const comprehensiveText = buildComprehensiveGrantText(grantDetails);
+
+        // Parse the body and inject the comprehensive grant data
+        const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
+        bodyObj.pdf_text = comprehensiveText;
+        bodyObj.grant_title = grantDetails.title || `Grant ${grantId}`;
+        bodyObj.grant_id = grantId;
+        options.body = JSON.stringify(bodyObj);
+      }
       // Handle file uploads (PDF extraction)
-      if (test.requiresFileUpload && uploadedFiles[test.id]) {
+      else if (test.requiresFileUpload && uploadedFiles[test.id]) {
         const file = uploadedFiles[test.id];
 
         // Check if it's a PDF
@@ -395,9 +486,9 @@ export function APITestingPage() {
           <Tabs.Panel value="internal" pt="lg">
             <Stack gap="md">
               <Alert color="blue" icon={<IconUpload size={16} />}>
-                <Text size="sm" fw={500}>NOFO PDF Analysis Available!</Text>
+                <Text size="sm" fw={500}>NOFO Analysis Available!</Text>
                 <Text size="xs" mt={4}>
-                  The first test below (📄 AI NOFO Summary - Generate from PDF) lets you upload a PDF file to test AI-powered analysis. It will extract deadlines, eligibility requirements, funding amounts, and priorities from your NOFO document.
+                  The first test below (📄 AI NOFO Summary) lets you either upload a PDF file OR enter a Grant ID (e.g., 357304) to test AI-powered analysis. It will extract deadlines, eligibility requirements, funding amounts, and priorities from your NOFO document or Grants.gov data.
                 </Text>
               </Alert>
 
@@ -429,7 +520,12 @@ export function APITestingPage() {
                             size="xs"
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
-                            disabled={(test as any).requiresFileUpload && !uploadedFiles[test.id]}
+                            disabled={
+                              // For tests requiring file upload OR grant ID, at least one must be provided
+                              (test as any).requiresFileUpload && (test as any).requiresGrantId
+                                ? !uploadedFiles[test.id] && !grantIds[test.id]
+                                : (test as any).requiresFileUpload && !uploadedFiles[test.id]
+                            }
                             color={(test as any).highlighted ? 'blue' : undefined}
                           >
                             Test
@@ -443,6 +539,17 @@ export function APITestingPage() {
                             placeholder={(test as any).paramPlaceholder}
                             value={testParams[test.id] || ''}
                             onChange={(e) => setTestParams({ ...testParams, [test.id]: e.target.value })}
+                          />
+                        )}
+
+                        {(test as any).requiresGrantId && (
+                          <TextInput
+                            size="xs"
+                            label="Grant ID (Grants.gov Opportunity ID)"
+                            placeholder="e.g., 357304"
+                            value={grantIds[test.id] || ''}
+                            onChange={(e) => setGrantIds({ ...grantIds, [test.id]: e.target.value })}
+                            description="Enter a Grants.gov opportunity ID to fetch and analyze grant data"
                           />
                         )}
 
