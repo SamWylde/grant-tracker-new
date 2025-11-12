@@ -17,13 +17,13 @@ import {
   IconBellRinging,
   IconCalendar,
   IconCreditCard,
-  IconApi,
-  IconUserCog,
+  IconShieldLock,
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { AppHeader } from './AppHeader';
 import { NoOrganization } from './NoOrganization';
 import { useOrganization } from '../contexts/OrganizationContext';
+import { usePermission } from '../hooks/usePermission';
 
 interface SettingsLayoutProps {
   children: ReactNode;
@@ -34,6 +34,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { currentOrg, loading } = useOrganization();
+  const { isAdmin } = usePermission();
 
   const tabs = [
     {
@@ -79,16 +80,11 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       icon: IconCreditCard,
     },
     {
-      value: 'api-testing',
-      path: '/settings/api-testing',
-      label: 'API Testing',
-      icon: IconApi,
-    },
-    {
-      value: 'admin-users',
-      path: '/settings/admin-users',
-      label: 'User Management',
-      icon: IconUserCog,
+      value: 'admin',
+      path: '/settings/admin',
+      label: 'Admin',
+      icon: IconShieldLock,
+      adminOnly: true,
     },
     {
       value: 'danger',
@@ -97,6 +93,9 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       icon: IconAlertTriangle,
     },
   ];
+
+  // Filter tabs - only show admin tab if user is admin
+  const visibleTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
 
   const activeTab = tabs.find((tab) => currentPath === tab.path)?.value || 'profile';
 
@@ -132,7 +131,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
             <Container size="xl">
               <Tabs value={activeTab} variant="outline">
                 <Tabs.List>
-                  {tabs.map((tab) => (
+                  {visibleTabs.map((tab) => (
                     <Tabs.Tab
                       key={tab.value}
                       value={tab.value}

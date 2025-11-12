@@ -16,15 +16,11 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notifications } from '@mantine/notifications';
 import {
-  IconUser,
   IconCheck,
   IconX,
   IconAlertCircle,
   IconEdit,
 } from '@tabler/icons-react';
-import { SettingsLayout } from '../../components/SettingsLayout';
-import { AccessDenied } from '../../components/ProtectedRoute';
-import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
 
 interface Organization {
@@ -54,7 +50,6 @@ const PLAN_STATUS_OPTIONS = [
 ];
 
 export function AdminUsersPage() {
-  const { isAdmin } = usePermission();
   const queryClient = useQueryClient();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
@@ -82,7 +77,6 @@ export function AdminUsersPage() {
 
       return response.json() as Promise<Organization[]>;
     },
-    enabled: isAdmin,
   });
 
   // Update plan mutation
@@ -135,11 +129,6 @@ export function AdminUsersPage() {
     },
   });
 
-  // Permission check
-  if (!isAdmin) {
-    return <AccessDenied />;
-  }
-
   const handleEditPlan = (org: Organization) => {
     setSelectedOrg(org);
     setEditPlanName(org.plan_name);
@@ -183,16 +172,15 @@ export function AdminUsersPage() {
   };
 
   return (
-    <SettingsLayout>
-      <Stack gap="lg">
-        <div>
-          <Title order={2}>User Management</Title>
-          <Text c="dimmed" size="sm">
-            Manage organization plans and subscriptions (Admin Only)
-          </Text>
-        </div>
+    <Stack gap="lg">
+      <div>
+        <Title order={2}>User Management</Title>
+        <Text c="dimmed" size="sm">
+          Manage organization plans and subscriptions (Admin Only)
+        </Text>
+      </div>
 
-        <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+      <Alert color="blue" icon={<IconAlertCircle size={16} />}>
           <Text size="sm" fw={500}>Admin Area</Text>
           <Text size="xs" mt={4}>
             This page is only accessible to admin users. You can view and modify organization plans and subscription statuses.
@@ -327,6 +315,6 @@ export function AdminUsersPage() {
           </Stack>
         </Modal>
       </Stack>
-    </SettingsLayout>
+    </Stack>
   );
 }

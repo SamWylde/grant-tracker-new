@@ -25,9 +25,6 @@ import {
   IconRefresh,
   IconUpload,
 } from '@tabler/icons-react';
-import { SettingsLayout } from '../../components/SettingsLayout';
-import { AccessDenied } from '../../components/ProtectedRoute';
-import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -188,7 +185,6 @@ const OPENAI_API_TESTS = [
 ];
 
 export function APITestingPage() {
-  const { isAdmin } = usePermission();
 
   const [activeTab, setActiveTab] = useState<string>('internal');
   const [selectedTest, setSelectedTest] = useState<string>('');
@@ -200,16 +196,9 @@ export function APITestingPage() {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
-  const [extractingPdf, setExtractingPdf] = useState(false);
-
-  // Permission check
-  if (!isAdmin) {
-    return <AccessDenied />;
-  }
 
   // Extract text from PDF file
   const extractTextFromPdf = async (file: File): Promise<string> => {
-    setExtractingPdf(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -230,8 +219,6 @@ export function APITestingPage() {
     } catch (error) {
       console.error('Error extracting PDF text:', error);
       throw new Error('Failed to extract text from PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
-      setExtractingPdf(false);
     }
   };
 
@@ -386,16 +373,15 @@ export function APITestingPage() {
   };
 
   return (
-    <SettingsLayout>
-      <Stack gap="lg">
-        <div>
-          <Title order={2}>API Testing</Title>
-          <Text size="sm" c="dimmed" mt="xs">
-            Test internal backend APIs and third-party integrations (Grants.gov, OpenAI)
-          </Text>
-        </div>
+    <Stack gap="lg">
+      <div>
+        <Title order={2}>API Testing</Title>
+        <Text size="sm" c="dimmed" mt="xs">
+          Test internal backend APIs and third-party integrations (Grants.gov, OpenAI)
+        </Text>
+      </div>
 
-        <Divider />
+      <Divider />
 
         <Tabs value={activeTab} onChange={(value) => setActiveTab(value || 'internal')}>
           <Tabs.List>
@@ -714,6 +700,6 @@ export function APITestingPage() {
           </>
         )}
       </Stack>
-    </SettingsLayout>
+    </Stack>
   );
 }
