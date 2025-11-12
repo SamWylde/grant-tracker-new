@@ -304,7 +304,24 @@ export function APITestingPage() {
       if (test.requiresGrantId && grantIds[test.id]) {
         const grantId = grantIds[test.id].trim();
 
-        // Fetch grant details from Grants.gov
+        // Step 1: Check if this grant exists in our database
+        notifications.show({
+          id: 'checking-database',
+          title: 'Checking database...',
+          message: `Looking for grant ${grantId} in database`,
+          loading: true,
+          autoClose: false,
+        });
+
+        const { data: savedGrant } = await supabase
+          .from('saved_grants')
+          .select('id, external_id, title')
+          .eq('external_id', grantId)
+          .maybeSingle() as { data: { id: string; external_id: string; title: string } | null };
+
+        notifications.hide('checking-database');
+
+        // Step 2: Fetch grant details from Grants.gov
         notifications.show({
           id: 'fetching-grant',
           title: 'Fetching grant details...',
@@ -330,12 +347,22 @@ export function APITestingPage() {
         const grantDetails = await detailsResponse.json();
 
         notifications.hide('fetching-grant');
-        notifications.show({
-          title: 'Grant details fetched',
-          message: `Building comprehensive analysis for: ${grantDetails.title || grantId}`,
-          color: 'blue',
-          icon: <IconCheck size={16} />,
-        });
+
+        if (savedGrant) {
+          notifications.show({
+            title: 'Grant found in database',
+            message: `Using saved grant: ${savedGrant.title || grantId}`,
+            color: 'green',
+            icon: <IconCheck size={16} />,
+          });
+        } else {
+          notifications.show({
+            title: 'Grant details fetched',
+            message: `Building analysis for: ${grantDetails.title || grantId} (not saved)`,
+            color: 'blue',
+            icon: <IconCheck size={16} />,
+          });
+        }
 
         // Build comprehensive text from all available data
         const comprehensiveText = buildComprehensiveGrantText(grantDetails);
@@ -344,10 +371,17 @@ export function APITestingPage() {
         const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
         bodyObj.pdf_text = comprehensiveText;
         bodyObj.grant_title = grantDetails.title || `Grant ${grantId}`;
-        // Don't send saved_grant_id or grant_id for testing with Grants.gov IDs
-        // (those fields expect UUIDs from our database, not external Grants.gov IDs)
-        delete bodyObj.grant_id;
-        delete bodyObj.saved_grant_id;
+
+        // If we found the grant in our database, use the saved_grant_id (UUID)
+        if (savedGrant) {
+          bodyObj.saved_grant_id = savedGrant.id;
+          delete bodyObj.grant_id; // Remove the external ID field
+        } else {
+          // Grant not in database - don't send any ID (standalone test)
+          delete bodyObj.grant_id;
+          delete bodyObj.saved_grant_id;
+        }
+
         options.body = JSON.stringify(bodyObj);
       }
       // Handle file uploads (PDF extraction)

@@ -8,6 +8,7 @@ import {
   Text,
   Badge,
   Card,
+  Code,
   ScrollArea,
   Loader,
   ActionIcon,
@@ -502,6 +503,24 @@ export function PipelinePage() {
                                 <Text size="xs" c="dimmed">
                                   {grant.agency}
                                 </Text>
+
+                                {/* Grant ID for easy testing */}
+                                {grant.external_id && (
+                                  <Group gap={4}>
+                                    <Code size="xs" c="dimmed" style={{ cursor: 'pointer' }} onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigator.clipboard.writeText(grant.external_id);
+                                      notifications.show({
+                                        title: 'Copied!',
+                                        message: `Grant ID ${grant.external_id} copied to clipboard`,
+                                        color: 'green',
+                                        autoClose: 2000,
+                                      });
+                                    }}>
+                                      ID: {grant.external_id}
+                                    </Code>
+                                  </Group>
+                                )}
 
                                 {/* Description preview */}
                                 <Text size="xs" c="dimmed" lineClamp={2}>
