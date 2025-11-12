@@ -131,14 +131,16 @@ const THIRD_PARTY_API_TESTS = [
   },
 ];
 
-// Direct OpenAI API Tests
+// Direct OpenAI API Tests (via proxy using server's OPEN_AI_API_KEY)
 const OPENAI_API_TESTS = [
   {
     id: 'openai-chat',
     name: 'OpenAI - Chat Completion',
-    endpoint: 'https://api.openai.com/v1/chat/completions',
+    endpoint: '/api/openai-proxy',
     method: 'POST',
-    requiresApiKey: true,
+    requiresAuth: true,
+    requiresProxy: true,
+    proxyEndpoint: 'https://api.openai.com/v1/chat/completions',
     defaultBody: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
@@ -147,19 +149,21 @@ const OPENAI_API_TESTS = [
       ],
       max_tokens: 100,
     }, null, 2),
-    description: 'Direct OpenAI API call - requires API key',
+    description: 'Uses server\'s OPEN_AI_API_KEY environment variable',
   },
   {
     id: 'openai-embeddings',
     name: 'OpenAI - Create Embeddings',
-    endpoint: 'https://api.openai.com/v1/embeddings',
+    endpoint: '/api/openai-proxy',
     method: 'POST',
-    requiresApiKey: true,
+    requiresAuth: true,
+    requiresProxy: true,
+    proxyEndpoint: 'https://api.openai.com/v1/embeddings',
     defaultBody: JSON.stringify({
       model: 'text-embedding-3-small',
       input: 'This is a test grant description for embedding.',
     }, null, 2),
-    description: 'Generate embeddings - requires API key',
+    description: 'Uses server\'s OPEN_AI_API_KEY environment variable',
   },
 ];
 
@@ -173,7 +177,6 @@ export function APITestingPage() {
   const [customBody, setCustomBody] = useState('');
   const [queryParams, setQueryParams] = useState('');
   const [testParams, setTestParams] = useState<Record<string, string>>({});
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -210,16 +213,16 @@ export function APITestingPage() {
         }
       }
 
-      // Add OpenAI API key for direct OpenAI calls
-      if (test.requiresApiKey && openaiApiKey) {
-        options.headers = {
-          ...options.headers,
-          'Authorization': `Bearer ${openaiApiKey}`,
+      // Handle OpenAI proxy requests
+      if (test.requiresProxy) {
+        // For proxy requests, wrap the body in a special format
+        const proxyBody = {
+          endpoint: test.proxyEndpoint,
+          body: JSON.parse(customBody || (test as any).defaultBody || '{}'),
         };
-      }
-
-      // Add body for POST/PATCH requests
-      if ((test.method === 'POST' || test.method === 'PATCH') && customBody) {
+        options.body = JSON.stringify(proxyBody);
+      } else if ((test.method === 'POST' || test.method === 'PATCH') && customBody) {
+        // Regular POST/PATCH body
         options.body = customBody;
       }
 
@@ -440,23 +443,13 @@ export function APITestingPage() {
 
           <Tabs.Panel value="openai" pt="lg">
             <Stack gap="md">
-              <Alert color="orange" icon={<IconAlertCircle size={16} />}>
-                <Text size="sm" fw={500}>Direct OpenAI API calls - requires your API key</Text>
+              <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+                <Text size="sm" fw={500}>OpenAI Direct API Tests</Text>
                 <Text size="xs" mt={4}>
-                  These tests call OpenAI directly and will use your credits. Get your API key from{' '}
-                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
-                    platform.openai.com
-                  </a>
+                  These tests use the server's <Code>OPEN_AI_API_KEY</Code> environment variable.
+                  Requests are proxied through <Code>/api/openai-proxy</Code> to keep the API key secure.
                 </Text>
               </Alert>
-
-              <TextInput
-                label="OpenAI API Key"
-                placeholder="sk-..."
-                type="password"
-                value={openaiApiKey}
-                onChange={(e) => setOpenaiApiKey(e.target.value)}
-              />
 
               <Paper p="md" withBorder>
                 <Stack gap="md">
@@ -467,6 +460,11 @@ export function APITestingPage() {
                           <div>
                             <Text fw={600} size="sm">{test.name}</Text>
                             <Code>{test.method} {test.endpoint}</Code>
+                            {(test as any).proxyEndpoint && (
+                              <Text size="xs" c="dimmed" mt={1}>
+                                → Proxies to: {(test as any).proxyEndpoint}
+                              </Text>
+                            )}
                             {(test as any).description && (
                               <Text size="xs" c="dimmed" mt={2}>
                                 {(test as any).description}
@@ -477,7 +475,6 @@ export function APITestingPage() {
                             size="xs"
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
-                            disabled={!openaiApiKey}
                           >
                             Test
                           </Button>
