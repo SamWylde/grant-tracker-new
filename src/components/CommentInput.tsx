@@ -47,21 +47,41 @@ export function CommentInput({
     async function fetchOrgMembers() {
       if (!orgId) return;
 
-      const { data, error } = await supabase
+      // Get org members (just user_id)
+      const { data: membersData, error: membersError } = await supabase
         .from("org_members")
-        .select("user_id, full_name, avatar_url, users!inner(email)")
+        .select("user_id")
         .eq("org_id", orgId);
 
-      if (error) {
-        console.error("Failed to fetch org members:", error);
+      if (membersError) {
+        console.error("Failed to fetch org members:", membersError);
         return;
       }
 
-      const members = data?.map((m: any) => ({
-        user_id: m.user_id,
-        full_name: m.full_name,
-        avatar_url: m.avatar_url,
-        email: m.users?.email,
+      const userIds: string[] = membersData?.map((m: { user_id: string }) => m.user_id) || [];
+      if (userIds.length === 0) {
+        setOrgMembers([]);
+        return;
+      }
+
+      // Get user profiles for those users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error("Failed to fetch user profiles:", profilesError);
+        return;
+      }
+
+      // Get emails from the session/auth (we'll use a workaround)
+      // Since we can't easily get all user emails, we'll use full_name primarily
+      const members: OrgMember[] = profilesData?.map((profile: any) => ({
+        user_id: profile.id,
+        full_name: profile.full_name || 'Unknown User',
+        avatar_url: profile.avatar_url,
+        email: undefined, // Email not available in this context
       })) || [];
 
       setOrgMembers(members);
@@ -100,8 +120,7 @@ export function CommentInput({
   // Filter members based on mention search
   const filteredMembers = orgMembers.filter(
     (member) =>
-      member.full_name.toLowerCase().includes(mentionSearch) ||
-      member.email?.toLowerCase().includes(mentionSearch)
+      member.full_name.toLowerCase().includes(mentionSearch)
   );
 
   // Insert mention into textarea
