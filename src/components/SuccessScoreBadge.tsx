@@ -14,6 +14,38 @@ interface SuccessScoreBadgeProps {
 export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessScoreBadgeProps) {
   const { hasAIAccess } = useAIFeatures();
 
+  // IMPORTANT: Always call useQuery hook before any conditional returns to avoid React Error #310
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["successScore", grantId, orgId],
+    queryFn: async () => {
+      if (!orgId) return null; // Silently handle missing org
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null; // Silently handle missing session
+
+      // Use external_id parameter since grantId is typically the Grants.gov ID, not catalog UUID
+      const response = await fetch(
+        `/api/grants/success-score?external_id=${grantId}&org_id=${orgId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      );
+
+      // 404 is expected when grant not in catalog - return null silently without error
+      if (response.status === 404) return null;
+
+      // Other errors - return null to show N/A badge
+      if (!response.ok) return null;
+
+      return response.json();
+    },
+    enabled: !!grantId && !!orgId && hasAIAccess, // Only fetch if user has AI access
+    retry: false, // Don't retry on 404 (grant not in catalog)
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+  });
+
   // Show upgrade message for users without AI access
   if (!hasAIAccess) {
     return (
@@ -43,37 +75,6 @@ export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessSc
       </Tooltip>
     );
   }
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["successScore", grantId, orgId],
-    queryFn: async () => {
-      if (!orgId) return null; // Silently handle missing org
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null; // Silently handle missing session
-
-      // Use external_id parameter since grantId is typically the Grants.gov ID, not catalog UUID
-      const response = await fetch(
-        `/api/grants/success-score?external_id=${grantId}&org_id=${orgId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      );
-
-      // 404 is expected when grant not in catalog - return null silently without error
-      if (response.status === 404) return null;
-
-      // Other errors - return null to show N/A badge
-      if (!response.ok) return null;
-
-      return response.json();
-    },
-    enabled: !!grantId && !!orgId,
-    retry: false, // Don't retry on 404 (grant not in catalog)
-    staleTime: 1000 * 60 * 60 * 24, // 24 hours
-  });
 
   // Show placeholder if loading or error
   if (isLoading) {
