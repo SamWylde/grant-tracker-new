@@ -24,6 +24,7 @@ import {
   IconArrowRight,
   IconDots,
   IconPrinter,
+  IconArchive,
   IconTrash,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
@@ -148,7 +149,68 @@ export function PipelinePage() {
     },
   });
 
-  // Remove from pipeline mutation (deletes the saved grant)
+  // Archive grant mutation (sets status to "archived")
+  const archiveGrantMutation = useMutation({
+    mutationFn: async (grantId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/saved-status?id=${grantId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ status: "archived" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to archive grant");
+      }
+
+      return response.json();
+    },
+    onMutate: async (grantId) => {
+      await queryClient.cancelQueries({ queryKey: ["savedGrants"] });
+      const previousData = queryClient.getQueryData(["savedGrants"]);
+
+      // Optimistically update status to archived
+      queryClient.setQueryData(["savedGrants"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          grants: old.grants.map((grant: SavedGrant) =>
+            grant.id === grantId ? { ...grant, status: "archived" } : grant
+          ),
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      notifications.show({
+        title: "Grant archived",
+        message: "Grant archived successfully",
+        color: "green",
+      });
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["savedGrants"], context.previousData);
+      }
+      notifications.show({
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to archive grant",
+        color: "red",
+      });
+    },
+  });
+
+  // Remove from pipeline mutation (deletes the saved grant permanently)
   const removeFromPipelineMutation = useMutation({
     mutationFn: async (grantId: string) => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -207,6 +269,9 @@ export function PipelinePage() {
 
   // Filter grants before grouping by stage
   const filteredGrants = data?.grants ? data.grants.filter((grant) => {
+    // Exclude archived grants from pipeline view
+    if (grant.status === "archived") return false;
+
     // Filter by priority
     if (filters.priority && filters.priority.length > 0) {
       if (!grant.priority || !filters.priority.includes(grant.priority)) return false;
@@ -511,6 +576,16 @@ export function PipelinePage() {
                                         </Menu.Item>
                                       ))}
                                       <Menu.Divider />
+                                      <Menu.Item
+                                        color="orange"
+                                        leftSection={<IconArchive size={14} />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          archiveGrantMutation.mutate(grant.id);
+                                        }}
+                                      >
+                                        Archive
+                                      </Menu.Item>
                                       <Menu.Item
                                         color="red"
                                         leftSection={<IconTrash size={14} />}
