@@ -426,6 +426,10 @@ export function APITestingPage() {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
+
+      // Ensure loading is always reset
+      setLoading(false);
+
       setTestResult({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -439,17 +443,18 @@ export function APITestingPage() {
         icon: <IconX size={16} />,
       });
     } finally {
+      // Extra safety: ensure loading is definitely false
       setLoading(false);
     }
   };
 
-  const handleQuickTest = (testConfig: any) => {
+  const handleQuickTest = async (testConfig: any) => {
     setSelectedTest(testConfig.id);
     setCustomEndpoint(testConfig.endpoint);
     setCustomMethod(testConfig.method);
     setCustomBody(testConfig.defaultBody || '');
     setQueryParams('');
-    handleTest(testConfig);
+    await handleTest(testConfig);
   };
 
   const handleCustomTest = () => {
@@ -526,10 +531,11 @@ export function APITestingPage() {
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
                             disabled={
+                              (loading && selectedTest === test.id) ||
                               // For tests requiring file upload OR grant ID, at least one must be provided
-                              (test as any).requiresFileUpload && (test as any).requiresGrantId
+                              ((test as any).requiresFileUpload && (test as any).requiresGrantId
                                 ? !uploadedFiles[test.id] && !grantIds[test.id]
-                                : (test as any).requiresFileUpload && !uploadedFiles[test.id]
+                                : (test as any).requiresFileUpload && !uploadedFiles[test.id])
                             }
                             color={(test as any).highlighted ? 'blue' : undefined}
                           >
@@ -780,51 +786,53 @@ export function APITestingPage() {
           </Tabs.Panel>
         </Tabs>
 
-        {testResult && (
-          <>
-            <Divider label="Test Results" />
-            <Paper p="md" withBorder style={{ position: 'relative' }}>
-              <Stack gap="md">
-                <Group>
-                  <Badge
-                    size="lg"
-                    color={testResult.success ? 'green' : 'red'}
-                    leftSection={testResult.success ? <IconCheck size={14} /> : <IconX size={14} />}
-                  >
-                    {testResult.success ? 'Success' : 'Failed'}
+        <Divider label="Test Results" />
+        <Paper p="md" withBorder style={{ position: 'relative' }}>
+          {!testResult ? (
+            <Alert color="gray" icon={<IconAlertCircle size={16} />}>
+              <Text size="sm">No results yet. Run a test to see the response.</Text>
+            </Alert>
+          ) : (
+            <Stack gap="md">
+              <Group>
+                <Badge
+                  size="lg"
+                  color={testResult.success ? 'green' : 'red'}
+                  leftSection={testResult.success ? <IconCheck size={14} /> : <IconX size={14} />}
+                >
+                  {testResult.success ? 'Success' : 'Failed'}
+                </Badge>
+                {testResult.status && (
+                  <Badge size="lg" variant="light">
+                    Status: {testResult.status}
                   </Badge>
-                  {testResult.status && (
-                    <Badge size="lg" variant="light">
-                      Status: {testResult.status}
-                    </Badge>
-                  )}
-                  {testResult.duration && (
-                    <Badge size="lg" variant="light" color="blue">
-                      {testResult.duration}ms
-                    </Badge>
-                  )}
-                </Group>
-
-                {testResult.error && (
-                  <Alert color="red" icon={<IconAlertCircle size={16} />}>
-                    <Text size="sm">{testResult.error}</Text>
-                  </Alert>
                 )}
-
-                {testResult.data && (
-                  <div>
-                    <Text size="sm" fw={600} mb="xs">Response Data:</Text>
-                    <Code block style={{ maxHeight: 400, overflow: 'auto' }}>
-                      {typeof testResult.data === 'string'
-                        ? testResult.data
-                        : JSON.stringify(testResult.data, null, 2)}
-                    </Code>
-                  </div>
+                {testResult.duration && (
+                  <Badge size="lg" variant="light" color="blue">
+                    {testResult.duration}ms
+                  </Badge>
                 )}
-              </Stack>
-            </Paper>
-          </>
-        )}
+              </Group>
+
+              {testResult.error && (
+                <Alert color="red" icon={<IconAlertCircle size={16} />}>
+                  <Text size="sm">{testResult.error}</Text>
+                </Alert>
+              )}
+
+              {testResult.data && (
+                <div>
+                  <Text size="sm" fw={600} mb="xs">Response Data:</Text>
+                  <Code block style={{ maxHeight: 400, overflow: 'auto' }}>
+                    {typeof testResult.data === 'string'
+                      ? testResult.data
+                      : JSON.stringify(testResult.data, null, 2)}
+                  </Code>
+                </div>
+              )}
+            </Stack>
+          )}
+        </Paper>
       </Stack>
   );
 }
