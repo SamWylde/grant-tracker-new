@@ -85,6 +85,7 @@ export default function SignUpPage() {
           data: {
             full_name: name,
           },
+          emailRedirectTo: `${window.location.origin}/discover`,
         },
       });
 
@@ -101,11 +102,20 @@ export default function SignUpPage() {
 
       if (data.user) {
         // Check if email confirmation is required
+        console.log('User created:', {
+          id: data.user.id,
+          email: data.user.email,
+          confirmed_at: data.user.confirmed_at,
+          emailConfirmationRequired: !data.user.confirmed_at
+        });
+
         if (data.user.confirmed_at) {
-          // User is already confirmed, redirect to discover page
+          // User is already confirmed - this means email confirmation is DISABLED in Supabase
+          console.warn('⚠️ User was auto-confirmed. Email confirmation is likely disabled in Supabase Dashboard.');
           navigate('/discover');
         } else {
-          // Show success message - email confirmation required
+          // Email confirmation required - email should have been sent
+          console.log('✅ Confirmation email should have been sent to:', data.user.email);
           setSuccess(true);
           setLoading(false);
         }
