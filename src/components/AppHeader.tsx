@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon } from '@mantine/core';
 import { IconRocket } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
-import { OrgSwitcher } from './OrgSwitcher';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
 import { useAuth } from '../contexts/AuthContext';
@@ -91,24 +90,14 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               >
                 Metrics
               </Anchor>
-              <Anchor
-                component={Link}
-                to="/settings/profile"
-                c={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
-                fw={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 600 : 400}
-                underline="never"
-              >
-                Settings
-              </Anchor>
             </Group>
           )}
 
-          {/* Right side - Desktop: Org + User, Mobile: Burger */}
+          {/* Right side - Desktop: Bell + User, Mobile: Burger */}
           {user && (
             <>
-              {/* Desktop: OrgSwitcher + MentionBell + UserMenu */}
+              {/* Desktop: MentionBell + UserMenu */}
               <Group gap="md" visibleFrom="md">
-                <OrgSwitcher />
                 <MentionBell orgId={currentOrg?.id} />
                 <UserMenu />
               </Group>
@@ -174,16 +163,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 onClick={() => setMobileMenuOpened(false)}
               >
                 Value Metrics
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/settings/profile"
-                c={location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
-                fw={location.pathname.startsWith('/settings') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
-              >
-                Settings
               </Anchor>
             </Stack>
           </Drawer>

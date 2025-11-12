@@ -38,6 +38,8 @@ import { useAuth } from "../contexts/AuthContext";
 import { printBoardPacket } from "../utils/printBoardPacket";
 import { supabase } from "../lib/supabase";
 import { stripHtml } from "../utils/htmlUtils";
+import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
+import { GrantTagBadges } from "../components/GrantTagBadges";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -493,6 +495,21 @@ export function PipelinePage() {
                                     {grant.priority || "normal"}
                                   </Badge>
                                 </Group>
+
+                                {/* Badges */}
+                                <Group gap="xs" wrap="wrap">
+                                  {grant.aln && (
+                                    <Badge variant="outline" size="xs" color="gray">
+                                      {grant.aln}
+                                    </Badge>
+                                  )}
+                                  <SuccessScoreBadge
+                                    grantId={grant.external_id}
+                                    orgId={grant.org_id}
+                                    compact
+                                  />
+                                </Group>
+                                <GrantTagBadges grantId={grant.external_id} maxTags={3} />
 
                                 {/* Title */}
                                 <Text fw={600} size="sm" lineClamp={2}>

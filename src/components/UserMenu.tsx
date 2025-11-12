@@ -1,4 +1,4 @@
-import { Menu, Avatar, Text, Divider, Group } from '@mantine/core';
+import { Menu, Avatar, Text, Divider, Group, Stack } from '@mantine/core';
 import {
   IconUser,
   IconSettings,
@@ -7,11 +7,13 @@ import {
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrganization } from '../contexts/OrganizationContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const { currentOrg, userOrgs, switchOrg } = useOrganization();
   const navigate = useNavigate();
 
   // Load user profile for full name
@@ -96,6 +98,61 @@ export function UserMenu() {
         </Menu.Item>
 
         <Divider my="xs" />
+
+        {currentOrg && (
+          <>
+            <Menu.Label>Organization</Menu.Label>
+            <Menu.Item
+              leftSection={
+                <Avatar size={20} radius="xl" color="grape">
+                  {currentOrg.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </Avatar>
+              }
+              onClick={() => navigate('/settings/org')}
+              style={{
+                pointerEvents: userOrgs.length === 1 ? 'none' : 'auto',
+              }}
+            >
+              <Stack gap={0}>
+                <Text size="sm" fw={500} lineClamp={1}>
+                  {currentOrg.name}
+                </Text>
+                {userOrgs.length > 1 && (
+                  <Text size="xs" c="dimmed">
+                    Switch organization
+                  </Text>
+                )}
+              </Stack>
+            </Menu.Item>
+
+            {userOrgs.length > 1 && userOrgs.filter(org => org.id !== currentOrg.id).map((org) => (
+              <Menu.Item
+                key={org.id}
+                onClick={() => switchOrg(org.id)}
+                leftSection={
+                  <Avatar size={20} radius="xl" color="grape">
+                    {org.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </Avatar>
+                }
+                pl="xl"
+              >
+                {org.name}
+              </Menu.Item>
+            ))}
+
+            <Divider my="xs" />
+          </>
+        )}
 
         <Menu.Item
           color="red"
