@@ -46,6 +46,30 @@ const INTERNAL_API_TESTS = [
     requiresAuth: true,
   },
   {
+    id: 'ai-success-score',
+    name: 'AI Success Score - Generate',
+    endpoint: '/api/grants/success-score',
+    method: 'POST',
+    requiresAuth: true,
+    defaultBody: JSON.stringify({
+      grant_id: 'test-grant-id',
+      grant_title: 'Test Grant for Education',
+      grant_description: 'This is a test grant for educational purposes in the field of STEM education.',
+    }, null, 2),
+    description: 'Generate AI success score (stored in database)',
+  },
+  {
+    id: 'ai-nofo-summary',
+    name: 'AI NOFO Summary - Retrieve',
+    endpoint: '/api/grants/nofo-summary',
+    method: 'GET',
+    requiresAuth: true,
+    requiresParams: true,
+    paramLabel: 'saved_grant_id or grant_id',
+    paramPlaceholder: 'saved_grant_id=xxx or grant_id=xxx',
+    description: 'Retrieve AI-generated NOFO summary (from database)',
+  },
+  {
     id: 'webhooks',
     name: 'Webhooks - List',
     endpoint: '/api/webhooks',
@@ -65,7 +89,9 @@ const INTERNAL_API_TESTS = [
     endpoint: '/api/comments/grant-comments',
     method: 'GET',
     requiresAuth: true,
-    note: 'Requires grant_id query parameter (add manually in Custom tab)',
+    requiresParams: true,
+    paramLabel: 'grant_id',
+    paramPlaceholder: 'grant_id=xxx',
   },
   {
     id: 'activity',
@@ -82,45 +108,58 @@ const THIRD_PARTY_API_TESTS = [
     id: 'grants-search',
     name: 'Grants.gov - Search Grants',
     endpoint: '/api/grants/search',
+    fullUrl: 'https://api.grants.gov/v1/api/search',
     method: 'POST',
     requiresAuth: true,
     defaultBody: JSON.stringify({
       keyword: 'education',
       limit: 5,
     }, null, 2),
-    description: 'Search grants via our internal API that proxies Grants.gov',
+    description: 'Search grants (proxied through our backend to avoid CORS)',
   },
   {
     id: 'grants-details',
     name: 'Grants.gov - Grant Details',
     endpoint: '/api/grants/details',
+    fullUrl: 'https://api.grants.gov/v1/api/fetchOpportunity',
     method: 'GET',
     requiresAuth: true,
-    note: 'Requires opportunityId query parameter (e.g., ?opportunityId=352598)',
-    description: 'Fetch grant details from Grants.gov',
+    requiresParams: true,
+    paramLabel: 'opportunityId',
+    paramPlaceholder: 'opportunityId=352598',
+    description: 'Fetch grant details (proxied through our backend)',
   },
+];
+
+// Direct OpenAI API Tests
+const OPENAI_API_TESTS = [
   {
-    id: 'openai-success-score',
-    name: 'OpenAI - Success Score',
-    endpoint: '/api/grants/success-score',
+    id: 'openai-chat',
+    name: 'OpenAI - Chat Completion',
+    endpoint: 'https://api.openai.com/v1/chat/completions',
     method: 'POST',
-    requiresAuth: true,
+    requiresApiKey: true,
     defaultBody: JSON.stringify({
-      grant_id: 'test-grant-id',
-      grant_title: 'Test Grant',
-      grant_description: 'This is a test grant for educational purposes.',
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'Say hello!' }
+      ],
+      max_tokens: 100,
     }, null, 2),
-    note: 'Requires valid grant data - this will use OpenAI credits',
-    description: 'Generate AI success score prediction',
+    description: 'Direct OpenAI API call - requires API key',
   },
   {
-    id: 'openai-nofo-summary',
-    name: 'OpenAI - NOFO Summary',
-    endpoint: '/api/grants/nofo-summary',
-    method: 'GET',
-    requiresAuth: true,
-    note: 'Requires saved_grant_id or grant_id query parameter',
-    description: 'Retrieve AI-generated NOFO summary',
+    id: 'openai-embeddings',
+    name: 'OpenAI - Create Embeddings',
+    endpoint: 'https://api.openai.com/v1/embeddings',
+    method: 'POST',
+    requiresApiKey: true,
+    defaultBody: JSON.stringify({
+      model: 'text-embedding-3-small',
+      input: 'This is a test grant description for embedding.',
+    }, null, 2),
+    description: 'Generate embeddings - requires API key',
   },
 ];
 
@@ -133,6 +172,8 @@ export function APITestingPage() {
   const [customMethod, setCustomMethod] = useState<string>('GET');
   const [customBody, setCustomBody] = useState('');
   const [queryParams, setQueryParams] = useState('');
+  const [testParams, setTestParams] = useState<Record<string, string>>({});
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -147,7 +188,10 @@ export function APITestingPage() {
     const startTime = Date.now();
 
     try {
-      const url = test.endpoint + (queryParams ? `?${queryParams}` : '');
+      // Build URL with test-specific parameters or global query params
+      const params = testParams[test.id] || queryParams;
+      const url = test.endpoint + (params ? `?${params}` : '');
+
       const options: RequestInit = {
         method: test.method || customMethod,
         headers: {
@@ -164,6 +208,14 @@ export function APITestingPage() {
             'Authorization': `Bearer ${session.access_token}`,
           };
         }
+      }
+
+      // Add OpenAI API key for direct OpenAI calls
+      if (test.requiresApiKey && openaiApiKey) {
+        options.headers = {
+          ...options.headers,
+          'Authorization': `Bearer ${openaiApiKey}`,
+        };
       }
 
       // Add body for POST/PATCH requests
@@ -263,51 +315,61 @@ export function APITestingPage() {
 
         <Tabs value={activeTab} onChange={(value) => setActiveTab(value || 'internal')}>
           <Tabs.List>
-            <Tabs.Tab value="internal">
-              Backend APIs
-            </Tabs.Tab>
-            <Tabs.Tab value="third-party">
-              Third-party APIs
-            </Tabs.Tab>
-            <Tabs.Tab value="custom">
-              Custom Request
-            </Tabs.Tab>
+            <Tabs.Tab value="internal">Backend APIs</Tabs.Tab>
+            <Tabs.Tab value="third-party">Grants.gov (Proxied)</Tabs.Tab>
+            <Tabs.Tab value="openai">OpenAI Direct</Tabs.Tab>
+            <Tabs.Tab value="custom">Custom Request</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="internal" pt="lg">
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                Test your internal backend API endpoints
+                Test your internal backend API endpoints (stored in database)
               </Text>
 
               <Paper p="md" withBorder>
                 <Stack gap="md">
                   {INTERNAL_API_TESTS.map((test) => (
                     <Paper key={test.id} p="md" withBorder>
-                      <Group justify="space-between" mb="sm">
-                        <div>
-                          <Text fw={600} size="sm">{test.name}</Text>
-                          <Text size="xs" c="dimmed">{test.method} {test.endpoint}</Text>
-                          {test.note && (
-                            <Text size="xs" c="orange" mt={4}>
-                              <IconAlertCircle size={12} style={{ display: 'inline', marginRight: 4 }} />
-                              {test.note}
-                            </Text>
-                          )}
-                        </div>
-                        <Button
-                          size="xs"
-                          onClick={() => handleQuickTest(test)}
-                          loading={loading && selectedTest === test.id}
-                        >
-                          Test
-                        </Button>
-                      </Group>
-                      {(test as any).defaultBody && (
-                        <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
-                          {(test as any).defaultBody}
-                        </Code>
-                      )}
+                      <Stack gap="sm">
+                        <Group justify="space-between">
+                          <div>
+                            <Text fw={600} size="sm">{test.name}</Text>
+                            <Code>{test.method} {window.location.origin}{test.endpoint}</Code>
+                            {(test as any).description && (
+                              <Text size="xs" c="dimmed" mt={4}>
+                                {(test as any).description}
+                              </Text>
+                            )}
+                          </div>
+                          <Button
+                            size="xs"
+                            onClick={() => handleQuickTest(test)}
+                            loading={loading && selectedTest === test.id}
+                          >
+                            Test
+                          </Button>
+                        </Group>
+
+                        {(test as any).requiresParams && (
+                          <TextInput
+                            size="xs"
+                            label={(test as any).paramLabel}
+                            placeholder={(test as any).paramPlaceholder}
+                            value={testParams[test.id] || ''}
+                            onChange={(e) => setTestParams({ ...testParams, [test.id]: e.target.value })}
+                          />
+                        )}
+
+                        {(test as any).defaultBody && (
+                          <div>
+                            <Text size="xs" fw={500} mb={4}>Request Body:</Text>
+                            <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
+                              {(test as any).defaultBody}
+                            </Code>
+                          </div>
+                        )}
+                      </Stack>
                     </Paper>
                   ))}
                 </Stack>
@@ -318,42 +380,118 @@ export function APITestingPage() {
           <Tabs.Panel value="third-party" pt="lg">
             <Stack gap="md">
               <Text size="sm" c="dimmed">
-                Test third-party APIs (Grants.gov, OpenAI) via our internal proxy endpoints
+                Test Grants.gov API via our internal proxy (avoids CORS issues)
               </Text>
 
               <Paper p="md" withBorder>
                 <Stack gap="md">
                   {THIRD_PARTY_API_TESTS.map((test) => (
                     <Paper key={test.id} p="md" withBorder>
-                      <Group justify="space-between" mb="sm">
-                        <div>
-                          <Text fw={600} size="sm">{test.name}</Text>
-                          <Text size="xs" c="dimmed">{test.method} {test.endpoint}</Text>
-                          {(test as any).description && (
-                            <Text size="xs" c="dimmed" mt={2}>
-                              {(test as any).description}
-                            </Text>
-                          )}
-                          {test.note && (
-                            <Text size="xs" c="orange" mt={4}>
-                              <IconAlertCircle size={12} style={{ display: 'inline', marginRight: 4 }} />
-                              {test.note}
-                            </Text>
-                          )}
-                        </div>
-                        <Button
-                          size="xs"
-                          onClick={() => handleQuickTest(test)}
-                          loading={loading && selectedTest === test.id}
-                        >
-                          Test
-                        </Button>
-                      </Group>
-                      {(test as any).defaultBody && (
-                        <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
-                          {(test as any).defaultBody}
-                        </Code>
-                      )}
+                      <Stack gap="sm">
+                        <Group justify="space-between">
+                          <div>
+                            <Text fw={600} size="sm">{test.name}</Text>
+                            <Code>{test.method} {window.location.origin}{test.endpoint}</Code>
+                            {(test as any).fullUrl && (
+                              <Text size="xs" c="blue" mt={2}>
+                                → Proxies to: {(test as any).fullUrl}
+                              </Text>
+                            )}
+                            {(test as any).description && (
+                              <Text size="xs" c="dimmed" mt={2}>
+                                {(test as any).description}
+                              </Text>
+                            )}
+                          </div>
+                          <Button
+                            size="xs"
+                            onClick={() => handleQuickTest(test)}
+                            loading={loading && selectedTest === test.id}
+                          >
+                            Test
+                          </Button>
+                        </Group>
+
+                        {(test as any).requiresParams && (
+                          <TextInput
+                            size="xs"
+                            label={(test as any).paramLabel}
+                            placeholder={(test as any).paramPlaceholder}
+                            value={testParams[test.id] || ''}
+                            onChange={(e) => setTestParams({ ...testParams, [test.id]: e.target.value })}
+                          />
+                        )}
+
+                        {(test as any).defaultBody && (
+                          <div>
+                            <Text size="xs" fw={500} mb={4}>Request Body:</Text>
+                            <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
+                              {(test as any).defaultBody}
+                            </Code>
+                          </div>
+                        )}
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+              </Paper>
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="openai" pt="lg">
+            <Stack gap="md">
+              <Alert color="orange" icon={<IconAlertCircle size={16} />}>
+                <Text size="sm" fw={500}>Direct OpenAI API calls - requires your API key</Text>
+                <Text size="xs" mt={4}>
+                  These tests call OpenAI directly and will use your credits. Get your API key from{' '}
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                    platform.openai.com
+                  </a>
+                </Text>
+              </Alert>
+
+              <TextInput
+                label="OpenAI API Key"
+                placeholder="sk-..."
+                type="password"
+                value={openaiApiKey}
+                onChange={(e) => setOpenaiApiKey(e.target.value)}
+              />
+
+              <Paper p="md" withBorder>
+                <Stack gap="md">
+                  {OPENAI_API_TESTS.map((test) => (
+                    <Paper key={test.id} p="md" withBorder>
+                      <Stack gap="sm">
+                        <Group justify="space-between">
+                          <div>
+                            <Text fw={600} size="sm">{test.name}</Text>
+                            <Code>{test.method} {test.endpoint}</Code>
+                            {(test as any).description && (
+                              <Text size="xs" c="dimmed" mt={2}>
+                                {(test as any).description}
+                              </Text>
+                            )}
+                          </div>
+                          <Button
+                            size="xs"
+                            onClick={() => handleQuickTest(test)}
+                            loading={loading && selectedTest === test.id}
+                            disabled={!openaiApiKey}
+                          >
+                            Test
+                          </Button>
+                        </Group>
+
+                        {(test as any).defaultBody && (
+                          <div>
+                            <Text size="xs" fw={500} mb={4}>Request Body:</Text>
+                            <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
+                              {(test as any).defaultBody}
+                            </Code>
+                          </div>
+                        )}
+                      </Stack>
                     </Paper>
                   ))}
                 </Stack>
