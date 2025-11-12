@@ -40,6 +40,11 @@ export default function SignInPage() {
     }
   }, [user, navigate]);
 
+  // Debug: Log when magic link sent state changes
+  useEffect(() => {
+    console.log('magicLinkSent state changed:', magicLinkSent);
+  }, [magicLinkSent]);
+
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -75,6 +80,26 @@ export default function SignInPage() {
     setMagicLinkSent(false);
 
     try {
+      // First check if user exists using our API endpoint
+      console.log('Checking if user exists:', magicLinkEmail);
+      const checkResponse = await fetch('/api/auth/check-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: magicLinkEmail }),
+      });
+
+      const checkData = await checkResponse.json();
+      console.log('User check result:', checkData);
+
+      if (!checkData.exists) {
+        setMagicLinkError('No account found with this email. Please sign up first.');
+        setMagicLinkLoading(false);
+        return;
+      }
+
+      // User exists, proceed with sending magic link
       const { error: otpError } = await supabase.auth.signInWithOtp({
         email: magicLinkEmail,
         options: {
@@ -88,9 +113,12 @@ export default function SignInPage() {
         return;
       }
 
+      // Success - show OTP input
+      console.log('Magic link sent successfully, showing OTP input');
       setMagicLinkSent(true);
       setMagicLinkLoading(false);
     } catch (err) {
+      console.error('Magic link error:', err);
       setMagicLinkError('An unexpected error occurred. Please try again.');
       setMagicLinkLoading(false);
     }
@@ -201,12 +229,14 @@ export default function SignInPage() {
               )}
 
               {magicLinkSent ? (
-                <Stack gap="md">
-                  <Alert icon={<IconCheck size={16} />} title="Check your email" color="green">
-                    We've sent you a magic link to <strong>{magicLinkEmail}</strong>. Click the link in the email to sign in.
-                  </Alert>
+                <>
+                  {console.log('Rendering OTP input section')}
+                  <Stack gap="md">
+                    <Alert icon={<IconCheck size={16} />} title="Check your email" color="green">
+                      We've sent you a magic link to <strong>{magicLinkEmail}</strong>. Click the link in the email to sign in.
+                    </Alert>
 
-                  <Divider label="OR" labelPosition="center" />
+                    <Divider label="OR" labelPosition="center" />
 
                   <Text size="sm" c="dimmed" ta="center">
                     Enter the one-time code from your email:
@@ -255,6 +285,7 @@ export default function SignInPage() {
                     </Stack>
                   </form>
                 </Stack>
+                </>
               ) : (
                 <form onSubmit={handleMagicLinkSubmit}>
                   <Stack gap="md">
