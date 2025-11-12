@@ -91,24 +91,14 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               >
                 Metrics
               </Anchor>
-              <Anchor
-                component={Link}
-                to="/settings/profile"
-                c={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
-                fw={isActive('/settings/profile') || location.pathname.startsWith('/settings') ? 600 : 400}
-                underline="never"
-              >
-                Settings
-              </Anchor>
             </Group>
           )}
 
-          {/* Right side - Desktop: Org + User, Mobile: Burger */}
+          {/* Right side - Desktop: Bell + User, Mobile: Burger */}
           {user && (
             <>
-              {/* Desktop: OrgSwitcher + MentionBell + UserMenu */}
+              {/* Desktop: MentionBell + UserMenu */}
               <Group gap="md" visibleFrom="md">
-                <OrgSwitcher />
                 <MentionBell orgId={currentOrg?.id} />
                 <UserMenu />
               </Group>
@@ -174,16 +164,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 onClick={() => setMobileMenuOpened(false)}
               >
                 Value Metrics
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/settings/profile"
-                c={location.pathname.startsWith('/settings') ? 'grape' : 'dark'}
-                fw={location.pathname.startsWith('/settings') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
-              >
-                Settings
               </Anchor>
             </Stack>
           </Drawer>
