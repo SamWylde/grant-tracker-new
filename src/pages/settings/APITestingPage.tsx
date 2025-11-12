@@ -42,6 +42,21 @@ interface TestResult {
 // Internal Backend API Tests
 const INTERNAL_API_TESTS = [
   {
+    id: 'ai-nofo-summary-generate',
+    name: '📄 AI NOFO Summary - Generate from PDF',
+    endpoint: '/api/grants/nofo-summary',
+    method: 'POST',
+    requiresAuth: true,
+    requiresFileUpload: true,
+    defaultBody: JSON.stringify({
+      grant_title: 'Test Grant NOFO',
+      grant_id: 'test-grant-' + Date.now(),
+      pdf_text: '[PDF text will be extracted from uploaded file]',
+    }, null, 2),
+    description: '⭐ Upload PDF to extract deadlines, eligibility, funding amounts, and priorities',
+    highlighted: true,
+  },
+  {
     id: 'saved-grants',
     name: 'Saved Grants - List',
     endpoint: '/api/saved',
@@ -71,20 +86,6 @@ const INTERNAL_API_TESTS = [
     paramLabel: 'saved_grant_id or grant_id',
     paramPlaceholder: 'saved_grant_id=xxx or grant_id=xxx',
     description: 'Retrieve AI-generated NOFO summary (from database)',
-  },
-  {
-    id: 'ai-nofo-summary-generate',
-    name: 'AI NOFO Summary - Generate from PDF',
-    endpoint: '/api/grants/nofo-summary',
-    method: 'POST',
-    requiresAuth: true,
-    requiresFileUpload: true,
-    defaultBody: JSON.stringify({
-      grant_title: 'Test Grant NOFO',
-      grant_id: 'test-grant-' + Date.now(),
-      pdf_text: '[PDF text will be extracted from uploaded file]',
-    }, null, 2),
-    description: 'Upload PDF to extract deadlines, eligibility, funding amounts, and priorities',
   },
   {
     id: 'webhooks',
@@ -393,21 +394,33 @@ export function APITestingPage() {
 
           <Tabs.Panel value="internal" pt="lg">
             <Stack gap="md">
-              <Text size="sm" c="dimmed">
-                Test your internal backend API endpoints (stored in database)
-              </Text>
+              <Alert color="blue" icon={<IconUpload size={16} />}>
+                <Text size="sm" fw={500}>NOFO PDF Analysis Available!</Text>
+                <Text size="xs" mt={4}>
+                  The first test below (📄 AI NOFO Summary - Generate from PDF) lets you upload a PDF file to test AI-powered analysis. It will extract deadlines, eligibility requirements, funding amounts, and priorities from your NOFO document.
+                </Text>
+              </Alert>
 
               <Paper p="md" withBorder>
                 <Stack gap="md">
                   {INTERNAL_API_TESTS.map((test) => (
-                    <Paper key={test.id} p="md" withBorder>
+                    <Paper
+                      key={test.id}
+                      p="md"
+                      withBorder
+                      style={(test as any).highlighted ? {
+                        borderColor: 'var(--mantine-color-blue-6)',
+                        borderWidth: 2,
+                        backgroundColor: 'var(--mantine-color-blue-0)',
+                      } : undefined}
+                    >
                       <Stack gap="sm">
                         <Group justify="space-between">
                           <div>
                             <Text fw={600} size="sm">{test.name}</Text>
                             <Code>{test.method} {window.location.origin}{test.endpoint}</Code>
                             {(test as any).description && (
-                              <Text size="xs" c="dimmed" mt={4}>
+                              <Text size="xs" c={(test as any).highlighted ? 'blue' : 'dimmed'} mt={4} fw={(test as any).highlighted ? 500 : 400}>
                                 {(test as any).description}
                               </Text>
                             )}
@@ -417,6 +430,7 @@ export function APITestingPage() {
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
                             disabled={(test as any).requiresFileUpload && !uploadedFiles[test.id]}
+                            color={(test as any).highlighted ? 'blue' : undefined}
                           >
                             Test
                           </Button>
