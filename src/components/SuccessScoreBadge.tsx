@@ -12,7 +12,7 @@ interface SuccessScoreBadgeProps {
 }
 
 export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessScoreBadgeProps) {
-  const { hasAIAccess, accessLevel } = useAIFeatures();
+  const { hasAIAccess } = useAIFeatures();
 
   // Show upgrade message for users without AI access
   if (!hasAIAccess) {

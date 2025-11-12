@@ -54,7 +54,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (profileError) {
         console.error('Error fetching user profile:', profileError);
       } else {
-        setIsPlatformAdmin(profileData?.is_platform_admin || false);
+        setIsPlatformAdmin((profileData as any)?.is_platform_admin || false);
       }
 
       // Get organizations the user is a member of

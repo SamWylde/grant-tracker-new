@@ -45,8 +45,8 @@ export function useAIFeatures(): AIFeaturesResult {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const plan = data?.plan_name || 'free';
-  const status = data?.plan_status || 'active';
+  const plan = (data as any)?.plan_name || 'free';
+  const status = (data as any)?.plan_status || 'active';
 
   // Determine access level
   let accessLevel: AIFeatureAccess = 'none';
