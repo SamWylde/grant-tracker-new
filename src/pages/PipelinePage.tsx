@@ -507,7 +507,7 @@ export function PipelinePage() {
                                 {/* Grant ID for easy testing */}
                                 {grant.external_id && (
                                   <Group gap={4}>
-                                    <Code size="xs" c="dimmed" style={{ cursor: 'pointer' }} onClick={(e) => {
+                                    <Code c="dimmed" style={{ cursor: 'pointer', fontSize: '11px' }} onClick={(e) => {
                                       e.stopPropagation();
                                       navigator.clipboard.writeText(grant.external_id);
                                       notifications.show({
