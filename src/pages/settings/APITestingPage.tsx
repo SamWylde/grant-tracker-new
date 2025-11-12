@@ -399,20 +399,75 @@ export function APITestingPage() {
 
         notifications.hide('fetching-grant');
 
+        let grantUuid: string;
+
         if (savedGrant) {
+          // Grant exists in database
           notifications.show({
             title: 'Grant found in database',
             message: `Using saved grant: ${savedGrant.title || numericId}`,
             color: 'green',
             icon: <IconCheck size={16} />,
           });
+          grantUuid = savedGrant.id;
         } else {
+          // Grant NOT in database - save it first
           notifications.show({
-            title: 'Grant details fetched',
-            message: `Building analysis for: ${grantDetails.title || numericId} (not saved)`,
-            color: 'blue',
+            id: 'saving-grant',
+            title: 'Saving grant to database...',
+            message: `Adding ${grantDetails.title || numericId} to your saved grants`,
+            loading: true,
+            autoClose: false,
+          });
+
+          // Get user's organization
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            notifications.hide('saving-grant');
+            throw new Error('User not authenticated');
+          }
+
+          const { data: orgMember } = await supabase
+            .from('org_members')
+            .select('org_id')
+            .eq('user_id', user.id)
+            .maybeSingle() as { data: { org_id: string } | null };
+
+          if (!orgMember) {
+            notifications.hide('saving-grant');
+            throw new Error('No organization found for user');
+          }
+
+          // Save the grant
+          const { data: newGrant, error: insertError } = await supabase
+            .from('saved_grants')
+            .insert({
+              external_id: numericId,
+              title: grantDetails.title || 'Untitled Grant',
+              agency: grantDetails.agency || null,
+              description: grantDetails.description || null,
+              close_date: grantDetails.closeDate || null,
+              org_id: orgMember.org_id,
+              status: 'research',
+              priority: 'normal',
+            } as any)
+            .select('id')
+            .single() as { data: { id: string } | null; error: any };
+
+          if (insertError || !newGrant) {
+            notifications.hide('saving-grant');
+            throw new Error(`Failed to save grant: ${insertError?.message || 'Unknown error'}`);
+          }
+
+          notifications.hide('saving-grant');
+          notifications.show({
+            title: 'Grant saved to database',
+            message: `${grantDetails.title} added to your pipeline`,
+            color: 'green',
             icon: <IconCheck size={16} />,
           });
+
+          grantUuid = newGrant.id;
         }
 
         // Build comprehensive text from all available data
@@ -422,16 +477,8 @@ export function APITestingPage() {
         const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
         bodyObj.pdf_text = comprehensiveText;
         bodyObj.grant_title = grantDetails.title || `Grant ${numericId}`;
-
-        // If we found the grant in our database, use the saved_grant_id (UUID)
-        if (savedGrant) {
-          bodyObj.saved_grant_id = savedGrant.id;
-          delete bodyObj.grant_id; // Remove the external ID field
-        } else {
-          // Grant not in database - don't send any ID (standalone test)
-          delete bodyObj.grant_id;
-          delete bodyObj.saved_grant_id;
-        }
+        bodyObj.saved_grant_id = grantUuid; // Always use the UUID (either existing or newly created)
+        delete bodyObj.grant_id; // Remove the external ID field
 
         options.body = JSON.stringify(bodyObj);
       }
