@@ -99,6 +99,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               {/* Desktop: MentionBell + UserMenu */}
               <Group gap="md" visibleFrom="md">
                 <MentionBell orgId={currentOrg?.id} />
+                <OrgSwitcher />
                 <UserMenu />
               </Group>
 
