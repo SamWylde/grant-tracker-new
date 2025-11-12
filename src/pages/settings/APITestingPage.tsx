@@ -14,6 +14,7 @@ import {
   Tabs,
   JsonInput,
   Alert,
+  FileInput,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -22,11 +23,13 @@ import {
   IconX,
   IconAlertCircle,
   IconRefresh,
+  IconUpload,
 } from '@tabler/icons-react';
-import { SettingsLayout } from '../../components/SettingsLayout';
-import { AccessDenied } from '../../components/ProtectedRoute';
-import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface TestResult {
   success: boolean;
@@ -68,6 +71,20 @@ const INTERNAL_API_TESTS = [
     paramLabel: 'saved_grant_id or grant_id',
     paramPlaceholder: 'saved_grant_id=xxx or grant_id=xxx',
     description: 'Retrieve AI-generated NOFO summary (from database)',
+  },
+  {
+    id: 'ai-nofo-summary-generate',
+    name: 'AI NOFO Summary - Generate from PDF',
+    endpoint: '/api/grants/nofo-summary',
+    method: 'POST',
+    requiresAuth: true,
+    requiresFileUpload: true,
+    defaultBody: JSON.stringify({
+      grant_title: 'Test Grant NOFO',
+      grant_id: 'test-grant-' + Date.now(),
+      pdf_text: '[PDF text will be extracted from uploaded file]',
+    }, null, 2),
+    description: 'Upload PDF to extract deadlines, eligibility, funding amounts, and priorities',
   },
   {
     id: 'webhooks',
@@ -168,7 +185,6 @@ const OPENAI_API_TESTS = [
 ];
 
 export function APITestingPage() {
-  const { isAdmin } = usePermission();
 
   const [activeTab, setActiveTab] = useState<string>('internal');
   const [selectedTest, setSelectedTest] = useState<string>('');
@@ -179,11 +195,32 @@ export function APITestingPage() {
   const [testParams, setTestParams] = useState<Record<string, string>>({});
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
 
-  // Permission check
-  if (!isAdmin) {
-    return <AccessDenied />;
-  }
+  // Extract text from PDF file
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let fullText = '';
+
+      // Extract text from each page
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n\n';
+      }
+
+      return fullText.trim();
+    } catch (error) {
+      console.error('Error extracting PDF text:', error);
+      throw new Error('Failed to extract text from PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
 
   const handleTest = async (test: any) => {
     setLoading(true);
@@ -213,8 +250,39 @@ export function APITestingPage() {
         }
       }
 
-      // Handle OpenAI proxy requests
-      if (test.requiresProxy) {
+      // Handle file uploads (PDF extraction)
+      if (test.requiresFileUpload && uploadedFiles[test.id]) {
+        const file = uploadedFiles[test.id];
+
+        // Check if it's a PDF
+        if (!file.type.includes('pdf')) {
+          throw new Error('Please upload a PDF file');
+        }
+
+        // Extract text from PDF
+        notifications.show({
+          id: 'extracting-pdf',
+          title: 'Extracting text from PDF...',
+          message: 'This may take a moment',
+          loading: true,
+          autoClose: false,
+        });
+
+        const pdfText = await extractTextFromPdf(file);
+
+        notifications.hide('extracting-pdf');
+        notifications.show({
+          title: 'PDF text extracted',
+          message: `Extracted ${pdfText.length} characters`,
+          color: 'green',
+          icon: <IconCheck size={16} />,
+        });
+
+        // Parse the body and inject pdf_text
+        const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
+        bodyObj.pdf_text = pdfText;
+        options.body = JSON.stringify(bodyObj);
+      } else if (test.requiresProxy) {
         // For proxy requests, wrap the body in a special format
         const proxyBody = {
           endpoint: test.proxyEndpoint,
@@ -305,16 +373,15 @@ export function APITestingPage() {
   };
 
   return (
-    <SettingsLayout>
-      <Stack gap="lg">
-        <div>
-          <Title order={2}>API Testing</Title>
-          <Text size="sm" c="dimmed" mt="xs">
-            Test internal backend APIs and third-party integrations (Grants.gov, OpenAI)
-          </Text>
-        </div>
+    <Stack gap="lg">
+      <div>
+        <Title order={2}>API Testing</Title>
+        <Text size="sm" c="dimmed" mt="xs">
+          Test internal backend APIs and third-party integrations (Grants.gov, OpenAI)
+        </Text>
+      </div>
 
-        <Divider />
+      <Divider />
 
         <Tabs value={activeTab} onChange={(value) => setActiveTab(value || 'internal')}>
           <Tabs.List>
@@ -349,6 +416,7 @@ export function APITestingPage() {
                             size="xs"
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
+                            disabled={(test as any).requiresFileUpload && !uploadedFiles[test.id]}
                           >
                             Test
                           </Button>
@@ -361,6 +429,27 @@ export function APITestingPage() {
                             placeholder={(test as any).paramPlaceholder}
                             value={testParams[test.id] || ''}
                             onChange={(e) => setTestParams({ ...testParams, [test.id]: e.target.value })}
+                          />
+                        )}
+
+                        {(test as any).requiresFileUpload && (
+                          <FileInput
+                            size="xs"
+                            label="Upload PDF File"
+                            placeholder="Choose a PDF file..."
+                            accept="application/pdf"
+                            leftSection={<IconUpload size={14} />}
+                            value={uploadedFiles[test.id] || null}
+                            onChange={(file) => {
+                              if (file) {
+                                setUploadedFiles({ ...uploadedFiles, [test.id]: file });
+                              } else {
+                                const newFiles = { ...uploadedFiles };
+                                delete newFiles[test.id];
+                                setUploadedFiles(newFiles);
+                              }
+                            }}
+                            clearable
                           />
                         )}
 
@@ -611,6 +700,5 @@ export function APITestingPage() {
           </>
         )}
       </Stack>
-    </SettingsLayout>
   );
 }

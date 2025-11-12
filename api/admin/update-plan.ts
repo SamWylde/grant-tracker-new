@@ -3,9 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const openaiApiKey = process.env.OPEN_AI_API_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   // Verify authentication
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -14,13 +18,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Server configuration error' });
-  }
-
-  if (!openaiApiKey) {
-    return res.status(500).json({
-      error: 'OpenAI API key not configured',
-      details: 'OPEN_AI_API_KEY environment variable not set'
-    });
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -62,42 +59,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
   try {
-    const { endpoint, body } = req.body;
+    const { org_id, plan_name, plan_status } = req.body;
 
-    if (!endpoint || !body) {
-      return res.status(400).json({ error: 'endpoint and body are required' });
+    // Validate input
+    if (!org_id || !plan_name || !plan_status) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'org_id, plan_name, and plan_status are required'
+      });
     }
 
-    // Validate endpoint is an OpenAI endpoint
-    if (!endpoint.startsWith('https://api.openai.com/')) {
-      return res.status(400).json({ error: 'Invalid OpenAI endpoint' });
+    // Validate plan_name
+    const validPlans = ['free', 'starter', 'professional', 'enterprise'];
+    if (!validPlans.includes(plan_name)) {
+      return res.status(400).json({
+        error: 'Invalid plan_name',
+        message: `plan_name must be one of: ${validPlans.join(', ')}`
+      });
     }
 
-    // Forward request to OpenAI
-    const openaiResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify(body),
+    // Validate plan_status
+    const validStatuses = ['active', 'trialing', 'past_due', 'canceled', 'suspended'];
+    if (!validStatuses.includes(plan_status)) {
+      return res.status(400).json({
+        error: 'Invalid plan_status',
+        message: `plan_status must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Update organization settings
+    const { data, error } = await supabase
+      .from('organization_settings')
+      .update({
+        plan_name,
+        plan_status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('org_id', org_id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating organization settings:', error);
+      throw error;
+    }
+
+    console.log(`[Admin] User ${user.id} updated plan for org ${org_id}: ${plan_name} (${plan_status})`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Organization plan updated successfully',
+      data,
     });
-
-    const data = await openaiResponse.json();
-
-    if (!openaiResponse.ok) {
-      return res.status(openaiResponse.status).json(data);
-    }
-
-    return res.status(200).json(data);
   } catch (error) {
-    console.error('Error in OpenAI proxy:', error);
+    console.error('Error updating organization plan:', error);
     return res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
