@@ -313,8 +313,13 @@ export function APITestingPage() {
           autoClose: false,
         });
 
-        const detailsResponse = await fetch(`/api/grants/details?opportunityId=${grantId}`, {
-          headers: options.headers,
+        const detailsResponse = await fetch('/api/grants/details', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+          body: JSON.stringify({ id: grantId }),
         });
 
         if (!detailsResponse.ok) {
