@@ -101,7 +101,7 @@ const INTERNAL_API_TESTS = [
       grant_id: 'test-grant-' + Date.now(),
       pdf_text: '[PDF text will be extracted from uploaded file OR fetched from Grants.gov]',
     }, null, 2),
-    description: '⭐ Upload PDF OR enter a Grant ID (e.g., 357304) to analyze NOFO',
+    description: '⭐ Upload PDF OR enter a Grant ID (357304) or Opportunity Number (P25AS00474) to analyze NOFO',
     highlighted: true,
   },
   {
@@ -302,13 +302,64 @@ export function APITestingPage() {
 
       // Handle grant ID (fetch from Grants.gov and build comprehensive text)
       if (test.requiresGrantId && grantIds[test.id]) {
-        const grantId = grantIds[test.id].trim();
+        const inputId = grantIds[test.id].trim();
+        let numericId = inputId;
 
-        // Step 1: Check if this grant exists in our database
+        // Check if input is numeric or alphanumeric
+        const isNumeric = /^\d+$/.test(inputId);
+
+        // Step 1: If alphanumeric (opportunity number), search for it first to get the numeric ID
+        if (!isNumeric) {
+          notifications.show({
+            id: 'searching-grant',
+            title: 'Searching for opportunity...',
+            message: `Looking up opportunity number: ${inputId}`,
+            loading: true,
+            autoClose: false,
+          });
+
+          const searchResponse = await fetch('/api/grants/search', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...options.headers,
+            },
+            body: JSON.stringify({
+              keyword: inputId,
+              limit: 1,
+            }),
+          });
+
+          if (!searchResponse.ok) {
+            notifications.hide('searching-grant');
+            throw new Error(`Failed to search for opportunity: ${searchResponse.statusText}`);
+          }
+
+          const searchResults = await searchResponse.json();
+
+          if (!searchResults.grants || searchResults.grants.length === 0) {
+            notifications.hide('searching-grant');
+            throw new Error(`No grant found with opportunity number: ${inputId}`);
+          }
+
+          // Extract the numeric ID from the search result
+          numericId = searchResults.grants[0].id || searchResults.grants[0].opportunityId;
+
+          notifications.hide('searching-grant');
+          notifications.show({
+            title: 'Found opportunity',
+            message: `${searchResults.grants[0].title} (ID: ${numericId})`,
+            color: 'blue',
+            icon: <IconCheck size={16} />,
+            autoClose: 3000,
+          });
+        }
+
+        // Step 2: Check if this grant exists in our database (using numeric ID)
         notifications.show({
           id: 'checking-database',
           title: 'Checking database...',
-          message: `Looking for grant ${grantId} in database`,
+          message: `Looking for grant ID ${numericId} in database`,
           loading: true,
           autoClose: false,
         });
@@ -316,16 +367,16 @@ export function APITestingPage() {
         const { data: savedGrant } = await supabase
           .from('saved_grants')
           .select('id, external_id, title')
-          .eq('external_id', grantId)
+          .eq('external_id', numericId)
           .maybeSingle() as { data: { id: string; external_id: string; title: string } | null };
 
         notifications.hide('checking-database');
 
-        // Step 2: Fetch grant details from Grants.gov
+        // Step 3: Fetch grant details from Grants.gov
         notifications.show({
           id: 'fetching-grant',
           title: 'Fetching grant details...',
-          message: `Retrieving data for grant ID: ${grantId}`,
+          message: `Retrieving data for grant ID: ${numericId}`,
           loading: true,
           autoClose: false,
         });
@@ -336,7 +387,7 @@ export function APITestingPage() {
             'Content-Type': 'application/json',
             ...options.headers,
           },
-          body: JSON.stringify({ id: grantId }),
+          body: JSON.stringify({ id: numericId }),
         });
 
         if (!detailsResponse.ok) {
@@ -351,14 +402,14 @@ export function APITestingPage() {
         if (savedGrant) {
           notifications.show({
             title: 'Grant found in database',
-            message: `Using saved grant: ${savedGrant.title || grantId}`,
+            message: `Using saved grant: ${savedGrant.title || numericId}`,
             color: 'green',
             icon: <IconCheck size={16} />,
           });
         } else {
           notifications.show({
             title: 'Grant details fetched',
-            message: `Building analysis for: ${grantDetails.title || grantId} (not saved)`,
+            message: `Building analysis for: ${grantDetails.title || numericId} (not saved)`,
             color: 'blue',
             icon: <IconCheck size={16} />,
           });
@@ -370,7 +421,7 @@ export function APITestingPage() {
         // Parse the body and inject the comprehensive grant data
         const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
         bodyObj.pdf_text = comprehensiveText;
-        bodyObj.grant_title = grantDetails.title || `Grant ${grantId}`;
+        bodyObj.grant_title = grantDetails.title || `Grant ${numericId}`;
 
         // If we found the grant in our database, use the saved_grant_id (UUID)
         if (savedGrant) {
@@ -535,7 +586,7 @@ export function APITestingPage() {
               <Alert color="blue" icon={<IconUpload size={16} />}>
                 <Text size="sm" fw={500}>NOFO Analysis Available!</Text>
                 <Text size="xs" mt={4}>
-                  The first test below (📄 AI NOFO Summary) lets you either upload a PDF file OR enter a Grant ID (e.g., 357304) to test AI-powered analysis. It will extract deadlines, eligibility requirements, funding amounts, and priorities from your NOFO document or Grants.gov data.
+                  The first test below (📄 AI NOFO Summary) lets you upload a PDF file OR enter a Grant ID/Opportunity Number. Accepts both numeric IDs (357304) and alphanumeric opportunity numbers (P25AS00474). It will extract deadlines, eligibility requirements, funding amounts, and priorities from your NOFO document or Grants.gov data.
                 </Text>
               </Alert>
 
@@ -593,11 +644,11 @@ export function APITestingPage() {
                         {(test as any).requiresGrantId && (
                           <TextInput
                             size="xs"
-                            label="Grant ID (Grants.gov Opportunity ID)"
-                            placeholder="e.g., 357304"
+                            label="Grant ID or Opportunity Number"
+                            placeholder="e.g., 357304 or P25AS00474"
                             value={grantIds[test.id] || ''}
                             onChange={(e) => setGrantIds({ ...grantIds, [test.id]: e.target.value })}
-                            description="Enter a Grants.gov opportunity ID to fetch and analyze grant data"
+                            description="Enter either a numeric ID (357304) or alphanumeric opportunity number (P25AS00474)"
                           />
                         )}
 
