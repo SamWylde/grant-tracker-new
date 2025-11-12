@@ -426,6 +426,10 @@ export function APITestingPage() {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
+
+      // Ensure loading is always reset
+      setLoading(false);
+
       setTestResult({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -439,17 +443,18 @@ export function APITestingPage() {
         icon: <IconX size={16} />,
       });
     } finally {
+      // Extra safety: ensure loading is definitely false
       setLoading(false);
     }
   };
 
-  const handleQuickTest = (testConfig: any) => {
+  const handleQuickTest = async (testConfig: any) => {
     setSelectedTest(testConfig.id);
     setCustomEndpoint(testConfig.endpoint);
     setCustomMethod(testConfig.method);
     setCustomBody(testConfig.defaultBody || '');
     setQueryParams('');
-    handleTest(testConfig);
+    await handleTest(testConfig);
   };
 
   const handleCustomTest = () => {
@@ -526,10 +531,11 @@ export function APITestingPage() {
                             onClick={() => handleQuickTest(test)}
                             loading={loading && selectedTest === test.id}
                             disabled={
+                              (loading && selectedTest === test.id) ||
                               // For tests requiring file upload OR grant ID, at least one must be provided
-                              (test as any).requiresFileUpload && (test as any).requiresGrantId
+                              ((test as any).requiresFileUpload && (test as any).requiresGrantId
                                 ? !uploadedFiles[test.id] && !grantIds[test.id]
-                                : (test as any).requiresFileUpload && !uploadedFiles[test.id]
+                                : (test as any).requiresFileUpload && !uploadedFiles[test.id])
                             }
                             color={(test as any).highlighted ? 'blue' : undefined}
                           >
