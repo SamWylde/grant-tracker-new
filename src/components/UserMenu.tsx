@@ -4,7 +4,6 @@ import {
   IconSettings,
   IconLogout,
   IconChevronDown,
-  IconBuilding,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
