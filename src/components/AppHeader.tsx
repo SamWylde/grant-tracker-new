@@ -4,7 +4,6 @@ import { IconRocket } from '@tabler/icons-react';
 import { Link, useLocation } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
-import { OrgSwitcher } from './OrgSwitcher';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 
@@ -100,7 +99,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               {/* Desktop: MentionBell + UserMenu */}
               <Group gap="md" visibleFrom="md">
                 <MentionBell orgId={currentOrg?.id} />
-                <OrgSwitcher />
                 <UserMenu />
               </Group>
 

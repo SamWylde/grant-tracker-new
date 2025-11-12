@@ -26,6 +26,7 @@ import { MetricsPage } from "./pages/MetricsPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { GrantHubImportPage } from "./pages/GrantHubImportPage";
 import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
+import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import {
   ProfilePage,
@@ -72,6 +73,7 @@ export default function App() {
                 <Route path="/security" element={<SecurityPage />} />
                 <Route path="/support" element={<SupportPage />} />
                 <Route path="/granthub-migration" element={<GrantHubMigrationPage />} />
+                <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
                 {/* Protected Routes */}
                 <Route path="/discover" element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} />
