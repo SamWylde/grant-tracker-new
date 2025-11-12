@@ -36,6 +36,7 @@ import {
   CalendarPage,
   BillingPage,
   DangerZonePage,
+  APITestingPage,
 } from "./pages/settings";
 import { theme } from "./theme";
 
@@ -88,6 +89,7 @@ export default function App() {
                 <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+                <Route path="/settings/api-testing" element={<ProtectedRoute><APITestingPage /></ProtectedRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />
 
                 {/* 404 Catch-all Route */}
