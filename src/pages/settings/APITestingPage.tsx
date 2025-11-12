@@ -344,7 +344,10 @@ export function APITestingPage() {
         const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
         bodyObj.pdf_text = comprehensiveText;
         bodyObj.grant_title = grantDetails.title || `Grant ${grantId}`;
-        bodyObj.grant_id = grantId;
+        // Don't send saved_grant_id or grant_id for testing with Grants.gov IDs
+        // (those fields expect UUIDs from our database, not external Grants.gov IDs)
+        delete bodyObj.grant_id;
+        delete bodyObj.saved_grant_id;
         options.body = JSON.stringify(bodyObj);
       }
       // Handle file uploads (PDF extraction)
