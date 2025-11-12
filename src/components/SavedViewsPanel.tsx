@@ -93,6 +93,7 @@ export function SavedViewsPanel({
       if (!response.ok) throw new Error("Failed to fetch saved views");
       return response.json();
     },
+    enabled: !!orgId && !!userId, // Only fetch when we have both orgId and userId
   });
 
   const views = data?.views || [];
