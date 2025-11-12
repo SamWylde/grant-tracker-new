@@ -82,7 +82,7 @@ export function OrgSwitcher() {
   // If user only has 1 org, show org name without menu
   if (userOrgs.length === 1) {
     return (
-      <Group gap="xs">
+      <Group gap="xs" style={{ maxWidth: '200px' }}>
         <Avatar size={32} radius="xl" color="grape">
           {currentOrg.name
             .split(' ')
@@ -91,8 +91,8 @@ export function OrgSwitcher() {
             .toUpperCase()
             .slice(0, 2)}
         </Avatar>
-        <Stack gap={0} visibleFrom="sm">
-          <Text size="sm" fw={500} lineClamp={1}>
+        <Stack gap={0} visibleFrom="sm" style={{ minWidth: 0, flex: 1 }}>
+          <Text size="sm" fw={500} lineClamp={1} truncate="end">
             {currentOrg.name}
           </Text>
         </Stack>
@@ -105,9 +105,14 @@ export function OrgSwitcher() {
     <>
     <Menu shadow="md" width={250}>
       <Menu.Target>
-        <Button variant="subtle" color="dark" rightSection={<IconChevronDown size={16} />}>
-          <Group gap="xs">
-            <Avatar size={28} radius="xl" color="grape">
+        <Button
+          variant="subtle"
+          color="dark"
+          rightSection={<IconChevronDown size={16} />}
+          styles={{ inner: { maxWidth: '200px' } }}
+        >
+          <Group gap="xs" wrap="nowrap" style={{ maxWidth: '100%' }}>
+            <Avatar size={28} radius="xl" color="grape" style={{ flexShrink: 0 }}>
               {currentOrg.name
                 .split(' ')
                 .map((n) => n[0])
@@ -115,7 +120,7 @@ export function OrgSwitcher() {
                 .toUpperCase()
                 .slice(0, 2)}
             </Avatar>
-            <Text size="sm" fw={500} visibleFrom="sm">
+            <Text size="sm" fw={500} visibleFrom="sm" truncate="end" style={{ minWidth: 0 }}>
               {currentOrg.name}
             </Text>
           </Group>

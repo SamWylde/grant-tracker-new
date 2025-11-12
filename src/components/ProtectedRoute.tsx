@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Box, Container, Stack, Title, Text, Button, Paper, ThemeIcon } from '@mantine/core';
+import { usePermission } from '../hooks/usePermission';
+import { Box, Container, Stack, Title, Text, Button, Paper, ThemeIcon, Loader } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 
 interface ProtectedRouteProps {
@@ -24,6 +25,33 @@ export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteP
 
   if (requireAuth && !user) {
     return <Navigate to="/signin" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+interface AdminRouteProps {
+  children: ReactNode;
+}
+
+export function AdminRoute({ children }: AdminRouteProps) {
+  const { user, loading: authLoading } = useAuth();
+  const { isPlatformAdmin } = usePermission();
+
+  if (authLoading) {
+    return (
+      <Box bg="var(--mantine-color-gray-0)" mih="100vh" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader size="lg" />
+      </Box>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  if (!isPlatformAdmin) {
+    return <AccessDenied />;
   }
 
   return <>{children}</>;

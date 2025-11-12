@@ -8,7 +8,7 @@ import { APITestingPage } from './APITestingPage';
 import { AdminUsersPage } from './AdminUsersPage';
 
 export function AdminPage() {
-  const { isAdmin } = usePermission();
+  const { isPlatformAdmin } = usePermission();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,8 +16,8 @@ export function AdminPage() {
   const hash = location.hash.replace('#', '');
   const activeTab = hash || 'api-testing';
 
-  // Permission check
-  if (!isAdmin) {
+  // Permission check - only platform admins can access this page
+  if (!isPlatformAdmin) {
     return <AccessDenied />;
   }
 

@@ -1,8 +1,10 @@
-import { Stack, Text, Button, Paper, Group, Badge, Loader, Alert, SimpleGrid, Divider } from "@mantine/core";
-import { IconSparkles, IconAlertCircle, IconCalendar, IconCurrencyDollar, IconUsers, IconTarget } from "@tabler/icons-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Stack, Text, Button, Paper, Group, Badge, Loader, Alert, SimpleGrid, Divider, Anchor } from "@mantine/core";
+import { IconSparkles, IconAlertCircle, IconCalendar, IconCurrencyDollar, IconUsers, IconTarget, IconLock } from "@tabler/icons-react";
+import { useQuery, useMutation, useQueryClient } from "@tantml:react-query";
 import { notifications } from "@mantine/notifications";
 import { supabase } from "../lib/supabase";
+import { useAIFeatures } from "../hooks/useAIFeatures";
+import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 
 interface NofoSummary {
@@ -165,6 +167,33 @@ function buildComprehensiveGrantText(details: any): string {
 
 export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISummaryTabProps) {
   const queryClient = useQueryClient();
+  const { hasAIAccess, accessLevel } = useAIFeatures();
+
+  // Show upgrade message for users without AI access
+  if (!hasAIAccess) {
+    return (
+      <Stack gap="md">
+        <Paper p="xl" style={{ textAlign: "center", backgroundColor: "var(--mantine-color-gray-0)" }}>
+          <IconLock size={48} style={{ color: "var(--mantine-color-gray-5)", marginBottom: 16 }} />
+          <Text size="lg" fw={600} mb="xs">
+            AI Summary - Upgrade Required
+          </Text>
+          <Text size="sm" c="dimmed" mb="lg" maw={400} mx="auto">
+            Upgrade to Starter or Pro to access AI-powered NOFO analysis with key information extraction including deadlines, eligibility requirements, and funding amounts.
+          </Text>
+          <Button
+            component={Link}
+            to="/pricing"
+            leftSection={<IconSparkles size={16} />}
+            color="violet"
+            size="md"
+          >
+            View Plans
+          </Button>
+        </Paper>
+      </Stack>
+    );
+  }
 
   // Fetch existing summary
   const { data: summaryData, isLoading, error } = useQuery<AISummaryResponse>({

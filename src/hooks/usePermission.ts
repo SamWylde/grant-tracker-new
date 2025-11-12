@@ -13,7 +13,7 @@ export type Permission = 'view' | 'edit_org' | 'manage_team' | 'manage_billing' 
  * - 'delete_org': Admin only
  */
 export function usePermission() {
-  const { userRole, isAdmin } = useOrganization();
+  const { userRole, isAdmin, isPlatformAdmin } = useOrganization();
 
   const hasPermission = (permission: Permission): boolean => {
     if (!userRole) return false;
@@ -31,5 +31,5 @@ export function usePermission() {
     }
   };
 
-  return { hasPermission, isAdmin, userRole };
+  return { hasPermission, isAdmin, isPlatformAdmin, userRole };
 }
