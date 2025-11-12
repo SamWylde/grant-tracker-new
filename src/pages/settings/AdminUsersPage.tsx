@@ -315,6 +315,5 @@ export function AdminUsersPage() {
           </Stack>
         </Modal>
       </Stack>
-    </Stack>
   );
 }

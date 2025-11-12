@@ -700,6 +700,5 @@ export function APITestingPage() {
           </>
         )}
       </Stack>
-    </Stack>
   );
 }
