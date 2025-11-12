@@ -303,9 +303,9 @@ export function APITestingPage() {
                           Test
                         </Button>
                       </Group>
-                      {test.defaultBody && (
+                      {(test as any).defaultBody && (
                         <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
-                          {test.defaultBody}
+                          {(test as any).defaultBody}
                         </Code>
                       )}
                     </Paper>
@@ -349,9 +349,9 @@ export function APITestingPage() {
                           Test
                         </Button>
                       </Group>
-                      {test.defaultBody && (
+                      {(test as any).defaultBody && (
                         <Code block style={{ fontSize: 11, maxHeight: 100, overflow: 'auto' }}>
-                          {test.defaultBody}
+                          {(test as any).defaultBody}
                         </Code>
                       )}
                     </Paper>
