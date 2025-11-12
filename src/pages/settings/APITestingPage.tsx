@@ -9,10 +9,8 @@ import {
   Group,
   Select,
   TextInput,
-  Textarea,
   Code,
   Badge,
-  LoadingOverlay,
   Tabs,
   JsonInput,
   Alert,
@@ -26,7 +24,7 @@ import {
   IconRefresh,
 } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
-import { ProtectedRoute, AccessDenied } from '../../components/ProtectedRoute';
+import { AccessDenied } from '../../components/ProtectedRoute';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
 

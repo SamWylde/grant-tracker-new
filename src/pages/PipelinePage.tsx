@@ -24,7 +24,6 @@ import {
   IconArrowRight,
   IconDots,
   IconPrinter,
-  IconArchive,
   IconTrash,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
