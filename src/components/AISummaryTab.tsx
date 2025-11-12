@@ -98,6 +98,71 @@ interface AISummaryTabProps {
   orgId: string;
 }
 
+// Helper function to build comprehensive grant text from all available data (hybrid approach)
+function buildComprehensiveGrantText(details: any): string {
+  const sections = [];
+
+  // Title and Number
+  sections.push(`GRANT OPPORTUNITY: ${details.title || 'Untitled'}`);
+  sections.push(`Opportunity Number: ${details.number || 'N/A'}`);
+  sections.push(`Agency: ${details.agency || 'Unknown'}\n`);
+
+  // Description (main content)
+  if (details.description && details.description !== 'No description available.') {
+    sections.push(`DESCRIPTION:\n${details.description}\n`);
+  }
+
+  // Deadlines and Dates
+  if (details.postDate || details.closeDate) {
+    sections.push(`KEY DATES:`);
+    if (details.postDate) sections.push(`Posted: ${details.postDate}`);
+    if (details.closeDate) sections.push(`Application Deadline: ${details.closeDate}`);
+    sections.push('');
+  }
+
+  // Funding Information
+  const hasFundingInfo = details.estimatedFunding || details.awardCeiling ||
+                         details.awardFloor || details.expectedAwards;
+  if (hasFundingInfo) {
+    sections.push(`FUNDING INFORMATION:`);
+    if (details.estimatedFunding) sections.push(`Total Program Funding: ${details.estimatedFunding}`);
+    if (details.expectedAwards) sections.push(`Expected Number of Awards: ${details.expectedAwards}`);
+    if (details.awardCeiling) sections.push(`Maximum Award Amount: ${details.awardCeiling}`);
+    if (details.awardFloor) sections.push(`Minimum Award Amount: ${details.awardFloor}`);
+    if (details.costSharing) sections.push(`Cost Sharing Required: ${details.costSharing}`);
+    sections.push('');
+  }
+
+  // Eligibility
+  if (details.eligibility) {
+    sections.push(`ELIGIBILITY:`);
+    sections.push(details.eligibility);
+    sections.push('');
+  }
+
+  // Funding Instrument and Category
+  if (details.fundingInstrument) {
+    sections.push(`FUNDING INSTRUMENT: ${details.fundingInstrument}\n`);
+  }
+  if (details.category) {
+    sections.push(`PROGRAM CATEGORY: ${details.category}\n`);
+  }
+
+  // Grants.gov URL for reference
+  if (details.grantsGovUrl) {
+    sections.push(`More information: ${details.grantsGovUrl}`);
+  }
+
+  const result = sections.join('\n');
+
+  // If we have very little data, return a message indicating limited information
+  if (result.length < 200) {
+    return `GRANT OPPORTUNITY: ${details.title || 'Untitled'}\n\nLimited information available. Description: ${details.description || 'No description available.'}`;
+  }
+
+  return result;
+}
+
 export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISummaryTabProps) {
   const queryClient = useQueryClient();
 
@@ -148,9 +213,12 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
       }
 
       const grantDetails = await detailsResponse.json();
-      const pdfText = grantDetails.description || "No description available";
 
-      // Generate AI summary
+      // Build comprehensive text from all available grant data (hybrid approach)
+      // This gives AI much more context than just the description
+      const comprehensiveText = buildComprehensiveGrantText(grantDetails);
+
+      // Generate AI summary with enhanced data
       const response = await fetch('/api/grants/nofo-summary', {
         method: 'POST',
         headers: {
@@ -159,7 +227,7 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
         },
         body: JSON.stringify({
           saved_grant_id: grantId,
-          pdf_text: pdfText,
+          pdf_text: comprehensiveText,
           grant_title: grantTitle,
           org_id: orgId,
         }),
@@ -233,7 +301,7 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
 
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
           <Text size="sm">
-            <strong>Note:</strong> AI analysis uses grant description data. For complete NOFO analysis, ensure the grant has detailed information available on Grants.gov.
+            <strong>Enhanced Analysis:</strong> AI uses comprehensive grant data from Grants.gov including description, deadlines, funding amounts, and eligibility requirements. For full NOFO details, visit the grant page on Grants.gov.
           </Text>
         </Alert>
       </Stack>
