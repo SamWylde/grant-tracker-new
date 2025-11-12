@@ -99,7 +99,7 @@ export function UserMenu() {
 
         <Divider my="xs" />
 
-        {currentOrg && (
+        {currentOrg && userOrgs && userOrgs.length > 0 && (
           <>
             <Menu.Label>Organization</Menu.Label>
             <Menu.Item
