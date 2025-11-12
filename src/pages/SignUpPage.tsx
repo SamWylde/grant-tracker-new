@@ -89,7 +89,12 @@ export default function SignUpPage() {
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        // Check if user already exists
+        if (signUpError.message.includes('already registered')) {
+          setError('An account with this email already exists. Please sign in instead.');
+        } else {
+          setError(signUpError.message);
+        }
         setLoading(false);
         return;
       }
