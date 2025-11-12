@@ -635,6 +635,7 @@ export function DiscoverPage() {
                       transition: "all 0.2s ease",
                       border: isSaved ? "2px solid var(--mantine-color-grape-4)" : undefined,
                     }}
+                    onClick={() => handleViewDetails(grant.id)}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                       e.currentTarget.style.transform = "translateY(-2px)";

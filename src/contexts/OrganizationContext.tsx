@@ -14,6 +14,7 @@ interface OrganizationContextType {
   switchOrg: (orgId: string) => void;
   refreshOrgs: () => Promise<void>;
   isAdmin: boolean;
+  isPlatformAdmin: boolean;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -23,6 +24,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [userOrgs, setUserOrgs] = useState<Organization[]>([]);
   const [userRole, setUserRole] = useState<'admin' | 'contributor' | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -32,6 +34,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       setUserOrgs([]);
       setCurrentOrg(null);
       setUserRole(null);
+      setIsPlatformAdmin(false);
       setError(null);
       setLoading(false);
       return;
@@ -41,6 +44,19 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
+      // Get platform admin status
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('is_platform_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+      } else {
+        setIsPlatformAdmin((profileData as any)?.is_platform_admin || false);
+      }
+
       // Get organizations the user is a member of
       const { data: memberships, error: membershipsError } = await supabase
         .from('org_members')
@@ -106,6 +122,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     switchOrg,
     refreshOrgs: loadOrganizations,
     isAdmin: userRole === 'admin',
+    isPlatformAdmin,
   };
 
   return <OrganizationContext.Provider value={value}>{children}</OrganizationContext.Provider>;

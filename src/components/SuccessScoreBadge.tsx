@@ -1,7 +1,9 @@
-import { Badge, Tooltip, Group, Text } from "@mantine/core";
-import { IconChartDots } from "@tabler/icons-react";
+import { Badge, Tooltip, Group, Text, Anchor } from "@mantine/core";
+import { IconChartDots, IconLock } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
+import { useAIFeatures } from "../hooks/useAIFeatures";
+import { Link } from "react-router-dom";
 
 interface SuccessScoreBadgeProps {
   grantId: string;
@@ -10,6 +12,38 @@ interface SuccessScoreBadgeProps {
 }
 
 export function SuccessScoreBadge({ grantId, orgId, compact = false }: SuccessScoreBadgeProps) {
+  const { hasAIAccess } = useAIFeatures();
+
+  // Show upgrade message for users without AI access
+  if (!hasAIAccess) {
+    return (
+      <Tooltip
+        label={
+          <div>
+            <Text size="xs" fw={600}>AI Success Score - Upgrade Required</Text>
+            <Text size="xs" c="dimmed">
+              Upgrade to Starter or Pro to access AI-powered success scores
+            </Text>
+            <Anchor component={Link} to="/pricing" size="xs" c="blue.3" mt={4} style={{ display: 'block' }}>
+              View Plans →
+            </Anchor>
+          </div>
+        }
+        multiline
+        w={250}
+      >
+        <Badge
+          size={compact ? "sm" : "md"}
+          variant="outline"
+          color="gray"
+          leftSection={<IconLock size={12} />}
+        >
+          AI Score
+        </Badge>
+      </Tooltip>
+    );
+  }
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["successScore", grantId, orgId],
     queryFn: async () => {

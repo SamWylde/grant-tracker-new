@@ -34,7 +34,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { currentOrg, loading } = useOrganization();
-  const { isAdmin } = usePermission();
+  const { isPlatformAdmin } = usePermission();
 
   const tabs = [
     {
@@ -94,8 +94,8 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
     },
   ];
 
-  // Filter tabs - only show admin tab if user is admin
-  const visibleTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
+  // Filter tabs - only show admin tab if user is platform admin
+  const visibleTabs = tabs.filter(tab => !tab.adminOnly || isPlatformAdmin);
 
   const activeTab = tabs.find((tab) => currentPath === tab.path)?.value || 'profile';
 

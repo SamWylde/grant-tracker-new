@@ -45,6 +45,8 @@ const PLAN_FEATURES = {
       'Basic deadline tracking',
     ],
     notIncluded: [
+      'AI Summary',
+      'AI Success Score',
       'ICS calendar feed',
       'Team collaboration',
       'Google/Outlook sync',
@@ -60,13 +62,15 @@ const PLAN_FEATURES = {
     features: [
       'Up to 20 saved grants',
       'Unlimited team members',
+      'Limited AI Summary',
+      'Limited AI Success Score',
       'Email reminders',
       'ICS calendar feed',
       'Team collaboration',
       'Grant discovery & search',
       'Deadline tracking',
     ],
-    notIncluded: ['Google/Outlook sync', 'SMS reminders', 'Checklists & templates'],
+    notIncluded: ['Full AI features', 'Google/Outlook sync', 'SMS reminders', 'Checklists & templates'],
   },
   pro: {
     name: 'Pro',
@@ -76,6 +80,8 @@ const PLAN_FEATURES = {
     features: [
       'Unlimited saved grants',
       'Unlimited team members',
+      'Full AI Summary',
+      'Full AI Success Score',
       'Email reminders',
       'ICS calendar feed',
       'Google Calendar sync',

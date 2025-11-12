@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { HomePage } from "./pages/HomePage";
 import SignInPage from "./pages/SignInPage";
@@ -89,7 +89,7 @@ export default function App() {
                 <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
-                <Route path="/settings/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+                <Route path="/settings/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />
 
                 {/* 404 Catch-all Route */}

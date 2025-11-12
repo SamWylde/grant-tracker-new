@@ -300,6 +300,9 @@ export function HomePage() {
               </Text>
             </Stack>
             <Group gap="xl" visibleFrom="sm">
+              <Anchor size="sm" c="gray.4" component={Link} to="/pricing">
+                Pricing
+              </Anchor>
               <Anchor size="sm" c="gray.4" component={Link} to="/granthub-migration">
                 Import from GrantHub
               </Anchor>
