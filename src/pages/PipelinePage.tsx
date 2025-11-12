@@ -24,6 +24,8 @@ import {
   IconArrowRight,
   IconDots,
   IconPrinter,
+  IconArchive,
+  IconTrash,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
@@ -142,6 +144,63 @@ export function PipelinePage() {
       notifications.show({
         title: "Error",
         message: error instanceof Error ? error.message : "Failed to update grant status. Changes have been reverted.",
+        color: "red",
+      });
+    },
+  });
+
+  // Remove from pipeline mutation (deletes the saved grant)
+  const removeFromPipelineMutation = useMutation({
+    mutationFn: async (grantId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/saved?id=${grantId}`, {
+        method: "DELETE",
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to remove grant");
+      }
+
+      return response.json();
+    },
+    onMutate: async (grantId) => {
+      await queryClient.cancelQueries({ queryKey: ["savedGrants"] });
+      const previousData = queryClient.getQueryData(["savedGrants"]);
+
+      // Optimistically remove from cache
+      queryClient.setQueryData(["savedGrants"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          grants: old.grants.filter((grant: SavedGrant) => grant.id !== grantId),
+        };
+      });
+
+      return { previousData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      notifications.show({
+        title: "Grant removed",
+        message: "Grant removed from pipeline successfully",
+        color: "green",
+      });
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["savedGrants"], context.previousData);
+      }
+      notifications.show({
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to remove grant",
         color: "red",
       });
     },
@@ -452,6 +511,17 @@ export function PipelinePage() {
                                           {targetStage.label}
                                         </Menu.Item>
                                       ))}
+                                      <Menu.Divider />
+                                      <Menu.Item
+                                        color="red"
+                                        leftSection={<IconTrash size={14} />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          removeFromPipelineMutation.mutate(grant.id);
+                                        }}
+                                      >
+                                        Remove from Pipeline
+                                      </Menu.Item>
                                     </Menu.Dropdown>
                                   </Menu>
                                 </Group>

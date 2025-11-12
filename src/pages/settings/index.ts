@@ -6,3 +6,4 @@ export { AlertsPage } from './AlertsPage';
 export { CalendarPage } from './CalendarPage';
 export { BillingPage } from './BillingPage';
 export { DangerZonePage } from './DangerZonePage';
+export { APITestingPage } from './APITestingPage';
