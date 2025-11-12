@@ -210,6 +210,28 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
   // Display summary
   const summary = summaryData.summary!;
 
+  // Debug: Log summary structure to help diagnose display issues
+  console.log('[AI Summary] Full summary object:', summary);
+  console.log('[AI Summary] Summary keys:', summary ? Object.keys(summary) : 'null');
+
+  // Check if we have any visible content to display
+  const hasKeyDates = summary?.key_dates && Object.keys(summary.key_dates).length > 0;
+  const hasFunding = summary?.funding && Object.keys(summary.funding).length > 0;
+  const hasEligibility = summary?.eligibility && (
+    (summary.eligibility.organizations && summary.eligibility.organizations.length > 0) ||
+    (summary.eligibility.geographic && summary.eligibility.geographic.length > 0) ||
+    (summary.eligibility.restrictions && summary.eligibility.restrictions.length > 0)
+  );
+  const hasFocusAreas = summary?.focus_areas && summary.focus_areas.length > 0;
+  const hasPriorities = summary?.priorities && summary.priorities.length > 0;
+  const hasCostSharing = !!summary?.cost_sharing;
+  const hasKeyRequirements = summary?.key_requirements && summary.key_requirements.length > 0;
+  const hasApplicationProcess = !!summary?.application_process;
+  const hasContactInfo = !!summary?.contact_info;
+
+  const hasAnyContent = hasKeyDates || hasFunding || hasEligibility || hasFocusAreas ||
+    hasPriorities || hasCostSharing || hasKeyRequirements || hasApplicationProcess || hasContactInfo;
+
   return (
     <Stack gap="md">
       {/* Header with regenerate button */}
@@ -237,6 +259,22 @@ export function AISummaryTab({ grantId, externalId, grantTitle, orgId }: AISumma
       </Group>
 
       <Divider />
+
+      {/* Show message if summary exists but has no displayable content */}
+      {!hasAnyContent && (
+        <Alert color="blue" icon={<IconAlertCircle size={16} />}>
+          <Text size="sm" fw={500} mb={4}>
+            AI summary generated, but no structured data could be extracted
+          </Text>
+          <Text size="xs">
+            The AI was unable to extract structured information from this grant's documentation.
+            This may happen if the NOFO document is not available or couldn't be analyzed.
+          </Text>
+          <Text size="xs" mt={8} c="dimmed">
+            Try clicking "Regenerate" to create a new summary, or check if the grant has a PDF document available.
+          </Text>
+        </Alert>
+      )}
 
       {/* Key Dates */}
       {summary.key_dates && Object.keys(summary.key_dates).length > 0 && (
