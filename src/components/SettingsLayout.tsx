@@ -18,6 +18,7 @@ import {
   IconCalendar,
   IconCreditCard,
   IconApi,
+  IconUserCog,
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { AppHeader } from './AppHeader';
@@ -82,6 +83,12 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       path: '/settings/api-testing',
       label: 'API Testing',
       icon: IconApi,
+    },
+    {
+      value: 'admin-users',
+      path: '/settings/admin-users',
+      label: 'User Management',
+      icon: IconUserCog,
     },
     {
       value: 'danger',
