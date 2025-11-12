@@ -496,6 +496,21 @@ export function PipelinePage() {
                                   </Badge>
                                 </Group>
 
+                                {/* Badges */}
+                                <Group gap="xs" wrap="wrap">
+                                  {grant.aln && (
+                                    <Badge variant="outline" size="xs" color="gray">
+                                      {grant.aln}
+                                    </Badge>
+                                  )}
+                                  <SuccessScoreBadge
+                                    grantId={grant.external_id}
+                                    orgId={grant.org_id}
+                                    compact
+                                  />
+                                </Group>
+                                <GrantTagBadges grantId={grant.external_id} maxTags={3} />
+
                                 {/* Title */}
                                 <Text fw={600} size="sm" lineClamp={2}>
                                   {grant.title}

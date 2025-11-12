@@ -257,6 +257,65 @@ export function HomePage() {
         </Container>
       </Box>
 
+      <Container size="lg" py={{ base: 60, md: 80 }}>
+        <Stack gap={60}>
+          <Stack gap="sm" align="center">
+            <Title order={2} ta="center">
+              Get Started with GrantCue
+            </Title>
+            <Text size="lg" c="dimmed" ta="center" maw={640}>
+              Choose the right plan for your team or migrate your existing grants effortlessly
+            </Text>
+          </Stack>
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl">
+            <Card padding="xl" radius="lg" withBorder>
+              <Stack gap="md">
+                <ThemeIcon color="grape" variant="light" size={48} radius="md">
+                  <IconChartBar size={26} />
+                </ThemeIcon>
+                <Title order={3}>View Pricing Plans</Title>
+                <Text c="dimmed">
+                  From free plans for individuals to enterprise solutions for large teams, find the
+                  perfect fit for your organization's grant management needs.
+                </Text>
+                <Button
+                  variant="light"
+                  color="grape"
+                  component={Link}
+                  to="/pricing"
+                  fullWidth
+                  mt="auto"
+                >
+                  View Pricing
+                </Button>
+              </Stack>
+            </Card>
+            <Card padding="xl" radius="lg" withBorder>
+              <Stack gap="md">
+                <ThemeIcon color="blue" variant="light" size={48} radius="md">
+                  <IconUsers size={26} />
+                </ThemeIcon>
+                <Title order={3}>Import from GrantHub</Title>
+                <Text c="dimmed">
+                  Already using GrantHub? Seamlessly migrate all your grants, data, and team
+                  information to GrantCue with our dedicated import tool.
+                </Text>
+                <Button
+                  variant="light"
+                  color="blue"
+                  component={Link}
+                  to="/granthub-migration"
+                  fullWidth
+                  mt="auto"
+                >
+                  Start Import
+                </Button>
+              </Stack>
+            </Card>
+          </SimpleGrid>
+        </Stack>
+      </Container>
+
       <Container size="lg" py={{ base: 80, md: 120 }}>
         <Card
           radius="lg"

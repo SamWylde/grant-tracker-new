@@ -82,8 +82,8 @@ export function OrgSwitcher() {
   // If user only has 1 org, show org name without menu
   if (userOrgs.length === 1) {
     return (
-      <Group gap="xs" style={{ maxWidth: '200px' }}>
-        <Avatar size={32} radius="xl" color="grape">
+      <Group gap="xs" style={{ maxWidth: '200px' }} wrap="nowrap">
+        <Avatar size={32} radius="xl" color="grape" style={{ flexShrink: 0 }}>
           {currentOrg.name
             .split(' ')
             .map((n) => n[0])
@@ -91,8 +91,16 @@ export function OrgSwitcher() {
             .toUpperCase()
             .slice(0, 2)}
         </Avatar>
-        <Stack gap={0} visibleFrom="sm" style={{ minWidth: 0, flex: 1 }}>
-          <Text size="sm" fw={500} lineClamp={1} truncate="end">
+        <Stack gap={0} visibleFrom="sm" style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+          <Text
+            size="sm"
+            fw={500}
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}
+          >
             {currentOrg.name}
           </Text>
         </Stack>
@@ -111,7 +119,7 @@ export function OrgSwitcher() {
           rightSection={<IconChevronDown size={16} />}
           styles={{ inner: { maxWidth: '200px' } }}
         >
-          <Group gap="xs" wrap="nowrap" style={{ maxWidth: '100%' }}>
+          <Group gap="xs" wrap="nowrap" style={{ maxWidth: '100%', overflow: 'hidden' }}>
             <Avatar size={28} radius="xl" color="grape" style={{ flexShrink: 0 }}>
               {currentOrg.name
                 .split(' ')
@@ -120,7 +128,18 @@ export function OrgSwitcher() {
                 .toUpperCase()
                 .slice(0, 2)}
             </Avatar>
-            <Text size="sm" fw={500} visibleFrom="sm" truncate="end" style={{ minWidth: 0 }}>
+            <Text
+              size="sm"
+              fw={500}
+              visibleFrom="sm"
+              style={{
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                flex: 1
+              }}
+            >
               {currentOrg.name}
             </Text>
           </Group>
