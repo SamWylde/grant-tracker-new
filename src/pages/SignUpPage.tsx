@@ -91,7 +91,9 @@ export default function SignUpPage() {
 
       if (signUpError) {
         // Check if user already exists
-        if (signUpError.message.includes('already registered')) {
+        if (signUpError.message.includes('already registered') ||
+            signUpError.message.includes('already been registered') ||
+            signUpError.message.includes('User already registered')) {
           setError('An account with this email already exists. Please sign in instead.');
         } else {
           setError(signUpError.message);
@@ -101,21 +103,32 @@ export default function SignUpPage() {
       }
 
       if (data.user) {
-        // Check if email confirmation is required
-        console.log('User created:', {
+        console.log('Signup response:', {
           id: data.user.id,
           email: data.user.email,
           confirmed_at: data.user.confirmed_at,
-          emailConfirmationRequired: !data.user.confirmed_at
+          has_session: !!data.session,
+          identities: data.user.identities,
+          created_at: data.user.created_at,
         });
 
+        // Critical check: if identities is empty, the user already exists but Supabase
+        // didn't return an error (this happens when "Secure email change" is enabled)
+        if (data.user.identities && data.user.identities.length === 0) {
+          console.warn('⚠️ User already exists (identities array is empty)');
+          setError('An account with this email already exists. Please sign in or check your email for a confirmation link if you haven\'t confirmed yet.');
+          setLoading(false);
+          return;
+        }
+
+        // Check if user was auto-confirmed (email confirmation disabled)
         if (data.user.confirmed_at) {
-          // User is already confirmed - this means email confirmation is DISABLED in Supabase
-          console.warn('⚠️ User was auto-confirmed. Email confirmation is likely disabled in Supabase Dashboard.');
+          // User is already confirmed - email confirmation is DISABLED in Supabase
+          console.log('✅ User auto-confirmed (email confirmation disabled)');
           navigate('/discover');
         } else {
-          // Email confirmation required - email should have been sent
-          console.log('✅ Confirmation email should have been sent to:', data.user.email);
+          // Email confirmation required - email should have been sent for NEW user
+          console.log('✅ New user created. Confirmation email should have been sent to:', data.user.email);
           setSuccess(true);
           setLoading(false);
         }
