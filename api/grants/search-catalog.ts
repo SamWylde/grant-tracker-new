@@ -148,6 +148,80 @@ export default async function handler(
       description: grant.description,
     }));
 
+    // Enrich catalog grants that have placeholder titles or missing descriptions
+    const grantsNeedingEnrichment = normalizedGrants.filter(g =>
+      !g.description ||
+      !g.title ||
+      /^Grant [0-9]+$/.test(g.title) ||
+      g.title === 'Untitled Grant'
+    );
+
+    if (grantsNeedingEnrichment.length > 0) {
+      console.log(`[Catalog Search] Enriching ${grantsNeedingEnrichment.length} catalog grants with live data from Grants.gov`);
+
+      const batchSize = 10;
+      for (let i = 0; i < grantsNeedingEnrichment.length; i += batchSize) {
+        const batch = grantsNeedingEnrichment.slice(i, i + batchSize);
+
+        await Promise.all(
+          batch.map(async (grant) => {
+            try {
+              const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ opportunityId: Number(grant.id) }),
+              });
+
+              if (detailsResponse.ok) {
+                const detailsData = await detailsResponse.json();
+                const title = detailsData?.data?.title || null;
+                const description = detailsData?.data?.synopsis?.synopsisDesc || null;
+                const agency = detailsData?.data?.agencyName || null;
+
+                // Update in-memory grant IMMEDIATELY (synchronous update for response)
+                if (title && (!grant.title || /^Grant [0-9]+$/.test(grant.title) || grant.title === 'Untitled Grant')) {
+                  console.log(`[Catalog Search] Fixed title for grant ${grant.id}: "${grant.title}" → "${title}"`);
+                  grant.title = title;
+                }
+                if (description && !grant.description) {
+                  grant.description = description;
+                }
+                if (agency && !grant.agency) {
+                  grant.agency = agency;
+                }
+
+                // Update catalog asynchronously (fire and forget)
+                if (title || description || agency) {
+                  void (async () => {
+                    try {
+                      const updateData: Record<string, unknown> = {
+                        last_synced_at: new Date().toISOString(),
+                      };
+                      if (title) updateData.title = title;
+                      if (description) updateData.description = description;
+                      if (agency) updateData.agency = agency;
+
+                      await supabase
+                        .from('grants_catalog')
+                        .update(updateData)
+                        .eq('source_key', 'grants_gov')
+                        .eq('external_id', grant.id);
+
+                      console.log(`[Catalog Search] Updated catalog for grant ${grant.id}`);
+                    } catch (err) {
+                      console.warn(`Failed to update catalog for grant ${grant.id}:`, err);
+                    }
+                  })();
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to enrich grant ${grant.id}:`, error);
+            }
+          })
+        );
+      }
+    }
+
     // Check if we have enough results
     const catalogHasEnoughResults = normalizedGrants.length >= requestedRows;
 

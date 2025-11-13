@@ -112,6 +112,74 @@ export default async function handler(
           console.warn(`[saved API] Filtered out ${(data?.length || 0) - validGrants.length} grants with null org_id`);
         }
 
+        // CRITICAL: Enrich grants with titles and descriptions from Grants.gov BEFORE any response
+        // This must happen before CSV export or JSON response to ensure real data is returned
+        const grantsNeedingEnrichment = validGrants.filter(g =>
+          !g.description || !g.title || /^Grant [0-9]+$/.test(g.title) || g.title === 'Untitled Grant'
+        );
+
+        if (grantsNeedingEnrichment.length > 0) {
+          console.log(`[Saved API] Fetching ${grantsNeedingEnrichment.length} grant details from Grants.gov`);
+
+          // Fetch details in batches - SYNCHRONOUSLY so data is ready before response
+          const batchSize = 10;
+          for (let i = 0; i < grantsNeedingEnrichment.length; i += batchSize) {
+            const batch = grantsNeedingEnrichment.slice(i, i + batchSize);
+
+            await Promise.all(
+              batch.map(async (grant) => {
+                try {
+                  const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ opportunityId: Number(grant.external_id) }),
+                  });
+
+                  if (detailsResponse.ok) {
+                    const detailsData = await detailsResponse.json();
+                    const title = detailsData?.data?.title || null;
+                    const description = detailsData?.data?.synopsis?.synopsisDesc || null;
+
+                    const updates: any = {};
+
+                    // Update in-memory grant IMMEDIATELY (synchronous update)
+                    if (title && (!grant.title || /^Grant [0-9]+$/.test(grant.title) || grant.title === 'Untitled Grant')) {
+                      grant.title = title;
+                      updates.title = title;
+                      console.log(`[Saved API] Restored title for ${grant.external_id}: ${title.substring(0, 50)}...`);
+                    }
+
+                    if (description && !grant.description) {
+                      grant.description = description;
+                      updates.description = description;
+                      console.log(`[Saved API] Restored description for ${grant.external_id}`);
+                    }
+
+                    // Update database asynchronously in background (doesn't block response)
+                    if (Object.keys(updates).length > 0) {
+                      void (async () => {
+                        try {
+                          await supabase
+                            .from('org_grants_saved')
+                            .update(updates)
+                            .eq('id', grant.id);
+                          console.log(`[Saved API] Cached to database for ${grant.id}`);
+                        } catch (err) {
+                          console.warn(`[Saved API] Failed to cache:`, err);
+                        }
+                      })();
+                    }
+                  } else {
+                    console.warn(`[Saved API] Grants.gov returned ${detailsResponse.status} for ${grant.external_id}`);
+                  }
+                } catch (err) {
+                  console.warn(`[Saved API] Failed to fetch ${grant.external_id}:`, err);
+                }
+              })
+            );
+          }
+        }
+
         // CSV export
         if (format === 'csv') {
           // Convert to CSV
@@ -169,70 +237,7 @@ export default async function handler(
           return res.status(200).send(csv);
         }
 
-        // Enrich grants with titles and descriptions from Grants.gov if missing/placeholder
-        const grantsNeedingEnrichment = validGrants.filter(g =>
-          !g.description || !g.title || /^Grant \d+$/.test(g.title) || g.title === 'Untitled Grant'
-        );
-
-        if (grantsNeedingEnrichment.length > 0) {
-          console.log(`[Saved API] Fetching ${grantsNeedingEnrichment.length} grant details from Grants.gov`);
-
-          // Fetch details in batches
-          const batchSize = 10;
-          for (let i = 0; i < grantsNeedingEnrichment.length; i += batchSize) {
-            const batch = grantsNeedingEnrichment.slice(i, i + batchSize);
-
-            await Promise.all(
-              batch.map(async (grant) => {
-                try {
-                  const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ opportunityId: Number(grant.external_id) }),
-                  });
-
-                  if (detailsResponse.ok) {
-                    const detailsData = await detailsResponse.json();
-                    const title = detailsData?.data?.title || null;
-                    const description = detailsData?.data?.synopsis?.synopsisDesc || null;
-
-                    const updates: any = {};
-
-                    // Update title if it's a placeholder and we have a real title
-                    if (title && (!grant.title || /^Grant \d+$/.test(grant.title) || grant.title === 'Untitled Grant')) {
-                      grant.title = title;
-                      updates.title = title;
-                    }
-
-                    // Update description if missing
-                    if (description && !grant.description) {
-                      grant.description = description;
-                      updates.description = description;
-                    }
-
-                    // Update database asynchronously if we have changes
-                    if (Object.keys(updates).length > 0) {
-                      void (async () => {
-                        try {
-                          await supabase
-                            .from('org_grants_saved')
-                            .update(updates)
-                            .eq('id', grant.id);
-                          console.log(`[Saved API] Cached grant data for ${grant.id}:`, Object.keys(updates).join(', '));
-                        } catch (err) {
-                          console.warn(`[Saved API] Failed to cache grant data:`, err);
-                        }
-                      })();
-                    }
-                  }
-                } catch (err) {
-                  console.warn(`[Saved API] Failed to fetch details for grant ${grant.external_id}:`, err);
-                }
-              })
-            );
-          }
-        }
-
+        // Grants have been enriched above - now return them
         return res.status(200).json({ grants: validGrants });
       }
 
