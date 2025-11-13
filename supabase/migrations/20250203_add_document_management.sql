@@ -307,7 +307,7 @@ CREATE POLICY "Users can view documents in their organization"
   FOR SELECT
   USING (
     org_id IN (
-      SELECT organization_id FROM public.user_organizations
+      SELECT org_id FROM public.org_members
       WHERE user_id = auth.uid()
     )
     AND deleted_at IS NULL
@@ -318,7 +318,7 @@ CREATE POLICY "Users can upload documents to their organization"
   FOR INSERT
   WITH CHECK (
     org_id IN (
-      SELECT organization_id FROM public.user_organizations
+      SELECT org_id FROM public.org_members
       WHERE user_id = auth.uid()
     )
     AND uploaded_by = auth.uid()
@@ -329,14 +329,14 @@ CREATE POLICY "Users can update their own documents"
   FOR UPDATE
   USING (
     org_id IN (
-      SELECT organization_id FROM public.user_organizations
+      SELECT org_id FROM public.org_members
       WHERE user_id = auth.uid()
     )
     AND (uploaded_by = auth.uid() OR EXISTS (
-      SELECT 1 FROM public.user_organizations uo
-      WHERE uo.user_id = auth.uid()
-        AND uo.organization_id = org_id
-        AND uo.role IN ('admin', 'owner')
+      SELECT 1 FROM public.org_members om
+      WHERE om.user_id = auth.uid()
+        AND om.org_id = grant_documents.org_id
+        AND om.role = 'admin'
     ))
   );
 
@@ -345,14 +345,14 @@ CREATE POLICY "Users can delete their own documents or admins can delete any"
   FOR DELETE
   USING (
     org_id IN (
-      SELECT organization_id FROM public.user_organizations
+      SELECT org_id FROM public.org_members
       WHERE user_id = auth.uid()
     )
     AND (uploaded_by = auth.uid() OR EXISTS (
-      SELECT 1 FROM public.user_organizations uo
-      WHERE uo.user_id = auth.uid()
-        AND uo.organization_id = org_id
-        AND uo.role IN ('admin', 'owner')
+      SELECT 1 FROM public.org_members om
+      WHERE om.user_id = auth.uid()
+        AND om.org_id = grant_documents.org_id
+        AND om.role = 'admin'
     ))
   );
 
@@ -364,7 +364,7 @@ CREATE POLICY "Users can view document history in their organization"
     document_id IN (
       SELECT id FROM public.grant_documents
       WHERE org_id IN (
-        SELECT organization_id FROM public.user_organizations
+        SELECT org_id FROM public.org_members
         WHERE user_id = auth.uid()
       )
     )
@@ -376,7 +376,7 @@ CREATE POLICY "Users can view their organization's quota"
   FOR SELECT
   USING (
     org_id IN (
-      SELECT organization_id FROM public.user_organizations
+      SELECT org_id FROM public.org_members
       WHERE user_id = auth.uid()
     )
   );
