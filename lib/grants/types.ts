@@ -92,6 +92,7 @@ export interface SyncResult {
   grants_skipped: number;
   duplicates_found: number;
   errors: SyncError[];
+  grants?: CatalogGrant[]; // Optional: normalized grants ready for insertion
 }
 
 export interface SyncError {

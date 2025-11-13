@@ -93,8 +93,9 @@ export abstract class BaseGrantAdapter {
 
   /**
    * Perform full sync of all grants
+   * @param fetchFullDetails - If true, fetches complete grant details including descriptions
    */
-  async performFullSync(): Promise<SyncResult> {
+  async performFullSync(fetchFullDetails: boolean = true): Promise<SyncResult> {
     const result: SyncResult = {
       grants_fetched: 0,
       grants_created: 0,
@@ -102,6 +103,7 @@ export abstract class BaseGrantAdapter {
       grants_skipped: 0,
       duplicates_found: 0,
       errors: [],
+      grants: [],
     };
 
     try {
@@ -117,13 +119,26 @@ export abstract class BaseGrantAdapter {
 
         result.grants_fetched += response.grants.length;
 
-        // Process each grant
+        // Process each grant - fetch full details if requested, then normalize
         for (const raw of response.grants) {
           try {
-            this.normalizeGrant(raw); // Normalize to validate structure
-            // This would be handled by the sync service
-            // For now, just count it
-            result.grants_created++;
+            let grantToNormalize = raw;
+
+            // Fetch full details if requested and external_id is available
+            if (fetchFullDetails) {
+              const externalId = (raw as any).id || (raw as any).number;
+              if (externalId) {
+                const fullGrant = await this.fetchSingleGrant(String(externalId));
+                if (fullGrant) {
+                  grantToNormalize = fullGrant;
+                }
+                // Rate limit individual detail fetches
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+            }
+
+            const normalized = this.normalizeGrant(grantToNormalize);
+            result.grants!.push(normalized);
           } catch (error) {
             result.errors.push({
               error_code: 'NORMALIZATION_ERROR',
@@ -136,7 +151,7 @@ export abstract class BaseGrantAdapter {
         hasMore = response.pagination.has_more;
         page++;
 
-        // Respect rate limits
+        // Respect rate limits between pages
         if (hasMore) {
           await this.rateLimitDelay();
         }
@@ -163,6 +178,7 @@ export abstract class BaseGrantAdapter {
       grants_skipped: 0,
       duplicates_found: 0,
       errors: [],
+      grants: [],
     };
 
     try {
@@ -175,8 +191,8 @@ export abstract class BaseGrantAdapter {
 
       for (const raw of response.grants) {
         try {
-          this.normalizeGrant(raw); // Normalize to validate structure
-          result.grants_updated++;
+          const normalized = this.normalizeGrant(raw);
+          result.grants!.push(normalized);
         } catch (error) {
           result.errors.push({
             error_code: 'NORMALIZATION_ERROR',
