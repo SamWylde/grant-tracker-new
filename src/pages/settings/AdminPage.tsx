@@ -1,11 +1,12 @@
 import { Tabs } from '@mantine/core';
-import { IconApi, IconUserCog } from '@tabler/icons-react';
+import { IconApi, IconUserCog, IconBuilding } from '@tabler/icons-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { AccessDenied } from '../../components/ProtectedRoute';
 import { usePermission } from '../../hooks/usePermission';
 import { APITestingPage } from './APITestingPage';
 import { AdminUsersPage } from './AdminUsersPage';
+import { AdminOrganizationsPage } from './AdminOrganizationsPage';
 
 export function AdminPage() {
   const { isPlatformAdmin } = usePermission();
@@ -37,6 +38,9 @@ export function AdminPage() {
           <Tabs.Tab value="user-management" leftSection={<IconUserCog size={16} />}>
             User Management
           </Tabs.Tab>
+          <Tabs.Tab value="organizations" leftSection={<IconBuilding size={16} />}>
+            Organizations
+          </Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="api-testing" pt="lg">
@@ -45,6 +49,10 @@ export function AdminPage() {
 
         <Tabs.Panel value="user-management" pt="lg">
           <AdminUsersPage />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="organizations" pt="lg">
+          <AdminOrganizationsPage />
         </Tabs.Panel>
       </Tabs>
     </SettingsLayout>

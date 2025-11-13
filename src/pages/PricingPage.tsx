@@ -94,6 +94,27 @@ const PLAN_FEATURES = {
     ],
     notIncluded: [],
   },
+  enterprise: {
+    name: 'Enterprise',
+    price: null, // Custom pricing
+    savedGrants: 999999,
+    users: 999999,
+    features: [
+      'Everything in Pro, plus:',
+      'Unlimited grants & users',
+      'Dedicated account manager',
+      'Custom integrations & API access',
+      '99.9% uptime SLA guarantee',
+      'Advanced security & compliance',
+      'Custom training & onboarding',
+      'Priority feature requests',
+      'Custom contract terms',
+      'White-label options',
+      'SSO & SAML support',
+      '24/7 phone & email support',
+    ],
+    notIncluded: [],
+  },
 };
 
 export function PricingPage() {
@@ -102,7 +123,7 @@ export function PricingPage() {
 
   const getPrice = (plan: keyof typeof PLAN_FEATURES) => {
     const basePrice = PLAN_FEATURES[plan].price;
-    if (basePrice === 0) return { monthly: 0, annual: 0, annualMonthly: 0 };
+    if (basePrice === 0 || basePrice === null) return { monthly: 0, annual: 0, annualMonthly: 0 };
 
     const annual = Math.round(basePrice * 12 * 0.8); // 20% discount
     const annualMonthly = Math.round(annual / 12);
@@ -171,7 +192,7 @@ export function PricingPage() {
 
       {/* Pricing Cards */}
       <Container size="lg" py={{ base: 60, md: 80 }}>
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
           {/* Free Plan */}
           <Paper p="lg" withBorder shadow="sm">
             <Stack gap="md">
@@ -356,6 +377,59 @@ export function PricingPage() {
                 }
               >
                 {PLAN_FEATURES.pro.features.map((feature, i) => (
+                  <List.Item key={i}>{feature}</List.Item>
+                ))}
+              </List>
+            </Stack>
+          </Paper>
+
+          {/* Enterprise Plan */}
+          <Paper
+            p="lg"
+            withBorder
+            shadow="lg"
+            style={{
+              borderColor: 'var(--mantine-color-indigo-6)',
+              borderWidth: 2,
+              background: 'var(--mantine-color-indigo-0)',
+            }}
+          >
+            <Stack gap="md">
+              <div>
+                <Text fw={600} size="lg" mb="xs">
+                  Enterprise
+                </Text>
+                <Group align="baseline" gap={4}>
+                  <Text size="1.5rem" fw={700}>
+                    Custom
+                  </Text>
+                </Group>
+                <Text size="sm" c="dimmed" mt="xs">
+                  For large organizations with specific needs
+                </Text>
+              </div>
+
+              <Button
+                color="indigo"
+                fullWidth
+                component="a"
+                href="mailto:sales@grantcue.com?subject=Enterprise Plan Inquiry"
+              >
+                Contact Sales
+              </Button>
+
+              <Divider />
+
+              <List
+                spacing="xs"
+                size="sm"
+                icon={
+                  <ThemeIcon size={20} radius="xl" color="indigo" variant="light">
+                    <IconCheck size={12} />
+                  </ThemeIcon>
+                }
+              >
+                {PLAN_FEATURES.enterprise.features.map((feature, i) => (
                   <List.Item key={i}>{feature}</List.Item>
                 ))}
               </List>

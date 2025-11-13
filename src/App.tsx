@@ -35,10 +35,12 @@ import {
   ProfilePage,
   OrganizationPage,
   TeamPage,
+  TeamPerformancePage,
   NotificationsPage,
   AlertsPage,
   CalendarPage,
   BillingPage,
+  ReportsPage,
   DangerZonePage,
   AdminPage,
 } from "./pages/settings";
@@ -91,10 +93,12 @@ export default function App() {
                 <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/settings/org" element={<ProtectedRoute><OrganizationPage /></ProtectedRoute>} />
                 <Route path="/settings/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+                <Route path="/settings/team/performance" element={<ProtectedRoute><TeamPerformancePage /></ProtectedRoute>} />
                 <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                 <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+                <Route path="/settings/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
                 <Route path="/settings/workflows" element={<AdminRoute><ApprovalWorkflowsPage /></AdminRoute>} />
                 <Route path="/settings/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />

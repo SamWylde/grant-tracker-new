@@ -58,60 +58,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { org_id, plan_name, plan_status } = req.body;
+    const { org_id, name } = req.body;
 
     // Validate input
-    if (!org_id || !plan_name || !plan_status) {
+    if (!org_id || !name) {
       return res.status(400).json({
         error: 'Missing required fields',
-        message: 'org_id, plan_name, and plan_status are required'
+        message: 'org_id and name are required'
       });
     }
 
-    // Validate plan_name
-    const validPlans = ['free', 'starter', 'pro', 'enterprise'];
-    if (!validPlans.includes(plan_name)) {
+    // Validate name
+    if (typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({
-        error: 'Invalid plan_name',
-        message: `plan_name must be one of: ${validPlans.join(', ')}`
+        error: 'Invalid name',
+        message: 'name must be a non-empty string'
       });
     }
 
-    // Validate plan_status
-    const validStatuses = ['active', 'trialing', 'past_due', 'canceled', 'suspended'];
-    if (!validStatuses.includes(plan_status)) {
-      return res.status(400).json({
-        error: 'Invalid plan_status',
-        message: `plan_status must be one of: ${validStatuses.join(', ')}`
-      });
-    }
-
-    // Update organization settings
+    // Update organization
     const { data, error } = await supabase
-      .from('organization_settings')
+      .from('organizations')
       .update({
-        plan_name,
-        plan_status,
+        name: name.trim(),
         updated_at: new Date().toISOString(),
       })
-      .eq('org_id', org_id)
+      .eq('id', org_id)
       .select()
       .single();
 
     if (error) {
-      console.error('Error updating organization settings:', error);
+      console.error('Error updating organization:', error);
       throw error;
     }
 
-    console.log(`[Admin] User ${user.id} updated plan for org ${org_id}: ${plan_name} (${plan_status})`);
+    console.log(`[Admin] User ${user.id} updated organization name for org ${org_id}: ${name}`);
 
     return res.status(200).json({
       success: true,
-      message: 'Organization plan updated successfully',
+      message: 'Organization name updated successfully',
       data,
     });
   } catch (error) {
-    console.error('Error updating organization plan:', error);
+    console.error('Error updating organization name:', error);
     return res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
