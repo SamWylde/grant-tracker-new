@@ -109,6 +109,3 @@ USING (
     )
   )
 );
-
--- Comments
-COMMENT ON TABLE storage.buckets IS 'Storage buckets configuration - grant-documents bucket stores all grant-related files';
