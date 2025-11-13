@@ -31,6 +31,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { EligibilityWizardPage } from "./pages/EligibilityWizardPage";
 import { ApprovalWorkflowsPage } from "./pages/ApprovalWorkflowsPage";
 import { ApprovalsPage } from "./pages/ApprovalsPage";
+import { FundersPage } from "./pages/FundersPage";
 import {
   ProfilePage,
   OrganizationPage,
@@ -86,6 +87,7 @@ export default function App() {
                 <Route path="/saved" element={<Navigate to="/pipeline?view=list" replace />} />
                 <Route path="/pipeline" element={<ProtectedRoute><PipelinePage /></ProtectedRoute>} />
                 <Route path="/pipeline/grant/:grantId" element={<ProtectedRoute><GrantDetailPage /></ProtectedRoute>} />
+                <Route path="/funders" element={<ProtectedRoute><FundersPage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
                 <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
                 <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />

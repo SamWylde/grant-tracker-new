@@ -16,6 +16,7 @@ import { notifications } from '@mantine/notifications';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { supabase } from '../lib/supabase';
 import { FUNDING_CATEGORIES } from '../types/grants';
+import { useQuery } from '@tanstack/react-query';
 
 interface CustomGrantFormProps {
   opened: boolean;
@@ -31,7 +32,7 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [agency, setAgency] = useState('');
+  const [funderId, setFunderId] = useState<string | null>(null);
   const [opportunityNumber, setOpportunityNumber] = useState('');
   const [estimatedFunding, setEstimatedFunding] = useState<number | string>('');
   const [awardFloor, setAwardFloor] = useState<number | string>('');
@@ -44,10 +45,33 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
   const [sourceUrl, setSourceUrl] = useState('');
   const [applicationUrl, setApplicationUrl] = useState('');
 
+  // Fetch funders
+  const { data: funders } = useQuery({
+    queryKey: ['funders', currentOrg?.id],
+    queryFn: async () => {
+      if (!currentOrg?.id) return [];
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return [];
+
+      const response = await fetch(`/api/funders?org_id=${currentOrg.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) return [];
+
+      const result = await response.json();
+      return result.funders || [];
+    },
+    enabled: !!currentOrg?.id && opened,
+  });
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setAgency('');
+    setFunderId(null);
     setOpportunityNumber('');
     setEstimatedFunding('');
     setAwardFloor('');
@@ -85,7 +109,7 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
       const grantData = {
         title,
         description: description || undefined,
-        agency: agency || undefined,
+        funder_id: funderId || undefined,
         opportunity_number: opportunityNumber || undefined,
         estimated_funding: estimatedFunding ? Number(estimatedFunding) : undefined,
         award_floor: awardFloor ? Number(awardFloor) : undefined,
@@ -180,11 +204,17 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
         />
 
         <Group grow>
-          <TextInput
-            label="Agency"
-            placeholder="Funding agency"
-            value={agency}
-            onChange={(e) => setAgency(e.target.value)}
+          <Select
+            label="Funder"
+            placeholder="Select a funder"
+            value={funderId}
+            onChange={setFunderId}
+            data={funders?.map((funder: any) => ({
+              value: funder.id,
+              label: funder.name,
+            })) || []}
+            searchable
+            clearable
           />
 
           <TextInput
