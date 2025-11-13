@@ -60,9 +60,12 @@ import { GrantTagBadges } from "../components/GrantTagBadges";
 // Pipeline stages
 const PIPELINE_STAGES = [
   { id: "researching", label: "Researching", color: "blue" },
+  { id: "go-no-go", label: "Go/No-Go", color: "yellow" },
   { id: "drafting", label: "Drafting", color: "grape" },
   { id: "submitted", label: "Submitted", color: "orange" },
   { id: "awarded", label: "Awarded", color: "green" },
+  { id: "not-funded", label: "Not Funded", color: "red" },
+  { id: "closed-out", label: "Closed Out", color: "teal" },
 ] as const;
 
 type PipelineStage = typeof PIPELINE_STAGES[number]["id"];
@@ -710,6 +713,9 @@ export function PipelinePage() {
                       <Menu.Item onClick={() => handleBulkUpdateStatus('researching')}>
                         Researching
                       </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('go-no-go')}>
+                        Go/No-Go
+                      </Menu.Item>
                       <Menu.Item onClick={() => handleBulkUpdateStatus('drafting')}>
                         Drafting
                       </Menu.Item>
@@ -718,6 +724,12 @@ export function PipelinePage() {
                       </Menu.Item>
                       <Menu.Item onClick={() => handleBulkUpdateStatus('awarded')}>
                         Awarded
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('not-funded')}>
+                        Not Funded
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('closed-out')}>
+                        Closed Out
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>

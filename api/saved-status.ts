@@ -8,7 +8,18 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Missing Supabase environment variables');
 }
 
-const VALID_STATUSES = ['researching', 'drafting', 'submitted', 'awarded', 'rejected', 'withdrawn'];
+const VALID_STATUSES = [
+  'researching',
+  'go-no-go',
+  'drafting',
+  'submitted',
+  'awarded',
+  'not-funded',
+  'closed-out',
+  'rejected',
+  'withdrawn',
+  'archived'
+];
 
 export default async function handler(
   req: VercelRequest,
