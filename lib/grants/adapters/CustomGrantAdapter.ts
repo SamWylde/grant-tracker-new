@@ -84,7 +84,7 @@ export class CustomGrantAdapter extends BaseGrantAdapter {
       external_id: externalId,
 
       // Core data
-      title: this.cleanText(input.title) || 'Untitled Grant',
+      title: this.cleanText(input.title) || `Custom Grant ${externalId}`,
       description: this.cleanText(input.description),
       agency: this.cleanText(input.agency),
       opportunity_number: input.opportunity_number,

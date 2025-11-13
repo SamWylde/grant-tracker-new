@@ -140,7 +140,7 @@ export default async function handler(
       id: grant.external_id,
       number: grant.opportunity_number || grant.external_id,
       title: grant.title,
-      agency: grant.agency || 'Unknown',
+      agency: grant.agency || '',
       openDate: grant.open_date,
       closeDate: grant.close_date,
       status: grant.opportunity_status,

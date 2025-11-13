@@ -157,7 +157,7 @@ export class GrantsGovAdapter extends BaseGrantAdapter {
       external_id: opp.id || opp.number,
 
       // Core data
-      title: this.cleanText(opp.title) || 'Untitled Grant',
+      title: this.cleanText(opp.title) || `Grant ${opp.number || opp.id}`,
       // Description can come from two places:
       // 1. opp.description (from search2 API - usually null)
       // 2. opp.synopsis.synopsisDesc (from fetchOpportunity API - full description)
