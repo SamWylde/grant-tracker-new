@@ -194,7 +194,7 @@ export function MentionBell({ orgId }: MentionBellProps) {
           .from('tasks')
           .select('grant_id')
           .eq('id', taskId)
-          .single();
+          .single<{ grant_id: string }>();
 
         if (task) {
           navigate(`/pipeline?grant=${task.grant_id}&task=${taskId}&comment=${commentId}`);

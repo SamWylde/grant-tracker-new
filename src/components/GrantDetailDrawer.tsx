@@ -4,7 +4,6 @@ import {
   Group,
   Title,
   Text,
-  Badge,
   Divider,
   Button,
   Tabs,
@@ -371,7 +370,7 @@ export function GrantDetailDrawer({
               ]}
               size="xs"
               w={110}
-              styles={(theme) => ({
+              styles={{
                 input: {
                   backgroundColor: grant.priority ? `var(--mantine-color-${PRIORITY_COLORS[grant.priority]}-0)` : 'var(--mantine-color-gray-0)',
                   border: `1px solid var(--mantine-color-${PRIORITY_COLORS[grant.priority || 'gray']}-3)`,
@@ -379,7 +378,7 @@ export function GrantDetailDrawer({
                   fontWeight: 500,
                   cursor: 'pointer',
                 },
-              })}
+              }}
             />
 
             {/* Inline Status Editor */}

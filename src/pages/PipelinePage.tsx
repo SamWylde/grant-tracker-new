@@ -76,7 +76,7 @@ export function PipelinePage() {
 
     if (grantId && data) {
       // Find the grant in the loaded data
-      const grant = data.find(g => g.id === grantId);
+      const grant = data.grants.find((g: SavedGrant) => g.id === grantId);
       if (grant) {
         setSelectedGrant(grant);
         if (commentId) {
