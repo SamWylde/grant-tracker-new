@@ -428,3 +428,125 @@ function formatCurrency(amount: number): string {
   }
   return amount.toString();
 }
+
+/**
+ * Deadline Reminder Email Data Interface
+ */
+interface DeadlineReminderData {
+  orgName: string;
+  userName: string;
+  daysUntil: number;
+  grants: Array<{
+    id: string;
+    title: string;
+    agency: string | null;
+    close_date: string;
+    status: string | null;
+  }>;
+}
+
+/**
+ * Generate Deadline Reminder Email HTML
+ */
+export function generateDeadlineReminderEmail(data: DeadlineReminderData): string {
+  const grantsCount = data.grants.length;
+  const daysText = data.daysUntil === 0 ? 'today' : data.daysUntil === 1 ? 'tomorrow' : `in ${data.daysUntil} days`;
+  const urgencyColor = data.daysUntil <= 3 ? '#dc2626' : data.daysUntil <= 7 ? '#f59e0b' : '#7c3aed';
+  const urgencyBg = data.daysUntil <= 3 ? '#fecaca' : data.daysUntil <= 7 ? '#fef3c7' : '#ede9fe';
+
+  const grantsHTML = data.grants
+    .map(
+      (grant) => `
+    <tr>
+      <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
+        <div style="font-weight: 600; color: #111827; margin-bottom: 6px; font-size: 16px;">${grant.title}</div>
+        <div style="font-size: 14px; color: #6b7280; margin-bottom: 4px;">
+          ${grant.agency || 'Agency not specified'}
+          ${grant.status ? ` • ${grant.status.charAt(0).toUpperCase() + grant.status.slice(1)}` : ''}
+        </div>
+        <div style="font-size: 13px; color: ${urgencyColor}; font-weight: 600;">
+          Due: ${new Date(grant.close_date).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          })}
+        </div>
+        <div style="margin-top: 12px;">
+          <a href="https://grantcue.com/grants/${grant.id}"
+             style="display: inline-block; padding: 8px 16px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 600;">
+            View Grant
+          </a>
+        </div>
+      </td>
+    </tr>
+  `
+    )
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grant Deadline Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f9fafb;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 32px 32px 24px; background-color: ${urgencyBg}; border-radius: 8px 8px 0 0; border-left: 4px solid ${urgencyColor};">
+              <h1 style="margin: 0; font-size: 26px; color: ${urgencyColor};">
+                ${data.daysUntil === 0 ? '⏰' : '📅'} Grant Deadline ${data.daysUntil === 0 ? 'Today' : 'Approaching'}
+              </h1>
+              <p style="margin: 12px 0 0; font-size: 17px; color: #111827;">
+                ${grantsCount === 1
+                  ? `You have <strong>1 grant</strong> due ${daysText}`
+                  : `You have <strong>${grantsCount} grants</strong> due ${daysText}`}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Grants List -->
+          <tr>
+            <td style="padding: 0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${grantsHTML}
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA Button -->
+          <tr>
+            <td style="padding: 32px; text-align: center; background-color: #f9fafb;">
+              <p style="margin: 0 0 16px; font-size: 15px; color: #6b7280;">
+                Don't let these deadlines pass you by!
+              </p>
+              <a href="https://grantcue.com/pipeline" style="display: inline-block; padding: 14px 32px; background-color: #7c3aed; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                View Pipeline
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 32px; border-top: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 0 0 8px 8px;">
+              <p style="margin: 0; font-size: 13px; color: #6b7280; text-align: center;">
+                You're receiving this deadline reminder for ${data.orgName}.
+                <br>
+                <a href="https://grantcue.com/settings/notifications" style="color: #7c3aed; text-decoration: none;">Manage notification settings</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}

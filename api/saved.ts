@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { sendNotifications } from './utils/notifications';
+import { GoogleCalendarService } from '../lib/google-calendar/GoogleCalendarService';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,6 +19,7 @@ interface SavedGrantRequest {
   aln?: string;
   open_date?: string;
   close_date?: string;
+  loi_deadline?: string;
   description?: string;
   status?: string;
   priority?: string;
@@ -118,6 +121,7 @@ export default async function handler(
             'Priority',
             'Open Date',
             'Close Date',
+            'LOI Deadline',
             'Assigned To',
             'Notes',
             'Saved At',
@@ -145,6 +149,7 @@ export default async function handler(
               escape(grant.priority),
               escape(grant.open_date),
               escape(grant.close_date),
+              escape(grant.loi_deadline),
               escape(grant.assigned_to),
               escape(grant.notes),
               escape(grant.saved_at),
@@ -274,6 +279,7 @@ export default async function handler(
             aln: grantData.aln || null,
             open_date: convertToISO(grantData.open_date),
             close_date: convertToISO(grantData.close_date),
+            loi_deadline: convertToISO(grantData.loi_deadline),
             description: grantData.description || null,
             status: grantData.status || 'researching', // Default to researching if not provided
             priority: grantData.priority || 'medium', // Default to medium if not provided
@@ -313,6 +319,36 @@ export default async function handler(
           // Continue even if task creation fails
         }
 
+        // Send notifications for grant.saved event
+        try {
+          const origin = req.headers.origin || 'https://grantcue.com';
+          await sendNotifications({
+            event: 'grant.saved',
+            org_id: grantData.org_id,
+            grant_id: data.id,
+            grant_title: data.title,
+            grant_agency: data.agency,
+            grant_deadline: data.close_date,
+            action_url: `${origin}/grants/${data.id}`,
+            metadata: {
+              status: data.status,
+              priority: data.priority,
+            },
+          });
+        } catch (notificationError) {
+          console.error('Error sending grant.saved notifications:', notificationError);
+          // Don't fail the request if notifications fail
+        }
+
+        // Sync with Google Calendar (async, don't wait)
+        try {
+          const calendarService = new GoogleCalendarService(supabase);
+          void calendarService.syncGrant(data, grantData.org_id);
+        } catch (calErr) {
+          console.error('Exception syncing with Google Calendar:', calErr);
+          // Continue even if calendar sync fails
+        }
+
         return res.status(201).json({ grant: data });
       }
 
@@ -328,7 +364,7 @@ export default async function handler(
         // Get the grant to verify access
         const { data: grant } = await supabase
           .from('org_grants_saved')
-          .select('org_id')
+          .select('org_id, close_date, google_calendar_event_id')
           .eq('id', id)
           .single();
 
@@ -359,7 +395,8 @@ export default async function handler(
           'agency',
           'aln',
           'open_date',
-          'close_date'
+          'close_date',
+          'loi_deadline'
         ];
 
         const updateData: any = {};
@@ -389,6 +426,42 @@ export default async function handler(
           });
         }
 
+        // Send notifications for grant.updated event
+        try {
+          const origin = req.headers.origin || 'https://grantcue.com';
+          await sendNotifications({
+            event: 'grant.updated',
+            org_id: updated.org_id,
+            grant_id: updated.id,
+            grant_title: updated.title,
+            grant_agency: updated.agency,
+            grant_deadline: updated.close_date,
+            action_url: `${origin}/grants/${updated.id}`,
+            metadata: {
+              updated_fields: Object.keys(updateData),
+              status: updated.status,
+              priority: updated.priority,
+            },
+          });
+        } catch (notificationError) {
+          console.error('Error sending grant.updated notifications:', notificationError);
+          // Don't fail the request if notifications fail
+        }
+
+        // Sync with Google Calendar if deadline or title/agency changed (async, don't wait)
+        try {
+          const deadlineChanged = 'close_date' in updateData && updateData.close_date !== grant.close_date;
+          const detailsChanged = 'title' in updateData || 'agency' in updateData || 'description' in updateData;
+
+          if (deadlineChanged || detailsChanged) {
+            const calendarService = new GoogleCalendarService(supabase);
+            void calendarService.syncGrant(updated, updated.org_id);
+          }
+        } catch (calErr) {
+          console.error('Exception syncing with Google Calendar:', calErr);
+          // Continue even if calendar sync fails
+        }
+
         return res.status(200).json({ grant: updated });
       }
 
@@ -403,7 +476,7 @@ export default async function handler(
         // Verify the grant belongs to an organization the user is a member of
         const { data: grant } = await supabase
           .from('org_grants_saved')
-          .select('org_id')
+          .select('org_id, google_calendar_event_id, title, agency, close_date, external_id, description')
           .eq('id', id)
           .single();
 
@@ -420,6 +493,20 @@ export default async function handler(
 
         if (!membership) {
           return res.status(403).json({ error: 'Access denied to this grant' });
+        }
+
+        // Delete from Google Calendar first (async, don't wait)
+        try {
+          if (grant.google_calendar_event_id) {
+            const calendarService = new GoogleCalendarService(supabase);
+            void calendarService.handleGrantDeletion(
+              { ...grant, id } as any,
+              grant.org_id
+            );
+          }
+        } catch (calErr) {
+          console.error('Exception deleting from Google Calendar:', calErr);
+          // Continue even if calendar deletion fails
         }
 
         const { error } = await supabase
