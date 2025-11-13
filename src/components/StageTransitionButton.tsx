@@ -18,6 +18,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import type { Database } from '../lib/database.types';
 import {
   createApprovalRequest,
   checkTransitionRequiresApproval,
@@ -56,8 +57,8 @@ function TransitionModal({
 
   const directUpdateMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('org_grants_saved')
+      const { error } = await (supabase
+        .from('org_grants_saved') as any)
         .update({ status: toStage })
         .eq('id', grantId);
 

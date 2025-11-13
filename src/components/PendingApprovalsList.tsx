@@ -26,7 +26,6 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOrganization } from '../contexts/OrganizationContext';
-import { supabase } from '../lib/supabase';
 import {
   fetchApprovalRequests,
   approveOrRejectRequest,
