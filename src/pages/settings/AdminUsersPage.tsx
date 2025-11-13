@@ -60,7 +60,7 @@ export function AdminUsersPage() {
 
   const filteredUsers = users?.filter(user =>
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    (user.full_name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ?? false)
   );
 
   return (
