@@ -5,7 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { createAdapter } from './adapters';
+import { createAdapter } from './adapters/index.js';
 import type {
   GrantSource,
   SyncJob,
