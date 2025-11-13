@@ -430,6 +430,20 @@ function formatCurrency(amount: number): string {
 }
 
 /**
+ * Helper function to format file size
+ */
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1073741824) {
+    return `${(bytes / 1073741824).toFixed(2)} GB`;
+  } else if (bytes >= 1048576) {
+    return `${(bytes / 1048576).toFixed(2)} MB`;
+  } else if (bytes >= 1024) {
+    return `${(bytes / 1024).toFixed(2)} KB`;
+  }
+  return `${bytes} bytes`;
+}
+
+/**
  * Deadline Reminder Email Data Interface
  */
 interface DeadlineReminderData {
@@ -443,6 +457,20 @@ interface DeadlineReminderData {
     close_date: string;
     status: string | null;
   }>;
+}
+
+/**
+ * Data Export Ready Email Data Interface
+ */
+export interface DataExportReadyData {
+  userName: string;
+  userEmail: string;
+  exportId: string;
+  downloadToken: string;
+  format: string;
+  fileSize: number;
+  expiresAt: string; // ISO 8601 date string
+  requestedAt: string; // ISO 8601 date string
 }
 
 /**

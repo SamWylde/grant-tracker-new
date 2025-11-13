@@ -16,9 +16,11 @@ import {
   SimpleGrid,
   Modal,
   Avatar,
+  MultiSelect,
+  Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconX, IconUserEdit, IconCopy, IconChartBar } from '@tabler/icons-react';
+import { IconTrash, IconX, IconUserEdit, IconCopy, IconChartBar, IconShieldCheck } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -26,8 +28,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
 import type { Database } from '../../lib/database.types';
+import { getAvailableRoles, assignRoleToUser, removeRoleFromUser } from '../../lib/rbac';
 
-const ROLES = [
+// Legacy roles for backward compatibility
+const LEGACY_ROLES = [
   { value: 'contributor', label: 'Contributor' },
   { value: 'admin', label: 'Admin' },
 ];
@@ -45,10 +49,24 @@ export function TeamPage() {
 
   // Modal states
   const [removeModal, setRemoveModal] = useState<{ open: boolean; memberId?: string; name?: string }>({ open: false });
-  const [changeRoleModal, setChangeRoleModal] = useState<{ open: boolean; memberId?: string; name?: string; currentRole?: string }>({ open: false });
+  const [changeRoleModal, setChangeRoleModal] = useState<{
+    open: boolean;
+    memberId?: string;
+    userId?: string;
+    name?: string;
+    currentRoles?: any[];
+  }>({ open: false });
   const [newRole, setNewRole] = useState<string>('contributor');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const canManageTeam = hasPermission('manage_team');
+
+  // Load available roles for role assignment
+  const { data: availableRoles } = useQuery({
+    queryKey: ['availableRoles', currentOrg?.id],
+    queryFn: () => currentOrg ? getAvailableRoles(currentOrg.id) : Promise.resolve([]),
+    enabled: !!currentOrg && canManageTeam,
+  });
 
   // Load team members using RPC function
   const { data: members, isLoading: membersLoading } = useQuery({
@@ -264,7 +282,8 @@ export function TeamPage() {
                       label="Role"
                       value={inviteRole}
                       onChange={(value) => value && setInviteRole(value)}
-                      data={ROLES}
+                      data={LEGACY_ROLES}
+                      description="New members will be assigned the corresponding RBAC role"
                     />
 
                     <Button
@@ -371,12 +390,12 @@ export function TeamPage() {
 
                         return (
                           <Paper key={member.id} p="sm" withBorder>
-                            <Group justify="space-between">
-                              <Group>
+                            <Group justify="space-between" align="flex-start">
+                              <Group align="flex-start">
                                 <Avatar size={40} radius="xl" color="grape">
                                   {getInitials(member.full_name)}
                                 </Avatar>
-                                <Stack gap={0}>
+                                <Stack gap={4}>
                                   <Group gap="xs">
                                     <Text fw={500}>{member.full_name || member.email || 'Unknown'}</Text>
                                     {isCurrentUser && (
@@ -388,6 +407,22 @@ export function TeamPage() {
                                   <Text size="xs" c="dimmed">
                                     Joined {new Date(member.joined_at).toLocaleDateString()}
                                   </Text>
+                                  {/* Show RBAC roles if available */}
+                                  {member.roles && Array.isArray(member.roles) && member.roles.length > 0 && (
+                                    <Group gap={4} mt={4}>
+                                      {member.roles.map((role: any) => (
+                                        <Tooltip key={role.id} label={role.description || role.display_name}>
+                                          <Badge
+                                            size="xs"
+                                            variant="dot"
+                                            color={role.name === 'org_admin' ? 'grape' : 'blue'}
+                                          >
+                                            {role.display_name}
+                                          </Badge>
+                                        </Tooltip>
+                                      ))}
+                                    </Group>
+                                  )}
                                 </Stack>
                               </Group>
                               <Group gap="xs">
@@ -399,21 +434,30 @@ export function TeamPage() {
                                 </Badge>
                                 {canManageTeam && !isCurrentUser && (
                                   <>
-                                    <ActionIcon
-                                      variant="light"
-                                      color="blue"
-                                      onClick={() => {
-                                        setChangeRoleModal({
-                                          open: true,
-                                          memberId: member.id,
-                                          name: member.full_name || member.email,
-                                          currentRole: member.role,
-                                        });
-                                        setNewRole(member.role === 'admin' ? 'contributor' : 'admin');
-                                      }}
-                                    >
-                                      <IconUserEdit size={16} />
-                                    </ActionIcon>
+                                    <Tooltip label="Manage roles">
+                                      <ActionIcon
+                                        variant="light"
+                                        color="blue"
+                                        onClick={() => {
+                                          setChangeRoleModal({
+                                            open: true,
+                                            memberId: member.id,
+                                            userId: member.user_id,
+                                            name: member.full_name || member.email,
+                                            currentRoles: member.roles || [],
+                                          });
+                                          setNewRole(member.role === 'admin' ? 'contributor' : 'admin');
+                                          // Set selected roles for RBAC
+                                          if (member.roles && Array.isArray(member.roles)) {
+                                            setSelectedRoles(member.roles.map((r: any) => r.id));
+                                          } else {
+                                            setSelectedRoles([]);
+                                          }
+                                        }}
+                                      >
+                                        <IconUserEdit size={16} />
+                                      </ActionIcon>
+                                    </Tooltip>
                                     <ActionIcon
                                       variant="light"
                                       color="red"
@@ -466,19 +510,30 @@ export function TeamPage() {
 
               <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
                 <Stack gap="sm">
-                  <Title order={4}>About Roles</Title>
+                  <Group justify="space-between">
+                    <Title order={4}>About Roles</Title>
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      leftSection={<IconShieldCheck size={14} />}
+                      onClick={() => navigate('/settings/roles')}
+                    >
+                      Manage Roles
+                    </Button>
+                  </Group>
                   <Text size="sm" fw={600}>
-                    Admin
+                    Legacy Roles (Admin / Contributor)
                   </Text>
                   <Text size="sm">
-                    Can manage billing, integrations, team members, and all organization settings.
+                    The system now uses granular RBAC roles for fine-grained permissions. Legacy roles
+                    are mapped to RBAC roles automatically.
                   </Text>
                   <Text size="sm" fw={600} mt="xs">
-                    Contributor
+                    RBAC System
                   </Text>
                   <Text size="sm">
-                    Can create and edit grants, tasks, and view organization data. Cannot manage
-                    team or billing.
+                    Users can have multiple roles (e.g., Grant Creator, Task Manager) for precise
+                    permission control. Visit Role Management to create custom roles.
                   </Text>
                 </Stack>
               </Paper>
@@ -528,25 +583,111 @@ export function TeamPage() {
         <Modal
           opened={changeRoleModal.open}
           onClose={() => setChangeRoleModal({ open: false })}
-          title="Change Member Role"
+          title="Change Member Roles"
+          size="md"
         >
           <Stack gap="md">
             <Text>
-              Change the role for <strong>{changeRoleModal.name}</strong>?
+              Manage roles for <strong>{changeRoleModal.name}</strong>
             </Text>
-            <Select label="New Role" value={newRole} onChange={(value) => value && setNewRole(value)} data={ROLES} />
+
+            {/* Legacy role selector */}
+            <Select
+              label="Legacy Role"
+              value={newRole}
+              onChange={(value) => value && setNewRole(value)}
+              data={LEGACY_ROLES}
+              description="For backward compatibility. This will sync with RBAC roles."
+            />
+
+            <Divider label="RBAC Roles" labelPosition="center" />
+
+            {/* RBAC multi-role selector */}
+            <MultiSelect
+              label="Assign Roles"
+              placeholder="Select roles"
+              data={
+                availableRoles?.map((role) => ({
+                  value: role.id,
+                  label: role.display_name,
+                  group: role.is_system_role ? 'System Roles' : 'Custom Roles',
+                })) || []
+              }
+              value={selectedRoles}
+              onChange={setSelectedRoles}
+              searchable
+              description="Users can have multiple roles for fine-grained permissions"
+            />
+
+            {/* Show current roles */}
+            {changeRoleModal.currentRoles && changeRoleModal.currentRoles.length > 0 && (
+              <Paper p="sm" bg="var(--mantine-color-gray-0)">
+                <Text size="sm" fw={500} mb="xs">
+                  Current Roles:
+                </Text>
+                <Group gap="xs">
+                  {changeRoleModal.currentRoles.map((role: any) => (
+                    <Badge key={role.id} variant="light" leftSection={<IconShieldCheck size={12} />}>
+                      {role.display_name}
+                    </Badge>
+                  ))}
+                </Group>
+              </Paper>
+            )}
+
             <Group justify="flex-end">
               <Button variant="light" onClick={() => setChangeRoleModal({ open: false })}>
                 Cancel
               </Button>
               <Button
                 loading={changeRoleMutation.isPending}
-                onClick={() =>
-                  changeRoleModal.memberId &&
-                  changeRoleMutation.mutate({ memberId: changeRoleModal.memberId, role: newRole })
-                }
+                onClick={async () => {
+                  if (!changeRoleModal.memberId || !changeRoleModal.userId || !currentOrg || !user) return;
+
+                  try {
+                    // Update legacy role
+                    await changeRoleMutation.mutateAsync({
+                      memberId: changeRoleModal.memberId,
+                      role: newRole
+                    });
+
+                    // Update RBAC roles if changed
+                    if (changeRoleModal.currentRoles) {
+                      const currentRoleIds = changeRoleModal.currentRoles.map((r: any) => r.id);
+                      const rolesToAdd = selectedRoles.filter(id => !currentRoleIds.includes(id));
+                      const rolesToRemove = currentRoleIds.filter(id => !selectedRoles.includes(id));
+
+                      // Add new roles
+                      for (const roleId of rolesToAdd) {
+                        await assignRoleToUser(changeRoleModal.userId, roleId, currentOrg.id, user.id);
+                      }
+
+                      // Remove old roles
+                      for (const roleId of rolesToRemove) {
+                        await removeRoleFromUser(changeRoleModal.userId, roleId, currentOrg.id);
+                      }
+
+                      // Refresh team members
+                      queryClient.invalidateQueries({ queryKey: ['teamMembers'] });
+                    }
+
+                    notifications.show({
+                      title: 'Roles updated',
+                      message: 'Member roles have been updated successfully',
+                      color: 'green',
+                    });
+
+                    setChangeRoleModal({ open: false });
+                  } catch (error: any) {
+                    notifications.show({
+                      title: 'Error',
+                      message: error.message || 'Failed to update roles',
+                      color: 'red',
+                    });
+                  }
+                }}
               >
-                Change Role
+                Update Roles
               </Button>
             </Group>
           </Stack>
