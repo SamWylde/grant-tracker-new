@@ -18,7 +18,6 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/database.types';
 import {
   createApprovalRequest,
   checkTransitionRequiresApproval,
