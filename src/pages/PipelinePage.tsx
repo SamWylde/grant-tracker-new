@@ -16,6 +16,12 @@ import {
   Menu,
   Switch,
   Button,
+  SegmentedControl,
+  Checkbox,
+  Paper,
+  Anchor,
+  Divider,
+  Select,
 } from "@mantine/core";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
@@ -28,15 +34,25 @@ import {
   IconPrinter,
   IconArchive,
   IconTrash,
+  IconLayoutBoard,
+  IconList,
+  IconDownload,
+  IconChevronDown,
+  IconUpload,
+  IconFlag,
+  IconX,
+  IconChecks,
+  IconSquare,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
+import { ImportWizard } from "../components/ImportWizard";
 import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { useAuth } from "../contexts/AuthContext";
-import { printBoardPacket } from "../utils/printBoardPacket";
+import { printBoardPacket, exportGrantsToCSV } from "../utils/printBoardPacket";
 import { supabase } from "../lib/supabase";
 import { stripHtml } from "../utils/htmlUtils";
 import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
@@ -65,6 +81,28 @@ export function PipelinePage() {
     assignedTo: [],
   });
   const [showMyGrantsOnly, setShowMyGrantsOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("deadline-asc");
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [selectedGrantIds, setSelectedGrantIds] = useState<Set<string>>(new Set());
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
+
+  // View state management with URL persistence
+  const viewParam = searchParams.get('view');
+  const [view, setView] = useState<'board' | 'list'>(
+    viewParam === 'list' ? 'list' : 'board'
+  );
+
+  // Update URL when view changes
+  useEffect(() => {
+    const currentView = searchParams.get('view');
+    if (view === 'list' && currentView !== 'list') {
+      searchParams.set('view', 'list');
+      setSearchParams(searchParams, { replace: true });
+    } else if (view === 'board' && currentView === 'list') {
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [view, searchParams, setSearchParams]);
 
   // Fetch saved grants using shared hook
   const { data, isLoading, error } = useSavedGrants();
@@ -292,6 +330,141 @@ export function PipelinePage() {
     },
   });
 
+  // Bulk operations handlers
+  const toggleGrantSelection = (grantId: string) => {
+    const newSelection = new Set(selectedGrantIds);
+    if (newSelection.has(grantId)) {
+      newSelection.delete(grantId);
+    } else {
+      newSelection.add(grantId);
+    }
+    setSelectedGrantIds(newSelection);
+  };
+
+  const selectAllGrants = () => {
+    setSelectedGrantIds(new Set(sortedAndFilteredGrants.map(g => g.id)));
+  };
+
+  const deselectAllGrants = () => {
+    setSelectedGrantIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const deletePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved?id=${grantId}`, {
+          method: "DELETE",
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        })
+      );
+
+      await Promise.all(deletePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Grants deleted",
+        message: `${selectedGrantIds.size} grant(s) removed from pipeline`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to delete some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkUpdateStatus = async (status: string) => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const updatePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved-status?id=${grantId}`, {
+          method: "PATCH",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ status }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Status updated",
+        message: `${selectedGrantIds.size} grant(s) updated to ${status}`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to update some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkUpdatePriority = async (priority: string) => {
+    if (selectedGrantIds.size === 0) return;
+
+    setIsBulkOperating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const updatePromises = Array.from(selectedGrantIds).map(grantId =>
+        fetch(`/api/saved?id=${grantId}`, {
+          method: "PATCH",
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ priority }),
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      queryClient.invalidateQueries({ queryKey: ["savedGrants"] });
+      deselectAllGrants();
+
+      notifications.show({
+        title: "Priority updated",
+        message: `${selectedGrantIds.size} grant(s) set to ${priority} priority`,
+        color: "green",
+      });
+    } catch (error) {
+      notifications.show({
+        title: "Error",
+        message: "Failed to update some grants",
+        color: "red",
+      });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
   // Filter grants before grouping by stage
   const filteredGrants = data?.grants ? data.grants.filter((grant) => {
     // Exclude archived grants from pipeline view
@@ -314,6 +487,26 @@ export function PipelinePage() {
 
     return true;
   }) : [];
+
+  // Sort grants for list view
+  const sortedAndFilteredGrants = [...filteredGrants].sort((a, b) => {
+    switch (sortBy) {
+      case "deadline-asc":
+        if (!a.close_date) return 1;
+        if (!b.close_date) return -1;
+        return new Date(a.close_date).getTime() - new Date(b.close_date).getTime();
+      case "deadline-desc":
+        if (!a.close_date) return 1;
+        if (!b.close_date) return -1;
+        return new Date(b.close_date).getTime() - new Date(a.close_date).getTime();
+      case "saved-newest":
+        return new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime();
+      case "saved-oldest":
+        return new Date(a.saved_at).getTime() - new Date(b.saved_at).getTime();
+      default:
+        return 0;
+    }
+  });
 
   // Group grants by status
   const grantsByStage = PIPELINE_STAGES.reduce((acc, stage) => {
@@ -375,27 +568,86 @@ export function PipelinePage() {
       <Container size="xl" py="xl">
         <Stack gap="lg">
           {/* Header */}
-          <Group justify="space-between">
+          <Group justify="space-between" align="flex-start">
             <div>
               <Title order={1}>Pipeline</Title>
               <Text c="dimmed" size="lg">
-                Track grants through your workflow stages
+                {view === 'board'
+                  ? 'Track grants through your workflow stages'
+                  : 'Manage your saved grants and track important deadlines'}
               </Text>
             </div>
             <Group>
-              <Text size="sm" c="dimmed">
-                Showing {filteredGrants.length} of {data?.grants.length || 0} grants
-              </Text>
               <Button
-                leftSection={<IconPrinter size={16} />}
+                leftSection={<IconUpload size={16} />}
                 variant="light"
-                color="grape"
-                onClick={() => printBoardPacket(filteredGrants, { title: 'Pipeline Board Packet' })}
-                disabled={filteredGrants.length === 0}
+                onClick={() => setImportWizardOpen(true)}
               >
-                Export Board Packet
+                Import Grants
               </Button>
+              <Menu shadow="md" width={200}>
+                <Menu.Target>
+                  <Button
+                    leftSection={<IconDownload size={16} />}
+                    rightSection={<IconChevronDown size={16} />}
+                    variant="light"
+                    color="grape"
+                    disabled={filteredGrants.length === 0}
+                  >
+                    Export
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconPrinter size={16} />}
+                    onClick={() => printBoardPacket(filteredGrants, {
+                      title: view === 'board' ? 'Pipeline Board Packet' : 'Saved Grants Report'
+                    })}
+                  >
+                    Print Report
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconDownload size={16} />}
+                    onClick={() => exportGrantsToCSV(filteredGrants, currentOrg?.name || 'Organization')}
+                  >
+                    Download CSV
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </Group>
+          </Group>
+
+          <Divider />
+
+          {/* View Toggle */}
+          <Group justify="space-between" align="center">
+            <SegmentedControl
+              value={view}
+              onChange={(value) => setView(value as 'board' | 'list')}
+              data={[
+                {
+                  value: 'board',
+                  label: (
+                    <Group gap="xs">
+                      <IconLayoutBoard size={16} />
+                      <span>Board</span>
+                    </Group>
+                  ),
+                },
+                {
+                  value: 'list',
+                  label: (
+                    <Group gap="xs">
+                      <IconList size={16} />
+                      <span>List</span>
+                    </Group>
+                  ),
+                },
+              ]}
+            />
+            <Text size="sm" c="dimmed">
+              Showing {filteredGrants.length} of {data?.grants.length || 0} grants
+            </Text>
           </Group>
 
           {/* Filters */}
@@ -403,21 +655,137 @@ export function PipelinePage() {
             <GrantFilters
               value={filters}
               onChange={setFilters}
-              showStatus={false}
+              showStatus={view === 'list'}
             />
-            <Switch
-              label="My grants only"
-              checked={showMyGrantsOnly}
-              onChange={(event) => setShowMyGrantsOnly(event.currentTarget.checked)}
-            />
+            <Group>
+              {view === 'list' && (
+                <Select
+                  placeholder="Sort by"
+                  value={sortBy}
+                  onChange={(value) => setSortBy(value || "deadline-asc")}
+                  data={[
+                    { value: "deadline-asc", label: "Deadline (soonest first)" },
+                    { value: "deadline-desc", label: "Deadline (latest first)" },
+                    { value: "saved-newest", label: "Recently saved" },
+                    { value: "saved-oldest", label: "Oldest saved" },
+                  ]}
+                  w={200}
+                />
+              )}
+              <Switch
+                label="My grants only"
+                checked={showMyGrantsOnly}
+                onChange={(event) => setShowMyGrantsOnly(event.currentTarget.checked)}
+              />
+            </Group>
           </Group>
 
-          {/* Pipeline Board */}
+          {/* Bulk Actions Toolbar (List View Only) */}
+          {view === 'list' && selectedGrantIds.size > 0 && (
+            <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
+              <Group justify="space-between">
+                <Group gap="sm">
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    onClick={deselectAllGrants}
+                    title="Deselect all"
+                  >
+                    <IconX size={18} />
+                  </ActionIcon>
+                  <Text fw={600} size="sm">
+                    {selectedGrantIds.size} grant{selectedGrantIds.size !== 1 ? 's' : ''} selected
+                  </Text>
+                </Group>
+                <Group gap="xs">
+                  <Menu shadow="md" width={180}>
+                    <Menu.Target>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        leftSection={<IconFlag size={16} />}
+                        loading={isBulkOperating}
+                      >
+                        Set Status
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('researching')}>
+                        Researching
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('drafting')}>
+                        Drafting
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('submitted')}>
+                        Submitted
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdateStatus('awarded')}>
+                        Awarded
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                  <Menu shadow="md" width={180}>
+                    <Menu.Target>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        color="blue"
+                        leftSection={<IconFlag size={16} />}
+                        loading={isBulkOperating}
+                      >
+                        Set Priority
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('low')}>
+                        Low
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('medium')}>
+                        Medium
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('high')}>
+                        High
+                      </Menu.Item>
+                      <Menu.Item onClick={() => handleBulkUpdatePriority('urgent')}>
+                        Urgent
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconTrash size={16} />}
+                    onClick={handleBulkDelete}
+                    loading={isBulkOperating}
+                  >
+                    Delete
+                  </Button>
+                </Group>
+              </Group>
+            </Paper>
+          )}
+
+          {/* Select All Button (List View Only) */}
+          {view === 'list' && !isLoading && sortedAndFilteredGrants.length > 0 && (
+            <Group justify="flex-end">
+              <Button
+                variant="subtle"
+                size="xs"
+                leftSection={selectedGrantIds.size === sortedAndFilteredGrants.length ? <IconSquare size={14} /> : <IconChecks size={14} />}
+                onClick={selectedGrantIds.size === sortedAndFilteredGrants.length ? deselectAllGrants : selectAllGrants}
+              >
+                {selectedGrantIds.size === sortedAndFilteredGrants.length ? 'Deselect All' : 'Select All'}
+              </Button>
+            </Group>
+          )}
+
+          {/* Loading State */}
           {isLoading ? (
             <Card padding="xl">
               <Group justify="center">
                 <Loader size="lg" />
-                <Text>Loading pipeline...</Text>
+                <Text>Loading {view === 'board' ? 'pipeline' : 'grants'}...</Text>
               </Group>
             </Card>
           ) : error ? (
@@ -431,7 +799,8 @@ export function PipelinePage() {
                 </Text>
               </Stack>
             </Card>
-          ) : (
+          ) : view === 'board' ? (
+            // Board View
             <ScrollArea>
               <Group align="flex-start" gap="md" wrap="nowrap" style={{ minWidth: "fit-content" }}>
                 {PIPELINE_STAGES.map((stage) => (
@@ -667,9 +1036,210 @@ export function PipelinePage() {
                 ))}
               </Group>
             </ScrollArea>
+          ) : (
+            // List View
+            <Stack gap="md">
+              {sortedAndFilteredGrants.length === 0 ? (
+                <Card padding="xl" withBorder>
+                  <Stack align="center" gap="md" py="xl">
+                    <Text size="lg" fw={600} c="dimmed">
+                      No grants found
+                    </Text>
+                    <Text c="dimmed" ta="center" maw={400}>
+                      {filteredGrants.length === 0
+                        ? "Start building your grant pipeline by saving opportunities from the Discover page."
+                        : "No grants match your current filters."}
+                    </Text>
+                  </Stack>
+                </Card>
+              ) : (
+                sortedAndFilteredGrants.map((grant) => {
+                  const daysUntilClose = grant.close_date
+                    ? dayjs(grant.close_date).diff(dayjs(), "day")
+                    : null;
+                  const isOverdue = daysUntilClose !== null && daysUntilClose < 0;
+                  const isClosingSoon = daysUntilClose !== null && daysUntilClose >= 0 && daysUntilClose <= 30;
+
+                  return (
+                    <Card
+                      key={grant.id}
+                      padding="lg"
+                      withBorder
+                      style={{
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        backgroundColor: selectedGrantIds.has(grant.id) ? "var(--mantine-color-grape-0)" : undefined,
+                      }}
+                      onClick={() => setSelectedGrant(grant)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = "";
+                        e.currentTarget.style.transform = "";
+                      }}
+                    >
+                      <Stack gap="md">
+                        {/* Header */}
+                        <Group justify="space-between" align="flex-start" wrap="nowrap">
+                          <Checkbox
+                            checked={selectedGrantIds.has(grant.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleGrantSelection(grant.id);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            size="md"
+                            style={{ flexShrink: 0 }}
+                          />
+                          <Stack gap={8} style={{ flex: 1 }}>
+                            <Group gap="xs" wrap="wrap">
+                              <Badge variant="filled" size="sm" color="grape">
+                                {grant.status || 'saved'}
+                              </Badge>
+                              {grant.priority && (
+                                <Badge size="sm" color={getPriorityColor(grant.priority)} variant="light">
+                                  {grant.priority}
+                                </Badge>
+                              )}
+                              {grant.aln && (
+                                <Badge variant="outline" size="sm" color="gray">
+                                  {grant.aln}
+                                </Badge>
+                              )}
+                              <SuccessScoreBadge
+                                grantId={grant.external_id}
+                                orgId={grant.org_id}
+                                compact
+                              />
+                            </Group>
+                            <GrantTagBadges grantId={grant.external_id} maxTags={4} />
+
+                            <Anchor
+                              href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              fw={600}
+                              size="lg"
+                              c="dark"
+                              style={{ textDecoration: "none" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Group gap="xs" wrap="nowrap">
+                                <Text lineClamp={2}>{grant.title}</Text>
+                                <IconExternalLink size={16} style={{ flexShrink: 0 }} />
+                              </Group>
+                            </Anchor>
+
+                            <Text size="sm" c="dimmed" fw={500}>
+                              {grant.agency}
+                            </Text>
+
+                            {/* Description preview */}
+                            <Text size="sm" c="dimmed" lineClamp={2}>
+                              {grant.description ? (() => {
+                                const cleanDesc = stripHtml(grant.description);
+                                return cleanDesc.length > 200
+                                  ? cleanDesc.substring(0, 200) + '...'
+                                  : cleanDesc;
+                              })() : "No description available"}
+                            </Text>
+                          </Stack>
+
+                          <Group gap="xs" style={{ flexShrink: 0 }}>
+                            <ActionIcon
+                              variant="light"
+                              color="red"
+                              size="lg"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFromPipelineMutation.mutate(grant.id);
+                              }}
+                              title="Remove from pipeline"
+                            >
+                              <IconTrash size={20} />
+                            </ActionIcon>
+                          </Group>
+                        </Group>
+
+                        <Divider />
+
+                        {/* Dates */}
+                        <Group gap="xl">
+                          {grant.open_date && (
+                            <Stack gap={4}>
+                              <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                                Posted
+                              </Text>
+                              <Text size="sm" fw={500}>
+                                {dayjs(grant.open_date).format("MMM D, YYYY")}
+                              </Text>
+                            </Stack>
+                          )}
+                          <Stack gap={4}>
+                            <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
+                              {isOverdue ? "Closed" : "Closes"}
+                            </Text>
+                            {grant.close_date ? (
+                              <Group gap="xs">
+                                <Text
+                                  size="sm"
+                                  fw={600}
+                                  c={
+                                    isOverdue
+                                      ? "red"
+                                      : isClosingSoon
+                                        ? "orange"
+                                        : "dark"
+                                  }
+                                >
+                                  {dayjs(grant.close_date).format("MMM D, YYYY")}
+                                </Text>
+                                {daysUntilClose !== null && !isOverdue && (
+                                  <Badge
+                                    size="sm"
+                                    color={isClosingSoon ? "orange" : "gray"}
+                                    variant="light"
+                                  >
+                                    {daysUntilClose === 0
+                                      ? "Today"
+                                      : daysUntilClose === 1
+                                        ? "Tomorrow"
+                                        : `${daysUntilClose} days`}
+                                  </Badge>
+                                )}
+                                {isOverdue && (
+                                  <Badge size="sm" color="red" variant="light">
+                                    Overdue
+                                  </Badge>
+                                )}
+                              </Group>
+                            ) : (
+                              <Text size="sm" c="dimmed">
+                                TBD
+                              </Text>
+                            )}
+                          </Stack>
+                        </Group>
+                      </Stack>
+                    </Card>
+                  );
+                })
+              )}
+            </Stack>
           )}
         </Stack>
       </Container>
+
+      {/* Import Wizard Modal */}
+      <ImportWizard
+        opened={importWizardOpen}
+        onClose={() => setImportWizardOpen(false)}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
+        }}
+      />
 
       {/* Grant Detail Drawer */}
       <GrantDetailDrawer

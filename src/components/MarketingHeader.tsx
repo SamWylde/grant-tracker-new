@@ -78,7 +78,7 @@ export function MarketingHeader({
   );
 
   const defaultLoggedInActions = (
-    <Button color="grape" component={Link} to="/saved">
+    <Button color="grape" component={Link} to="/pipeline">
       Dashboard
     </Button>
   );
@@ -173,7 +173,7 @@ export function MarketingHeader({
                 <Button
                   color="grape"
                   component={Link}
-                  to="/saved"
+                  to="/pipeline"
                   fullWidth
                   onClick={() => setMobileMenuOpened(false)}
                 >

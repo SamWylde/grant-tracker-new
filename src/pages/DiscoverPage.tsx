@@ -439,7 +439,7 @@ export function DiscoverPage() {
                 variant="light"
                 color="grape"
                 component={Link}
-                to="/saved"
+                to="/pipeline"
               >
                 View Saved ({savedGrants?.grants.length || 0})
               </Button>
