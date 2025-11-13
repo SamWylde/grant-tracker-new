@@ -157,7 +157,13 @@ export class GrantsGovAdapter extends BaseGrantAdapter {
       external_id: opp.id || opp.number,
 
       // Core data
-      title: this.cleanText(opp.title) || 'Untitled Grant',
+      title: (() => {
+        const cleanedTitle = this.cleanText(opp.title);
+        if (!cleanedTitle) {
+          throw new Error(`Grant ${opp.id || opp.number} is missing required title field - skipping`);
+        }
+        return cleanedTitle;
+      })(),
       // Description can come from two places:
       // 1. opp.description (from search2 API - usually null)
       // 2. opp.synopsis.synopsisDesc (from fetchOpportunity API - full description)

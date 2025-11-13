@@ -146,7 +146,13 @@ export class OpenGrantsAdapter extends BaseGrantAdapter {
       external_id: opp.id,
 
       // Core data
-      title: this.cleanText(opp.title) || 'Untitled Grant',
+      title: (() => {
+        const cleanedTitle = this.cleanText(opp.title);
+        if (!cleanedTitle) {
+          throw new Error(`Grant ${opp.id} is missing required title field - skipping`);
+        }
+        return cleanedTitle;
+      })(),
       description: this.cleanText(opp.description),
       agency: this.cleanText(opp.agency),
       opportunity_number: opp.opportunity_number,
