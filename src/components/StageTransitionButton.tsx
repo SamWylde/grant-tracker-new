@@ -4,7 +4,6 @@ import {
   Menu,
   Modal,
   Stack,
-  Text,
   Textarea,
   Alert,
   Badge,
@@ -13,7 +12,6 @@ import {
 import {
   IconChevronDown,
   IconCheck,
-  IconAlertTriangle,
   IconLock,
   IconArrowRight,
 } from '@tabler/icons-react';

@@ -13,8 +13,6 @@ import {
   Avatar,
   Box,
   Progress,
-  ActionIcon,
-  Tooltip,
 } from '@mantine/core';
 import {
   IconAlertCircle,
@@ -32,7 +30,6 @@ import { supabase } from '../lib/supabase';
 import {
   fetchApprovalRequests,
   approveOrRejectRequest,
-  cancelApprovalRequest,
 } from '../utils/approvalsApi';
 import type { ApprovalRequest, ApprovalDecision } from '../types/approvals';
 import {
@@ -335,20 +332,9 @@ function ApprovalRequestCard({ request, canApprove, onAction }: ApprovalRequestC
 
 export function PendingApprovalsList() {
   const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('pending');
-
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      return user;
-    },
-  });
 
   // Fetch all approval requests
   const { data: allRequests, isLoading: loadingAll } = useQuery({

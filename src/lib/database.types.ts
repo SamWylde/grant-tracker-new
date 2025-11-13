@@ -245,6 +245,11 @@ export interface Database {
           close_date: string | null
           saved_at: string
           created_at: string
+          status: string
+          assigned_to: string | null
+          priority: string
+          stage_updated_at: string | null
+          notes: string | null
         }
         Insert: {
           id?: string
@@ -259,6 +264,11 @@ export interface Database {
           close_date?: string | null
           saved_at?: string
           created_at?: string
+          status?: string
+          assigned_to?: string | null
+          priority?: string
+          stage_updated_at?: string | null
+          notes?: string | null
         }
         Update: {
           id?: string
@@ -273,6 +283,11 @@ export interface Database {
           close_date?: string | null
           saved_at?: string
           created_at?: string
+          status?: string
+          assigned_to?: string | null
+          priority?: string
+          stage_updated_at?: string | null
+          notes?: string | null
         }
       }
     }

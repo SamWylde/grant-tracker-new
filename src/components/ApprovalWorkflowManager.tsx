@@ -11,7 +11,6 @@ import {
   Switch,
   NumberInput,
   MultiSelect,
-  Box,
   Text,
   Badge,
   ActionIcon,
@@ -260,7 +259,7 @@ function WorkflowForm({ opened, onClose, workflow }: WorkflowFormProps) {
 
         <Divider label="Approval Levels" labelPosition="center" />
 
-        {approvalChain.map((level, idx) => (
+        {approvalChain.map((level) => (
           <Card key={level.level} withBorder p="md">
             <Stack gap="sm">
               <Group justify="space-between">
