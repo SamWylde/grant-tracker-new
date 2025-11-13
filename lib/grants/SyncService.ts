@@ -168,94 +168,40 @@ export class SyncService {
     source: GrantSource,
     adapter: any
   ): Promise<SyncResult> {
-    // Since the adapter's performFullSync/Incremental don't return raw grants,
-    // we need to fetch them again and process them
-    // This is inefficient but works with the current architecture
+    // Use the grants returned by the adapter (no re-fetching!)
+    const normalizedGrants = result.grants || [];
+
+    if (normalizedGrants.length === 0) {
+      return result;
+    }
 
     try {
-      let page = 1;
-      let hasMore = true;
       const processedIds = new Set<string>();
 
-      while (hasMore && page <= 10) { // Limit to 10 pages for safety
-        const response = await adapter.fetchGrants({
-          page,
-          limit: 50,
-        });
+      // Process each normalized grant
+      for (const normalized of normalizedGrants) {
+        try {
 
-        if (!response.grants || response.grants.length === 0) {
-          break;
-        }
+          // Generate content hash
+          const contentHash = adapter.generateContentHash(normalized);
 
-        // Process each grant
-        for (const rawGrant of response.grants) {
-          try {
-            // Normalize the grant using the adapter
-            const normalized = adapter.normalizeGrant(rawGrant);
+          // Check if grant already exists
+          const { data: existing } = await this.supabase
+            .from('grants_catalog')
+            .select('id, content_hash, last_updated_at')
+            .eq('source_key', source.source_key)
+            .eq('external_id', normalized.external_id)
+            .maybeSingle();
 
-            // Generate content hash
-            const contentHash = adapter.generateContentHash(normalized);
+          const now = new Date().toISOString();
 
-            // Check if grant already exists
-            const { data: existing } = await this.supabase
-              .from('grants_catalog')
-              .select('id, content_hash, last_updated_at')
-              .eq('source_key', source.source_key)
-              .eq('external_id', normalized.external_id)
-              .maybeSingle();
-
-            const now = new Date().toISOString();
-
-            if (existing) {
-              // Check if content has changed
-              if (existing.content_hash !== contentHash) {
-                // Update existing grant
-                await this.supabase
-                  .from('grants_catalog')
-                  .update({
-                    title: normalized.title,
-                    description: normalized.description,
-                    agency: normalized.agency,
-                    opportunity_number: normalized.opportunity_number,
-                    estimated_funding: normalized.estimated_funding,
-                    award_floor: normalized.award_floor,
-                    award_ceiling: normalized.award_ceiling,
-                    expected_awards: normalized.expected_awards,
-                    funding_category: normalized.funding_category,
-                    eligibility_applicants: normalized.eligibility_applicants,
-                    cost_sharing_required: normalized.cost_sharing_required,
-                    posted_date: normalized.posted_date,
-                    open_date: normalized.open_date,
-                    close_date: normalized.close_date,
-                    opportunity_status: normalized.opportunity_status,
-                    cfda_numbers: normalized.cfda_numbers,
-                    aln_codes: normalized.aln_codes,
-                    source_url: normalized.source_url,
-                    application_url: normalized.application_url,
-                    content_hash: contentHash,
-                    last_updated_at: now,
-                    last_synced_at: now,
-                  })
-                  .eq('id', existing.id);
-
-                result.grants_updated++;
-              } else {
-                // No changes, just update sync timestamp
-                await this.supabase
-                  .from('grants_catalog')
-                  .update({ last_synced_at: now })
-                  .eq('id', existing.id);
-
-                result.grants_skipped++;
-              }
-            } else {
-              // Insert new grant
+          if (existing) {
+            // Check if content has changed
+            if (existing.content_hash !== contentHash) {
+              // Update existing grant
               await this.supabase
                 .from('grants_catalog')
-                .insert({
-                  source_id: source.id,
-                  source_key: source.source_key,
-                  external_id: normalized.external_id,
+                .update({
                   title: normalized.title,
                   description: normalized.description,
                   agency: normalized.agency,
@@ -276,31 +222,65 @@ export class SyncService {
                   source_url: normalized.source_url,
                   application_url: normalized.application_url,
                   content_hash: contentHash,
-                  first_seen_at: now,
                   last_updated_at: now,
                   last_synced_at: now,
-                  is_active: true,
-                });
+                })
+                .eq('id', existing.id);
 
-              result.grants_created++;
+              result.grants_updated++;
+            } else {
+              // No changes, just update sync timestamp
+              await this.supabase
+                .from('grants_catalog')
+                .update({ last_synced_at: now })
+                .eq('id', existing.id);
+
+              result.grants_skipped++;
             }
+          } else {
+            // Insert new grant
+            await this.supabase
+              .from('grants_catalog')
+              .insert({
+                source_id: source.id,
+                source_key: source.source_key,
+                external_id: normalized.external_id,
+                title: normalized.title,
+                description: normalized.description,
+                agency: normalized.agency,
+                opportunity_number: normalized.opportunity_number,
+                estimated_funding: normalized.estimated_funding,
+                award_floor: normalized.award_floor,
+                award_ceiling: normalized.award_ceiling,
+                expected_awards: normalized.expected_awards,
+                funding_category: normalized.funding_category,
+                eligibility_applicants: normalized.eligibility_applicants,
+                cost_sharing_required: normalized.cost_sharing_required,
+                posted_date: normalized.posted_date,
+                open_date: normalized.open_date,
+                close_date: normalized.close_date,
+                opportunity_status: normalized.opportunity_status,
+                cfda_numbers: normalized.cfda_numbers,
+                aln_codes: normalized.aln_codes,
+                source_url: normalized.source_url,
+                application_url: normalized.application_url,
+                content_hash: contentHash,
+                first_seen_at: now,
+                last_updated_at: now,
+                last_synced_at: now,
+                is_active: true,
+              });
 
-            processedIds.add(normalized.external_id);
-          } catch (error) {
-            result.errors.push({
-              error_code: 'PROCESSING_ERROR',
-              error_message: error instanceof Error ? error.message : 'Unknown error',
-              timestamp: new Date().toISOString(),
-            });
+            result.grants_created++;
           }
-        }
 
-        hasMore = response.pagination.has_more;
-        page++;
-
-        // Respect rate limits
-        if (hasMore) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          processedIds.add(normalized.external_id);
+        } catch (error) {
+          result.errors.push({
+            error_code: 'PROCESSING_ERROR',
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+          });
         }
       }
 
