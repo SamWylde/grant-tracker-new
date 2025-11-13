@@ -93,6 +93,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Modify to return role information from RBAC system
 -- =====================================================
 
+-- Drop existing function first (changing return type)
+DROP FUNCTION IF EXISTS public.get_org_team_members(UUID);
+
 CREATE OR REPLACE FUNCTION public.get_org_team_members(org_uuid UUID)
 RETURNS TABLE (
   id UUID,
