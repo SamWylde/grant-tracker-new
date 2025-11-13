@@ -44,8 +44,8 @@ export default function UpdatePasswordPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
       setLoading(false);
       return;
     }
@@ -109,13 +109,13 @@ export default function UpdatePasswordPage() {
             <Stack gap="md">
               <PasswordInput
                 label="New Password"
-                placeholder="Enter your new password"
+                placeholder="Enter your new password (min. 8 characters)"
                 autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-                description="Must be at least 6 characters"
+                description="Minimum 8 characters. Include uppercase, lowercase, digits and symbols for a strong password."
               />
 
               <PasswordInput
