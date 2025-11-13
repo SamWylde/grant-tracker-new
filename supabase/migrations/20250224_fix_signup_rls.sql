@@ -7,8 +7,11 @@
 -- Remove the previous insecure service_role policy
 DROP POLICY IF EXISTS "Service role can manage org members" ON public.org_members;
 
+-- Drop policies that depend on count_org_members function
+DROP POLICY IF EXISTS "Admins can add members" ON public.org_members;
+
 -- Drop existing function if it exists (may have different parameter name)
-DROP FUNCTION IF EXISTS count_org_members(UUID);
+DROP FUNCTION IF EXISTS count_org_members(UUID) CASCADE;
 
 -- Create a helper function to count org members (bypasses RLS)
 CREATE OR REPLACE FUNCTION count_org_members(target_org_id UUID)
