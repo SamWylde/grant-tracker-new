@@ -232,7 +232,7 @@ export default function SignUpPage() {
 
               <PasswordInput
                 label="Password"
-                placeholder="Create a password"
+                placeholder="Create a password (min. 6 characters)"
                 autoComplete="new-password"
                 required
                 value={password}
