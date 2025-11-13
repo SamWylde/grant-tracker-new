@@ -28,6 +28,7 @@ import { GrantHubImportPage } from "./pages/GrantHubImportPage";
 import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
 import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { EligibilityWizardPage } from "./pages/EligibilityWizardPage";
 import {
   ProfilePage,
   OrganizationPage,
@@ -82,6 +83,7 @@ export default function App() {
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
                 <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
                 <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />
+                <Route path="/onboarding/eligibility" element={<ProtectedRoute><EligibilityWizardPage /></ProtectedRoute>} />
 
                 {/* Protected Settings Routes */}
                 <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

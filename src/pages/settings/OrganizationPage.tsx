@@ -25,6 +25,8 @@ import { useOrganization } from '../../contexts/OrganizationContext';
 import { usePermission } from '../../hooks/usePermission';
 import { supabase } from '../../lib/supabase';
 import { FUNDING_CATEGORIES } from '../../types/grants';
+import { Link } from 'react-router-dom';
+import { IconSparkles } from '@tabler/icons-react';
 
 // US States with codes
 const US_STATE_OPTIONS = [
@@ -330,14 +332,25 @@ export function OrganizationPage() {
               {/* Eligibility Profile */}
               <Paper p="md" withBorder>
                 <Stack gap="md">
-                  <div>
-                    <Title order={3} size="h4" mb="xs">
-                      Grant Eligibility Profile
-                    </Title>
-                    <Text size="sm" c="dimmed">
-                      Help us recommend the most relevant grants for your organization
-                    </Text>
-                  </div>
+                  <Group justify="space-between" align="flex-start">
+                    <div>
+                      <Title order={3} size="h4" mb="xs">
+                        Grant Eligibility Profile
+                      </Title>
+                      <Text size="sm" c="dimmed">
+                        Help us recommend the most relevant grants for your organization
+                      </Text>
+                    </div>
+                    <Button
+                      component={Link}
+                      to="/onboarding/eligibility"
+                      variant="light"
+                      size="sm"
+                      leftSection={<IconSparkles size={16} />}
+                    >
+                      Use Wizard
+                    </Button>
+                  </Group>
 
                   <Divider />
 

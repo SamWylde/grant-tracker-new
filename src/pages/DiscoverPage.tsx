@@ -55,6 +55,7 @@ import { SaveToPipelineModal, type SaveToPipelineData } from "../components/Save
 import { RecommendationsSection } from "../components/RecommendationsSection";
 import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
 import { GrantTagBadges } from "../components/GrantTagBadges";
+import { EligibilityProfileBanner } from "../components/EligibilityProfileBanner";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
@@ -462,6 +463,9 @@ export function DiscoverPage() {
             }}
             onLoadView={handleLoadSearch}
           />
+
+          {/* Eligibility Profile Banner */}
+          <EligibilityProfileBanner />
 
           {/* AI Recommendations */}
           <RecommendationsSection
