@@ -5,23 +5,16 @@ import {
   Text,
   Paper,
   Table,
-  Button,
   Group,
   Badge,
-  Modal,
-  Select,
   TextInput,
   Alert,
   Tooltip,
 } from '@mantine/core';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
+import { useQuery } from '@tanstack/react-query';
 import {
-  IconCheck,
-  IconX,
   IconAlertCircle,
   IconShieldCheck,
-  IconUser,
 } from '@tabler/icons-react';
 import { supabase } from '../../lib/supabase';
 
@@ -41,7 +34,6 @@ interface User {
 }
 
 export function AdminUsersPage() {
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all users
