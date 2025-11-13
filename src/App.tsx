@@ -23,6 +23,7 @@ import { DiscoverPage } from "./pages/DiscoverPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { GrantDetailPage } from "./pages/GrantDetailPage";
 import { MetricsPage } from "./pages/MetricsPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { GrantHubImportPage } from "./pages/GrantHubImportPage";
 import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
@@ -43,6 +44,7 @@ import {
   BillingPage,
   ReportsPage,
   DangerZonePage,
+  PrivacyDataPage,
   AdminPage,
 } from "./pages/settings";
 import { theme } from "./theme";
@@ -89,6 +91,7 @@ export default function App() {
                 <Route path="/pipeline/grant/:grantId" element={<ProtectedRoute><GrantDetailPage /></ProtectedRoute>} />
                 <Route path="/funders" element={<ProtectedRoute><FundersPage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
                 <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
                 <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />
                 <Route path="/onboarding/eligibility" element={<ProtectedRoute><EligibilityWizardPage /></ProtectedRoute>} />
@@ -104,6 +107,7 @@ export default function App() {
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
                 <Route path="/settings/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
                 <Route path="/settings/workflows" element={<AdminRoute><ApprovalWorkflowsPage /></AdminRoute>} />
+                <Route path="/settings/privacy" element={<ProtectedRoute><PrivacyDataPage /></ProtectedRoute>} />
                 <Route path="/settings/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />
 
