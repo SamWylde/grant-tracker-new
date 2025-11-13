@@ -94,9 +94,10 @@ export function MentionTextarea({
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
     if (lastAtIndex !== -1) {
+      const displayName = member.full_name || member.email || 'Unknown User';
       const newValue =
         value.substring(0, lastAtIndex) +
-        `@${member.full_name} ` +
+        `@${displayName} ` +
         textAfterCursor;
 
       onChange(newValue);
@@ -105,13 +106,13 @@ export function MentionTextarea({
 
       // Notify parent about mention
       if (onMentionAdded) {
-        onMentionAdded(member.user_id, member.full_name);
+        onMentionAdded(member.user_id, displayName);
       }
 
       // Restore focus and cursor position
       setTimeout(() => {
         if (textareaRef.current) {
-          const newCursorPos = lastAtIndex + member.full_name.length + 2; // +2 for @ and space
+          const newCursorPos = lastAtIndex + displayName.length + 2; // +2 for @ and space
           textareaRef.current.focus();
           textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
         }

@@ -246,6 +246,14 @@ export function APITestingPage() {
   const [loading, setLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
   const [grantIds, setGrantIds] = useState<Record<string, string>>({});
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+
+  // Helper function to add debug messages to the log
+  const addDebugLog = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    const prefix = type === 'success' ? '✓' : type === 'error' ? '✗' : '→';
+    setDebugLog(prev => [...prev, `[${timestamp}] ${prefix} ${message}`]);
+  };
 
   // Extract text from PDF file
   const extractTextFromPdf = async (file: File): Promise<string> => {
@@ -275,6 +283,8 @@ export function APITestingPage() {
   const handleTest = async (test: any) => {
     setLoading(true);
     setTestResult(null);
+    setDebugLog([]); // Clear previous logs
+    addDebugLog(`Starting test: ${test.name || 'Custom request'}`);
     const startTime = Date.now();
 
     try {
@@ -310,6 +320,7 @@ export function APITestingPage() {
 
         // Step 1: If alphanumeric (opportunity number), search for it first to get the numeric ID
         if (!isNumeric) {
+          addDebugLog(`Searching for opportunity number: ${inputId}`);
           notifications.show({
             id: 'searching-grant',
             title: 'Searching for opportunity...',
@@ -332,6 +343,7 @@ export function APITestingPage() {
 
           if (!searchResponse.ok) {
             notifications.hide('searching-grant');
+            addDebugLog(`Failed to search for opportunity: ${searchResponse.statusText}`, 'error');
             throw new Error(`Failed to search for opportunity: ${searchResponse.statusText}`);
           }
 
@@ -339,6 +351,7 @@ export function APITestingPage() {
 
           if (!searchResults.grants || searchResults.grants.length === 0) {
             notifications.hide('searching-grant');
+            addDebugLog(`No grant found with opportunity number: ${inputId}`, 'error');
             throw new Error(`No grant found with opportunity number: ${inputId}`);
           }
 
@@ -346,6 +359,7 @@ export function APITestingPage() {
           numericId = searchResults.grants[0].id || searchResults.grants[0].opportunityId;
 
           notifications.hide('searching-grant');
+          addDebugLog(`Found opportunity: ${searchResults.grants[0].title} (ID: ${numericId})`, 'success');
           notifications.show({
             title: 'Found opportunity',
             message: `${searchResults.grants[0].title} (ID: ${numericId})`,
@@ -356,6 +370,7 @@ export function APITestingPage() {
         }
 
         // Step 2: Check if this grant exists in our database (using numeric ID)
+        addDebugLog(`Checking database for grant ID: ${numericId}`);
         notifications.show({
           id: 'checking-database',
           title: 'Checking database...',
@@ -371,8 +386,10 @@ export function APITestingPage() {
           .maybeSingle() as { data: { id: string; external_id: string; title: string } | null };
 
         notifications.hide('checking-database');
+        addDebugLog(savedGrant ? `Grant found in database: ${savedGrant.title}` : 'Grant not in database, will fetch and save', savedGrant ? 'success' : 'info');
 
         // Step 3: Fetch grant details from Grants.gov
+        addDebugLog(`Fetching grant details from Grants.gov for ID: ${numericId}`);
         notifications.show({
           id: 'fetching-grant',
           title: 'Fetching grant details...',
@@ -392,17 +409,20 @@ export function APITestingPage() {
 
         if (!detailsResponse.ok) {
           notifications.hide('fetching-grant');
+          addDebugLog(`Failed to fetch grant details: ${detailsResponse.statusText}`, 'error');
           throw new Error(`Failed to fetch grant details: ${detailsResponse.statusText}`);
         }
 
         const grantDetails = await detailsResponse.json();
 
         notifications.hide('fetching-grant');
+        addDebugLog(`Grant details retrieved: ${grantDetails.title || numericId}`, 'success');
 
         let grantUuid: string;
 
         if (savedGrant) {
           // Grant exists in database
+          addDebugLog(`Using existing saved grant: ${savedGrant.title || numericId}`, 'success');
           notifications.show({
             title: 'Grant found in database',
             message: `Using saved grant: ${savedGrant.title || numericId}`,
@@ -412,6 +432,7 @@ export function APITestingPage() {
           grantUuid = savedGrant.id;
         } else {
           // Grant NOT in database - save it first
+          addDebugLog(`Saving grant to database: ${grantDetails.title || numericId}`);
           notifications.show({
             id: 'saving-grant',
             title: 'Saving grant to database...',
@@ -424,6 +445,7 @@ export function APITestingPage() {
           const { data: { user } } = await supabase.auth.getUser();
           if (!user) {
             notifications.hide('saving-grant');
+            addDebugLog('User not authenticated', 'error');
             throw new Error('User not authenticated');
           }
 
@@ -435,6 +457,7 @@ export function APITestingPage() {
 
           if (!orgMember) {
             notifications.hide('saving-grant');
+            addDebugLog('No organization found for user', 'error');
             throw new Error('No organization found for user');
           }
 
@@ -456,10 +479,12 @@ export function APITestingPage() {
 
           if (insertError || !newGrant) {
             notifications.hide('saving-grant');
+            addDebugLog(`Failed to save grant: ${insertError?.message || 'Unknown error'}`, 'error');
             throw new Error(`Failed to save grant: ${insertError?.message || 'Unknown error'}`);
           }
 
           notifications.hide('saving-grant');
+          addDebugLog(`Grant saved successfully: ${grantDetails.title}`, 'success');
           notifications.show({
             title: 'Grant saved to database',
             message: `${grantDetails.title} added to your pipeline`,
@@ -471,7 +496,9 @@ export function APITestingPage() {
         }
 
         // Build comprehensive text from all available data
+        addDebugLog('Building comprehensive grant text from all available data');
         const comprehensiveText = buildComprehensiveGrantText(grantDetails);
+        addDebugLog(`Generated ${comprehensiveText.length} characters of grant text`, 'success');
 
         // Parse the body and inject the comprehensive grant data
         const bodyObj = JSON.parse(customBody || test.defaultBody || '{}');
@@ -488,10 +515,12 @@ export function APITestingPage() {
 
         // Check if it's a PDF
         if (!file.type.includes('pdf')) {
+          addDebugLog('Invalid file type - PDF required', 'error');
           throw new Error('Please upload a PDF file');
         }
 
         // Extract text from PDF
+        addDebugLog(`Extracting text from PDF: ${file.name}`);
         notifications.show({
           id: 'extracting-pdf',
           title: 'Extracting text from PDF...',
@@ -503,6 +532,7 @@ export function APITestingPage() {
         const pdfText = await extractTextFromPdf(file);
 
         notifications.hide('extracting-pdf');
+        addDebugLog(`PDF text extracted: ${pdfText.length} characters`, 'success');
         notifications.show({
           title: 'PDF text extracted',
           message: `Extracted ${pdfText.length} characters`,
@@ -526,6 +556,7 @@ export function APITestingPage() {
         options.body = customBody;
       }
 
+      addDebugLog(`Sending ${test.method || customMethod} request to ${url}`);
       const response = await fetch(url, options);
       const duration = Date.now() - startTime;
 
@@ -545,6 +576,7 @@ export function APITestingPage() {
       });
 
       if (response.ok) {
+        addDebugLog(`API test completed successfully in ${duration}ms`, 'success');
         notifications.show({
           title: 'Success',
           message: `API test completed in ${duration}ms`,
@@ -552,6 +584,7 @@ export function APITestingPage() {
           icon: <IconCheck size={16} />,
         });
       } else {
+        addDebugLog(`API Error: Status ${response.status} - ${response.statusText}`, 'error');
         notifications.show({
           title: 'API Error',
           message: `Status ${response.status}: ${response.statusText}`,
@@ -561,19 +594,22 @@ export function APITestingPage() {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       // Ensure loading is always reset
       setLoading(false);
 
+      addDebugLog(`Test failed: ${errorMessage}`, 'error');
+
       setTestResult({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         duration,
       });
 
       notifications.show({
         title: 'Test Failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: errorMessage,
         color: 'red',
         icon: <IconX size={16} />,
       });
@@ -920,6 +956,40 @@ export function APITestingPage() {
             </Stack>
           </Tabs.Panel>
         </Tabs>
+
+        <Divider label="Debug Log" />
+        {debugLog.length > 0 ? (
+          <Paper p="md" withBorder style={{ backgroundColor: '#f8f9fa' }}>
+            <Group justify="space-between" mb="xs">
+              <Text size="sm" fw={600}>Execution Log</Text>
+              <Button
+                size="xs"
+                variant="subtle"
+                onClick={() => setDebugLog([])}
+                leftSection={<IconX size={14} />}
+              >
+                Clear Log
+              </Button>
+            </Group>
+            <Code
+              block
+              style={{
+                maxHeight: 300,
+                overflow: 'auto',
+                fontSize: 12,
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.6,
+              }}
+            >
+              {debugLog.join('\n')}
+            </Code>
+          </Paper>
+        ) : (
+          <Alert color="gray" icon={<IconAlertCircle size={16} />}>
+            <Text size="sm">No debug logs yet. Run a test to see execution details.</Text>
+          </Alert>
+        )}
 
         <Divider label="Test Results" />
         <Paper p="md" withBorder style={{ position: 'relative' }}>

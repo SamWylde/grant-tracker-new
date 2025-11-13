@@ -206,22 +206,25 @@ export function BudgetTab({ grantId, orgId }: BudgetTabProps) {
               />
             )}
 
-            <Group grow>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <DateInput
                 label="Budget Period Start"
-                placeholder="Select date"
+                placeholder="Start date"
                 value={budgetPeriodStart}
                 onChange={(value) => setBudgetPeriodStart(value ? new Date(value) : null)}
                 clearable
+                valueFormat="YYYY-MM-DD"
               />
               <DateInput
                 label="Budget Period End"
-                placeholder="Select date"
+                placeholder="End date"
                 value={budgetPeriodEnd}
                 onChange={(value) => setBudgetPeriodEnd(value ? new Date(value) : null)}
                 clearable
+                valueFormat="YYYY-MM-DD"
+                minDate={budgetPeriodStart || undefined}
               />
-            </Group>
+            </SimpleGrid>
 
             <TextInput
               label="Notes"

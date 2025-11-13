@@ -29,6 +29,8 @@ import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
 import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { EligibilityWizardPage } from "./pages/EligibilityWizardPage";
+import { ApprovalWorkflowsPage } from "./pages/ApprovalWorkflowsPage";
+import { ApprovalsPage } from "./pages/ApprovalsPage";
 import {
   ProfilePage,
   OrganizationPage,
@@ -93,8 +95,12 @@ export default function App() {
                 <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+                <Route path="/settings/workflows" element={<AdminRoute><ApprovalWorkflowsPage /></AdminRoute>} />
                 <Route path="/settings/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />
+
+                {/* Approvals Routes */}
+                <Route path="/approvals" element={<ProtectedRoute><ApprovalsPage /></ProtectedRoute>} />
 
                 {/* 404 Catch-all Route */}
                 <Route path="*" element={<NotFoundPage />} />

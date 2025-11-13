@@ -120,7 +120,8 @@ export function CommentInput({
   // Filter members based on mention search
   const filteredMembers = orgMembers.filter(
     (member) =>
-      member.full_name.toLowerCase().includes(mentionSearch)
+      member.full_name?.toLowerCase().includes(mentionSearch) ||
+      member.email?.toLowerCase().includes(mentionSearch)
   );
 
   // Insert mention into textarea
@@ -133,7 +134,8 @@ export function CommentInput({
     const textAfterCursor = content.substring(cursorPosition);
 
     // Replace @search with @[Name](uuid)
-    const mentionText = `@[${member.full_name}](${member.user_id})`;
+    const displayName = member.full_name || member.email || 'Unknown User';
+    const mentionText = `@[${displayName}](${member.user_id})`;
     const newContent =
       content.substring(0, lastAtSymbol) +
       mentionText +
@@ -276,15 +278,15 @@ export function CommentInput({
                   >
                     <Avatar
                       src={member.avatar_url}
-                      alt={member.full_name}
+                      alt={member.full_name || member.email || 'Unknown User'}
                       size="sm"
                       radius="xl"
                     >
-                      {member.full_name.charAt(0).toUpperCase()}
+                      {(member.full_name || member.email || 'U').charAt(0).toUpperCase()}
                     </Avatar>
                     <div>
                       <Text size="sm" fw={500}>
-                        {member.full_name}
+                        {member.full_name || member.email || 'Unknown User'}
                       </Text>
                       {member.email && (
                         <Text size="xs" c="dimmed">
