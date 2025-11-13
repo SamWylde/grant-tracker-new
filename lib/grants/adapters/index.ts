@@ -4,16 +4,16 @@
  * Creates the appropriate adapter based on source configuration
  */
 
-import { BaseGrantAdapter } from './BaseGrantAdapter';
-import { GrantsGovAdapter } from './GrantsGovAdapter';
-import { OpenGrantsAdapter } from './OpenGrantsAdapter';
-import { CustomGrantAdapter } from './CustomGrantAdapter';
-import type { GrantSource } from '../types';
+import { BaseGrantAdapter } from './BaseGrantAdapter.js';
+import { GrantsGovAdapter } from './GrantsGovAdapter.js';
+import { OpenGrantsAdapter } from './OpenGrantsAdapter.js';
+import { CustomGrantAdapter } from './CustomGrantAdapter.js';
+import type { GrantSource } from '../types.js';
 
-export * from './BaseGrantAdapter';
-export * from './GrantsGovAdapter';
-export * from './OpenGrantsAdapter';
-export * from './CustomGrantAdapter';
+export * from './BaseGrantAdapter.js';
+export * from './GrantsGovAdapter.js';
+export * from './OpenGrantsAdapter.js';
+export * from './CustomGrantAdapter.js';
 
 /**
  * Create an adapter for the given source
