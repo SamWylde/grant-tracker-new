@@ -133,7 +133,8 @@ export function AcceptInvitePage() {
         // Mark invitation as accepted
         await supabase
           .from('team_invitations')
-          .update({ accepted_at: new Date().toISOString() } as any)
+          // @ts-expect-error - Supabase PostgREST type inference limitation
+          .update({ accepted_at: new Date().toISOString() })
           .eq('id', invitation.id);
 
         notifications.show({
@@ -161,7 +162,8 @@ export function AcceptInvitePage() {
       // Mark invitation as accepted
       const { error: updateError } = await supabase
         .from('team_invitations')
-        .update({ accepted_at: new Date().toISOString() } as any)
+        // @ts-expect-error - Supabase PostgREST type inference limitation
+        .update({ accepted_at: new Date().toISOString() })
         .eq('id', invitation.id);
 
       if (updateError) throw updateError;
