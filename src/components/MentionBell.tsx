@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ActionIcon,
   Indicator,
@@ -41,10 +42,12 @@ interface MentionNotification {
   grant_comment?: {
     id: string;
     content: string;
+    grant_id: string;
   };
   task_comment?: {
     id: string;
     content: string;
+    task_id: string;
   };
 }
 
@@ -54,6 +57,7 @@ interface MentionBellProps {
 
 export function MentionBell({ orgId }: MentionBellProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [mentions, setMentions] = useState<MentionNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -175,16 +179,29 @@ export function MentionBell({ orgId }: MentionBellProps) {
     }
 
     // Navigate to context
-    // TODO: Update navigation logic based on your routing structure
-    if (mention.context_type === "grant_comment" && mention.grant_comment_id) {
-      // Navigate to grant detail
-      // This assumes grants have a detail page - adjust as needed
-      console.log("Navigate to grant comment:", mention.grant_comment_id);
-      // navigate(`/grants/${grantId}?comment=${mention.grant_comment_id}`);
-    } else if (mention.context_type === "task_comment" && mention.task_comment_id) {
-      // Navigate to task detail
-      console.log("Navigate to task comment:", mention.task_comment_id);
-      // navigate(`/tasks/${taskId}?comment=${mention.task_comment_id}`);
+    if (mention.context_type === "grant_comment" && mention.grant_comment) {
+      const grantId = mention.grant_comment.grant_id;
+      const commentId = mention.grant_comment.id;
+      // Navigate to pipeline with grant and comment highlighted
+      navigate(`/pipeline?grant=${grantId}&comment=${commentId}`);
+    } else if (mention.context_type === "task_comment" && mention.task_comment) {
+      const taskId = mention.task_comment.task_id;
+      const commentId = mention.task_comment.id;
+      // Navigate to pipeline with task comment (tasks are in grant detail drawer)
+      // We need to fetch the grant_id for this task first
+      try {
+        const { data: task } = await supabase
+          .from('tasks')
+          .select('grant_id')
+          .eq('id', taskId)
+          .single();
+
+        if (task) {
+          navigate(`/pipeline?grant=${task.grant_id}&task=${taskId}&comment=${commentId}`);
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
+      }
     }
 
     setMenuOpened(false);

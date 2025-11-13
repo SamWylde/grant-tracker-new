@@ -52,15 +52,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           *,
           grant_comment:grant_comment_id (
             id,
-            content
+            content,
+            grant_id
           ),
           task_comment:task_comment_id (
             id,
-            content
+            content,
+            task_id
           )
         `)
         .eq('user_id', targetUserId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false})
         .limit(parseInt(limit as string, 10));
 
       if (org_id) {

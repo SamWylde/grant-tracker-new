@@ -27,7 +27,7 @@ import {
   IconSparkles,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
@@ -68,6 +68,7 @@ interface GrantDetailDrawerProps {
   grant: Grant | null;
   opened: boolean;
   onClose: () => void;
+  highlightCommentId?: string | null;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -81,14 +82,23 @@ export function GrantDetailDrawer({
   grant,
   opened,
   onClose,
+  highlightCommentId,
 }: GrantDetailDrawerProps) {
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<string | null>("tasks");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<Array<{ userId: string; userName: string }>>([]);
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null);
+
+  // Switch to comments tab when highlightCommentId is provided
+  useEffect(() => {
+    if (highlightCommentId && opened) {
+      setActiveTab("comments");
+    }
+  }, [highlightCommentId, opened]);
 
   // Fetch tasks for this grant
   const { data: tasksData } = useQuery({
@@ -479,7 +489,7 @@ export function GrantDetailDrawer({
         <Divider />
 
         {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Notes, and Comments */}
-        <Tabs defaultValue="tasks">
+        <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
             <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} />}>
@@ -606,6 +616,7 @@ export function GrantDetailDrawer({
                 onReply={handleReply}
                 onEdit={handleEditComment}
                 onDelete={handleDeleteComment}
+                highlightCommentId={highlightCommentId}
               />
             </Stack>
           </Tabs.Panel>
