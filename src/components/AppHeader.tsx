@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon } from '@mantine/core';
-import { IconRocket } from '@tabler/icons-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon, Divider, Button, Avatar } from '@mantine/core';
+import { IconRocket, IconUser, IconSettings, IconLogout, IconBuilding } from '@tabler/icons-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,12 +12,28 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ subtitle }: AppHeaderProps) {
-  const { user } = useAuth();
-  const { currentOrg } = useOrganization();
+  const { user, signOut } = useAuth();
+  const { currentOrg, userOrgs, switchOrg } = useOrganization();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpened, setMobileMenuOpened] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+
+  const handleMobileSignOut = async () => {
+    setMobileMenuOpened(false);
+    await signOut();
+    navigate('/');
+  };
+
+  const getOrgInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <Box
@@ -123,47 +139,134 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             title="Menu"
             position="right"
           >
-            <Stack gap="lg">
-              <Anchor
-                component={Link}
-                to="/discover"
-                c={isActive('/discover') ? 'grape' : 'dark'}
-                fw={isActive('/discover') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
+            <Stack gap="md">
+              {/* Navigation Links */}
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                Navigation
+              </Text>
+              <Stack gap="sm">
+                <Anchor
+                  component={Link}
+                  to="/discover"
+                  c={isActive('/discover') ? 'grape' : 'dark'}
+                  fw={isActive('/discover') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Discover
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/saved"
+                  c={isActive('/saved') ? 'grape' : 'dark'}
+                  fw={isActive('/saved') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Saved
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/pipeline"
+                  c={isActive('/pipeline') ? 'grape' : 'dark'}
+                  fw={isActive('/pipeline') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Pipeline
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/metrics"
+                  c={isActive('/metrics') ? 'grape' : 'dark'}
+                  fw={isActive('/metrics') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Metrics
+                </Anchor>
+              </Stack>
+
+              <Divider />
+
+              {/* User & Organization Section */}
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                Account
+              </Text>
+              <Stack gap="sm">
+                <Anchor
+                  component={Link}
+                  to="/settings/profile"
+                  c="dark"
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  <Group gap="xs">
+                    <IconUser size={16} />
+                    <Text size="sm">My Profile</Text>
+                  </Group>
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/settings/org"
+                  c="dark"
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  <Group gap="xs">
+                    <IconSettings size={16} />
+                    <Text size="sm">Settings</Text>
+                  </Group>
+                </Anchor>
+              </Stack>
+
+              {/* Organization Switcher */}
+              {currentOrg && userOrgs && userOrgs.length > 0 && (
+                <>
+                  <Divider />
+                  <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                    Organization
+                  </Text>
+                  <Stack gap="xs">
+                    {userOrgs.map((org) => (
+                      <Button
+                        key={org.id}
+                        variant={org.id === currentOrg.id ? "light" : "subtle"}
+                        color={org.id === currentOrg.id ? "grape" : "gray"}
+                        onClick={() => {
+                          switchOrg(org.id);
+                          setMobileMenuOpened(false);
+                        }}
+                        fullWidth
+                        justify="flex-start"
+                        leftSection={
+                          <Avatar size={24} radius="xl" color="grape">
+                            {getOrgInitials(org.name)}
+                          </Avatar>
+                        }
+                      >
+                        <Text size="sm" truncate>
+                          {org.name}
+                        </Text>
+                      </Button>
+                    ))}
+                  </Stack>
+                </>
+              )}
+
+              <Divider />
+
+              {/* Sign Out */}
+              <Button
+                variant="subtle"
+                color="red"
+                onClick={handleMobileSignOut}
+                fullWidth
+                justify="flex-start"
+                leftSection={<IconLogout size={16} />}
               >
-                Discover Grants
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/saved"
-                c={isActive('/saved') ? 'grape' : 'dark'}
-                fw={isActive('/saved') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
-              >
-                Saved Grants
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/pipeline"
-                c={isActive('/pipeline') ? 'grape' : 'dark'}
-                fw={isActive('/pipeline') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
-              >
-                Pipeline
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/metrics"
-                c={isActive('/metrics') ? 'grape' : 'dark'}
-                fw={isActive('/metrics') ? 600 : 400}
-                underline="never"
-                onClick={() => setMobileMenuOpened(false)}
-              >
-                Value Metrics
-              </Anchor>
+                Sign Out
+              </Button>
             </Stack>
           </Drawer>
         )}
