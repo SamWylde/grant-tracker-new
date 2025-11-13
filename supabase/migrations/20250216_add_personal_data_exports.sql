@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.data_export_requests (
 -- Indexes for efficient queries
 CREATE INDEX IF NOT EXISTS idx_data_export_requests_user_id ON public.data_export_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_data_export_requests_status ON public.data_export_requests(status);
-CREATE INDEX IF NOT EXISTS idx_data_export_requests_download_token ON public.data_export_requests(download_token) WHERE status = 'completed' AND expires_at > NOW();
+CREATE INDEX IF NOT EXISTS idx_data_export_requests_download_token ON public.data_export_requests(download_token) WHERE status = 'completed';
 CREATE INDEX IF NOT EXISTS idx_data_export_requests_created ON public.data_export_requests(requested_at DESC);
 
 -- Comments
