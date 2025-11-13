@@ -17,7 +17,7 @@ import {
   Avatar,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconX, IconUserEdit } from '@tabler/icons-react';
+import { IconTrash, IconX, IconUserEdit, IconCopy } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -293,28 +293,50 @@ export function TeamPage() {
                     <Divider />
 
                     <Stack gap="xs">
-                      {invitations.map((invitation: any) => (
-                        <Paper key={invitation.id} p="sm" withBorder>
-                          <Group justify="space-between">
-                            <Stack gap={0}>
-                              <Text fw={500}>{invitation.email}</Text>
-                              <Text size="xs" c="dimmed">
-                                {invitation.role === 'admin' ? 'Admin' : 'Contributor'} •
-                                Invited {new Date(invitation.invited_at).toLocaleDateString()}
-                              </Text>
+                      {invitations.map((invitation: any) => {
+                        const inviteLink = `${window.location.origin}/accept-invite?id=${invitation.id}&email=${encodeURIComponent(invitation.email)}`;
+
+                        return (
+                          <Paper key={invitation.id} p="sm" withBorder>
+                            <Stack gap="xs">
+                              <Group justify="space-between">
+                                <Stack gap={0}>
+                                  <Text fw={500}>{invitation.email}</Text>
+                                  <Text size="xs" c="dimmed">
+                                    {invitation.role === 'admin' ? 'Admin' : 'Contributor'} •
+                                    Invited {new Date(invitation.invited_at).toLocaleDateString()}
+                                  </Text>
+                                </Stack>
+                                <Group gap="xs">
+                                  <ActionIcon
+                                    variant="light"
+                                    color="blue"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(inviteLink);
+                                      notifications.show({
+                                        title: 'Link copied',
+                                        message: 'Invitation link copied to clipboard',
+                                        color: 'green',
+                                      });
+                                    }}
+                                    title="Copy invitation link"
+                                  >
+                                    <IconCopy size={16} />
+                                  </ActionIcon>
+                                  <ActionIcon
+                                    variant="light"
+                                    color="red"
+                                    onClick={() => revokeMutation.mutate(invitation.id)}
+                                    title="Revoke invitation"
+                                  >
+                                    <IconX size={16} />
+                                  </ActionIcon>
+                                </Group>
+                              </Group>
                             </Stack>
-                            <Group gap="xs">
-                              <ActionIcon
-                                variant="light"
-                                color="red"
-                                onClick={() => revokeMutation.mutate(invitation.id)}
-                              >
-                                <IconX size={16} />
-                              </ActionIcon>
-                            </Group>
-                          </Group>
-                        </Paper>
-                      ))}
+                          </Paper>
+                        );
+                      })}
                     </Stack>
                   </Stack>
                 </Paper>
