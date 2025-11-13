@@ -20,7 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  // Create client with user's token for authentication and authorization checks
+  const userClient = createClient(supabaseUrl, supabaseServiceKey, {
     global: {
       headers: {
         Authorization: authHeader,
@@ -32,14 +33,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+  } = await userClient.auth.getUser(authHeader.replace('Bearer ', ''));
 
   if (authError || !user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // SECURITY: Verify user is a platform admin (NOT organization admin)
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await userClient
     .from('user_profiles')
     .select('is_platform_admin')
     .eq('id', user.id)
@@ -57,21 +58,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  // Create a separate client with service role key for admin operations
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
     // Fetch ALL users from auth.users (requires service role key)
-    const { data: authUsers, error: authUsersError } = await supabase.auth.admin.listUsers();
+    const { data: authUsers, error: authUsersError } = await adminClient.auth.admin.listUsers();
 
     if (authUsersError) throw authUsersError;
 
-    // Fetch user profiles
-    const { data: profiles, error: profilesError } = await supabase
+    // Fetch user profiles (using admin client for full access)
+    const { data: profiles, error: profilesError } = await adminClient
       .from('user_profiles')
       .select('id, full_name, is_platform_admin, created_at');
 
     if (profilesError) throw profilesError;
 
-    // Fetch org memberships for each user
-    const { data: memberships, error: membershipsError } = await supabase
+    // Fetch org memberships for each user (using admin client for full access)
+    const { data: memberships, error: membershipsError } = await adminClient
       .from('org_members')
       .select(`
         user_id,

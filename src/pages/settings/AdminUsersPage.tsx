@@ -37,7 +37,7 @@ export function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all users
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -60,7 +60,7 @@ export function AdminUsersPage() {
 
   const filteredUsers = users?.filter(user =>
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    (user.full_name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ?? false)
   );
 
   return (
@@ -79,6 +79,13 @@ export function AdminUsersPage() {
         </Text>
       </Alert>
 
+      {error && (
+        <Alert color="red" icon={<IconAlertCircle size={16} />}>
+          <Text size="sm" fw={500}>Error loading users</Text>
+          <Text size="xs" mt={4}>{error.message}</Text>
+        </Alert>
+      )}
+
       <Paper p="md" withBorder>
         <Stack gap="md">
           <Group justify="space-between">
@@ -93,6 +100,10 @@ export function AdminUsersPage() {
 
           {isLoading ? (
             <Text size="sm" c="dimmed">Loading users...</Text>
+          ) : filteredUsers && filteredUsers.length === 0 ? (
+            <Text size="sm" c="dimmed" ta="center" py="xl">
+              {searchQuery ? 'No users match your search' : 'No users found'}
+            </Text>
           ) : (
             <Table.ScrollContainer minWidth={1000}>
               <Table striped highlightOnHover>
