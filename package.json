@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.80.0",
     "@tabler/icons-react": "^3.27.0",
     "@tanstack/react-query": "^5.90.7",
+    "@vercel/analytics": "^1.5.0",
     "dayjs": "^1.11.19",
     "openai": "^6.8.1",
     "pdfjs-dist": "^5.4.394",

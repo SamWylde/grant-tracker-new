@@ -567,8 +567,8 @@ export function DiscoverPage() {
             <Group justify="space-between">
               <Text size="sm" c="dimmed">
                 Showing {sortedGrants.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–
-                {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount)} of{" "}
-                {data.totalCount.toLocaleString()} results
+                {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount ?? 0)} of{" "}
+                {(data.totalCount ?? 0).toLocaleString()} results
               </Text>
               <Button
                 variant="subtle"

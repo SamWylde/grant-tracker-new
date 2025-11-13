@@ -295,7 +295,8 @@ export default async function handler(
         // Always return catalog results even if API fails
         return res.status(200).json({
           grants: normalizedGrants,
-          totalResults: normalizedGrants.length,
+          totalCount: normalizedGrants.length,
+          totalResults: normalizedGrants.length, // Legacy field for backward compatibility
           source: 'catalog',
           warning: 'Live API unavailable, showing cached results only',
         });
@@ -305,7 +306,8 @@ export default async function handler(
     // Catalog had enough results, return them
     return res.status(200).json({
       grants: normalizedGrants,
-      totalResults: normalizedGrants.length,
+      totalCount: normalizedGrants.length,
+      totalResults: normalizedGrants.length, // Legacy field for backward compatibility
       source: 'catalog',
     });
 
