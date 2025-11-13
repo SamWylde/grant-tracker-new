@@ -29,6 +29,20 @@ interface OrganizationSettings {
   deadline_reminders_3d: boolean;
   deadline_reminders_1d: boolean;
   deadline_reminders_0d: boolean;
+  loi_deadline_reminders_enabled: boolean;
+  loi_deadline_reminders_30d: boolean;
+  loi_deadline_reminders_14d: boolean;
+  loi_deadline_reminders_7d: boolean;
+  loi_deadline_reminders_3d: boolean;
+  loi_deadline_reminders_1d: boolean;
+  loi_deadline_reminders_0d: boolean;
+  internal_deadline_reminders_enabled: boolean;
+  internal_deadline_reminders_30d: boolean;
+  internal_deadline_reminders_14d: boolean;
+  internal_deadline_reminders_7d: boolean;
+  internal_deadline_reminders_3d: boolean;
+  internal_deadline_reminders_1d: boolean;
+  internal_deadline_reminders_0d: boolean;
 }
 
 interface Grant {
@@ -38,6 +52,7 @@ interface Grant {
   close_date: string;
   status: string | null;
   org_id: string;
+  deadline_type?: 'external' | 'loi' | 'internal';
 }
 
 interface OrgMember {
@@ -60,6 +75,20 @@ async function getOrganizationsWithSettings(supabase: any): Promise<Organization
       deadline_reminders_3d,
       deadline_reminders_1d,
       deadline_reminders_0d,
+      loi_deadline_reminders_enabled,
+      loi_deadline_reminders_30d,
+      loi_deadline_reminders_14d,
+      loi_deadline_reminders_7d,
+      loi_deadline_reminders_3d,
+      loi_deadline_reminders_1d,
+      loi_deadline_reminders_0d,
+      internal_deadline_reminders_enabled,
+      internal_deadline_reminders_30d,
+      internal_deadline_reminders_14d,
+      internal_deadline_reminders_7d,
+      internal_deadline_reminders_3d,
+      internal_deadline_reminders_1d,
+      internal_deadline_reminders_0d,
       organizations!inner(name)
     `);
 
@@ -77,6 +106,20 @@ async function getOrganizationsWithSettings(supabase: any): Promise<Organization
     deadline_reminders_3d: row.deadline_reminders_3d ?? true,
     deadline_reminders_1d: row.deadline_reminders_1d ?? true,
     deadline_reminders_0d: row.deadline_reminders_0d ?? true,
+    loi_deadline_reminders_enabled: row.loi_deadline_reminders_enabled ?? true,
+    loi_deadline_reminders_30d: row.loi_deadline_reminders_30d ?? true,
+    loi_deadline_reminders_14d: row.loi_deadline_reminders_14d ?? true,
+    loi_deadline_reminders_7d: row.loi_deadline_reminders_7d ?? true,
+    loi_deadline_reminders_3d: row.loi_deadline_reminders_3d ?? true,
+    loi_deadline_reminders_1d: row.loi_deadline_reminders_1d ?? true,
+    loi_deadline_reminders_0d: row.loi_deadline_reminders_0d ?? true,
+    internal_deadline_reminders_enabled: row.internal_deadline_reminders_enabled ?? true,
+    internal_deadline_reminders_30d: row.internal_deadline_reminders_30d ?? true,
+    internal_deadline_reminders_14d: row.internal_deadline_reminders_14d ?? true,
+    internal_deadline_reminders_7d: row.internal_deadline_reminders_7d ?? true,
+    internal_deadline_reminders_3d: row.internal_deadline_reminders_3d ?? true,
+    internal_deadline_reminders_1d: row.internal_deadline_reminders_1d ?? true,
+    internal_deadline_reminders_0d: row.internal_deadline_reminders_0d ?? true,
   }));
 }
 
@@ -116,6 +159,85 @@ async function getGrantsWithDeadline(
     close_date: grant.close_date,
     status: grant.status,
     org_id: orgId,
+    deadline_type: 'external' as const,
+  }));
+}
+
+/**
+ * Get grants with LOI deadlines in the specified number of days
+ */
+async function getGrantsWithLOIDeadline(
+  supabase: any,
+  orgId: string,
+  daysUntil: number
+): Promise<Grant[]> {
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + daysUntil);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const endOfTargetDate = new Date(targetDate);
+  endOfTargetDate.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('org_grants_saved')
+    .select('id, title, agency, loi_deadline, status')
+    .eq('org_id', orgId)
+    .gte('loi_deadline', targetDate.toISOString())
+    .lte('loi_deadline', endOfTargetDate.toISOString())
+    .not('status', 'in', '("awarded", "rejected", "withdrawn")');
+
+  if (error) {
+    console.error(`[Deadline Reminders] Error fetching LOI grants for org ${orgId}, days ${daysUntil}:`, error);
+    return [];
+  }
+
+  return (data || []).map((grant: any) => ({
+    id: grant.id,
+    title: grant.title,
+    agency: grant.agency,
+    close_date: grant.loi_deadline, // Use LOI deadline as close_date for email template
+    status: grant.status,
+    org_id: orgId,
+    deadline_type: 'loi' as const,
+  }));
+}
+
+/**
+ * Get grants with internal deadlines in the specified number of days
+ */
+async function getGrantsWithInternalDeadline(
+  supabase: any,
+  orgId: string,
+  daysUntil: number
+): Promise<Grant[]> {
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + daysUntil);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const endOfTargetDate = new Date(targetDate);
+  endOfTargetDate.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('org_grants_saved')
+    .select('id, title, agency, internal_deadline, status')
+    .eq('org_id', orgId)
+    .gte('internal_deadline', targetDate.toISOString())
+    .lte('internal_deadline', endOfTargetDate.toISOString())
+    .not('status', 'in', '("awarded", "rejected", "withdrawn")');
+
+  if (error) {
+    console.error(`[Deadline Reminders] Error fetching internal deadline grants for org ${orgId}, days ${daysUntil}:`, error);
+    return [];
+  }
+
+  return (data || []).map((grant: any) => ({
+    id: grant.id,
+    title: grant.title,
+    agency: grant.agency,
+    close_date: grant.internal_deadline, // Use internal deadline as close_date for email template
+    status: grant.status,
+    org_id: orgId,
+    deadline_type: 'internal' as const,
   }));
 }
 
@@ -179,7 +301,8 @@ async function sendDeadlineEmail(
   recipient: OrgMember,
   orgName: string,
   daysUntil: number,
-  grants: Grant[]
+  grants: Grant[],
+  deadlineType: 'external' | 'loi' | 'internal' = 'external'
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const emailHtml = generateDeadlineReminderEmail({
@@ -190,7 +313,9 @@ async function sendDeadlineEmail(
     });
 
     const daysText = daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `in ${daysUntil} Days`;
-    const subject = `${grants.length} Grant${grants.length === 1 ? '' : 's'} Due ${daysText} - ${orgName}`;
+    const deadlineTypeLabel = deadlineType === 'loi' ? 'LOI' : deadlineType === 'internal' ? 'Internal' : '';
+    const deadlineTypeText = deadlineTypeLabel ? ` (${deadlineTypeLabel})` : '';
+    const subject = `${grants.length} Grant${grants.length === 1 ? '' : 's'}${deadlineTypeText} Due ${daysText} - ${orgName}`;
 
     const result = await resend.emails.send({
       from: 'GrantCue Deadlines <deadlines@grantcue.com>',
@@ -203,7 +328,7 @@ async function sendDeadlineEmail(
       throw result.error;
     }
 
-    console.log(`[Deadline Reminders] Sent email to ${recipient.email} for ${grants.length} grants (${daysUntil} days)`);
+    console.log(`[Deadline Reminders] Sent ${deadlineType} email to ${recipient.email} for ${grants.length} grants (${daysUntil} days)`);
     return { success: true };
   } catch (error) {
     console.error(`[Deadline Reminders] Failed to send email to ${recipient.email}:`, error);
@@ -222,9 +347,11 @@ async function createInAppNotifications(
   orgId: string,
   members: OrgMember[],
   grants: Grant[],
-  daysUntil: number
+  daysUntil: number,
+  deadlineType: 'external' | 'loi' | 'internal' = 'external'
 ): Promise<void> {
   const daysText = daysUntil === 0 ? 'today' : daysUntil === 1 ? 'tomorrow' : `in ${daysUntil} days`;
+  const deadlineTypeLabel = deadlineType === 'loi' ? 'LOI Deadline' : deadlineType === 'internal' ? 'Internal Deadline' : 'Deadline';
 
   for (const member of members) {
     for (const grant of grants) {
@@ -233,13 +360,14 @@ async function createInAppNotifications(
           user_id: member.user_id,
           org_id: orgId,
           type: 'deadline_reminder',
-          title: `Deadline ${daysText}: ${grant.title}`,
-          message: `Grant deadline is ${daysText}. ${grant.agency ? `Agency: ${grant.agency}.` : ''} Don't miss this opportunity!`,
+          title: `${deadlineTypeLabel} ${daysText}: ${grant.title}`,
+          message: `Grant ${deadlineTypeLabel.toLowerCase()} is ${daysText}. ${grant.agency ? `Agency: ${grant.agency}.` : ''} Don't miss this opportunity!`,
           action_url: `/grants/${grant.id}`,
           metadata: {
             grant_id: grant.id,
             days_until: daysUntil,
             close_date: grant.close_date,
+            deadline_type: deadlineType,
           },
         });
       } catch (error) {
@@ -291,7 +419,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let totalEmailsFailed = 0;
     let totalNotifications = 0;
 
-    // Define reminder intervals (in days)
+    // Define reminder intervals (in days) for each deadline type
     const reminderIntervals = [
       { days: 30, setting: 'deadline_reminders_30d' },
       { days: 14, setting: 'deadline_reminders_14d' },
@@ -299,6 +427,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { days: 3, setting: 'deadline_reminders_3d' },
       { days: 1, setting: 'deadline_reminders_1d' },
       { days: 0, setting: 'deadline_reminders_0d' },
+    ] as const;
+
+    const loiReminderIntervals = [
+      { days: 30, setting: 'loi_deadline_reminders_30d' },
+      { days: 14, setting: 'loi_deadline_reminders_14d' },
+      { days: 7, setting: 'loi_deadline_reminders_7d' },
+      { days: 3, setting: 'loi_deadline_reminders_3d' },
+      { days: 1, setting: 'loi_deadline_reminders_1d' },
+      { days: 0, setting: 'loi_deadline_reminders_0d' },
+    ] as const;
+
+    const internalReminderIntervals = [
+      { days: 30, setting: 'internal_deadline_reminders_30d' },
+      { days: 14, setting: 'internal_deadline_reminders_14d' },
+      { days: 7, setting: 'internal_deadline_reminders_7d' },
+      { days: 3, setting: 'internal_deadline_reminders_3d' },
+      { days: 1, setting: 'internal_deadline_reminders_1d' },
+      { days: 0, setting: 'internal_deadline_reminders_0d' },
     ] as const;
 
     // Process each organization
@@ -309,57 +455,136 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         reminders: [],
       };
 
-      // Check each reminder interval
+      // Get organization members once for this org
+      const members = await getOrgMembers(supabase, org.org_id);
+
+      if (members.length === 0) {
+        console.warn(`[Deadline Reminders] No members found for org ${org.org_id}`);
+        continue;
+      }
+
+      // Process external deadlines
       for (const interval of reminderIntervals) {
-        // Skip if this reminder is disabled for this org
         if (!org[interval.setting as keyof OrganizationSettings]) {
           continue;
         }
 
-        // Get grants with deadlines at this interval
         const grants = await getGrantsWithDeadline(supabase, org.org_id, interval.days);
 
-        if (grants.length === 0) {
-          continue;
+        if (grants.length > 0) {
+          console.log(`[Deadline Reminders] Found ${grants.length} external deadline grants for ${org.org_name} at ${interval.days} days`);
+
+          let sentCount = 0;
+          let failedCount = 0;
+
+          for (const member of members) {
+            const result = await sendDeadlineEmail(member, org.org_name, interval.days, grants, 'external');
+            if (result.success) {
+              sentCount++;
+            } else {
+              failedCount++;
+            }
+          }
+
+          await createInAppNotifications(supabase, org.org_id, members, grants, interval.days, 'external');
+
+          totalEmailsSent += sentCount;
+          totalEmailsFailed += failedCount;
+          totalNotifications += grants.length * members.length;
+
+          orgResult.reminders.push({
+            type: 'external',
+            days_until: interval.days,
+            grants_count: grants.length,
+            members_notified: members.length,
+            emails_sent: sentCount,
+            emails_failed: failedCount,
+          });
         }
+      }
 
-        console.log(`[Deadline Reminders] Found ${grants.length} grants for ${org.org_name} at ${interval.days} days`);
+      // Process LOI deadlines
+      if (org.loi_deadline_reminders_enabled) {
+        for (const interval of loiReminderIntervals) {
+          if (!org[interval.setting as keyof OrganizationSettings]) {
+            continue;
+          }
 
-        // Get organization members
-        const members = await getOrgMembers(supabase, org.org_id);
+          const grants = await getGrantsWithLOIDeadline(supabase, org.org_id, interval.days);
 
-        if (members.length === 0) {
-          console.warn(`[Deadline Reminders] No members found for org ${org.org_id}`);
-          continue;
-        }
+          if (grants.length > 0) {
+            console.log(`[Deadline Reminders] Found ${grants.length} LOI deadline grants for ${org.org_name} at ${interval.days} days`);
 
-        let sentCount = 0;
-        let failedCount = 0;
+            let sentCount = 0;
+            let failedCount = 0;
 
-        // Send email to each member
-        for (const member of members) {
-          const result = await sendDeadlineEmail(member, org.org_name, interval.days, grants);
-          if (result.success) {
-            sentCount++;
-          } else {
-            failedCount++;
+            for (const member of members) {
+              const result = await sendDeadlineEmail(member, org.org_name, interval.days, grants, 'loi');
+              if (result.success) {
+                sentCount++;
+              } else {
+                failedCount++;
+              }
+            }
+
+            await createInAppNotifications(supabase, org.org_id, members, grants, interval.days, 'loi');
+
+            totalEmailsSent += sentCount;
+            totalEmailsFailed += failedCount;
+            totalNotifications += grants.length * members.length;
+
+            orgResult.reminders.push({
+              type: 'loi',
+              days_until: interval.days,
+              grants_count: grants.length,
+              members_notified: members.length,
+              emails_sent: sentCount,
+              emails_failed: failedCount,
+            });
           }
         }
+      }
 
-        // Create in-app notifications
-        await createInAppNotifications(supabase, org.org_id, members, grants, interval.days);
+      // Process internal deadlines
+      if (org.internal_deadline_reminders_enabled) {
+        for (const interval of internalReminderIntervals) {
+          if (!org[interval.setting as keyof OrganizationSettings]) {
+            continue;
+          }
 
-        totalEmailsSent += sentCount;
-        totalEmailsFailed += failedCount;
-        totalNotifications += grants.length * members.length;
+          const grants = await getGrantsWithInternalDeadline(supabase, org.org_id, interval.days);
 
-        orgResult.reminders.push({
-          days_until: interval.days,
-          grants_count: grants.length,
-          members_notified: members.length,
-          emails_sent: sentCount,
-          emails_failed: failedCount,
-        });
+          if (grants.length > 0) {
+            console.log(`[Deadline Reminders] Found ${grants.length} internal deadline grants for ${org.org_name} at ${interval.days} days`);
+
+            let sentCount = 0;
+            let failedCount = 0;
+
+            for (const member of members) {
+              const result = await sendDeadlineEmail(member, org.org_name, interval.days, grants, 'internal');
+              if (result.success) {
+                sentCount++;
+              } else {
+                failedCount++;
+              }
+            }
+
+            await createInAppNotifications(supabase, org.org_id, members, grants, interval.days, 'internal');
+
+            totalEmailsSent += sentCount;
+            totalEmailsFailed += failedCount;
+            totalNotifications += grants.length * members.length;
+
+            orgResult.reminders.push({
+              type: 'internal',
+              days_until: interval.days,
+              grants_count: grants.length,
+              members_notified: members.length,
+              emails_sent: sentCount,
+              emails_failed: failedCount,
+            });
+          }
+        }
       }
 
       if (orgResult.reminders.length > 0) {

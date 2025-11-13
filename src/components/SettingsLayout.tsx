@@ -19,6 +19,7 @@ import {
   IconCreditCard,
   IconMail,
   IconShieldLock,
+  IconShieldCheck,
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { AppHeader } from './AppHeader';
@@ -92,6 +93,12 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       label: 'Admin',
       icon: IconShieldLock,
       adminOnly: true,
+    },
+    {
+      value: 'privacy',
+      path: '/settings/privacy',
+      label: 'Privacy & Data',
+      icon: IconShieldCheck,
     },
     {
       value: 'danger',

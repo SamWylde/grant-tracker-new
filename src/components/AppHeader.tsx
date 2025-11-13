@@ -108,6 +108,15 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               </Anchor>
               <Anchor
                 component={Link}
+                to="/analytics"
+                c={isActive('/analytics') ? 'grape' : 'dark'}
+                fw={isActive('/analytics') ? 600 : 400}
+                underline="never"
+              >
+                Analytics
+              </Anchor>
+              <Anchor
+                component={Link}
                 to="/activity"
                 c={isActive('/activity') ? 'grape' : 'dark'}
                 fw={isActive('/activity') ? 600 : 400}
@@ -193,6 +202,16 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   onClick={() => setMobileMenuOpened(false)}
                 >
                   Metrics
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/analytics"
+                  c={isActive('/analytics') ? 'grape' : 'dark'}
+                  fw={isActive('/analytics') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Analytics
                 </Anchor>
                 <Anchor
                   component={Link}

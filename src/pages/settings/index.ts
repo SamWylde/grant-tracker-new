@@ -8,4 +8,5 @@ export { CalendarPage } from './CalendarPage';
 export { BillingPage } from './BillingPage';
 export { ReportsPage } from './ReportsPage';
 export { DangerZonePage } from './DangerZonePage';
+export { PrivacyDataPage } from './PrivacyDataPage';
 export { AdminPage } from './AdminPage';
