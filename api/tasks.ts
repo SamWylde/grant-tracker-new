@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { generateTaskAssignmentEmail } from '../lib/emails/task-assignment-template';
-import { sendNotifications, getAssignedUserName } from './utils/notifications';
+import { generateTaskAssignmentEmail } from '../lib/emails/task-assignment-template.js';
+import { sendNotifications, getAssignedUserName } from './utils/notifications.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

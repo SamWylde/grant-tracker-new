@@ -7,9 +7,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { CustomGrantAdapter, type CustomGrantInput } from '../../lib/grants/adapters/CustomGrantAdapter';
-import type { GrantSource } from '../../lib/grants/types';
-import { GoogleCalendarService } from '../../lib/google-calendar/GoogleCalendarService';
+import { CustomGrantAdapter, type CustomGrantInput } from '../../lib/grants/adapters/CustomGrantAdapter.js';
+import type { GrantSource } from '../../lib/grants/types.js';
+import { GoogleCalendarService } from '../../lib/google-calendar/GoogleCalendarService.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
