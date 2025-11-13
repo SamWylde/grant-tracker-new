@@ -169,16 +169,18 @@ export default async function handler(
           return res.status(200).send(csv);
         }
 
-        // Enrich grants with descriptions from Grants.gov if missing
-        const grantsWithoutDescriptions = validGrants.filter(g => !g.description);
+        // Enrich grants with titles and descriptions from Grants.gov if missing/placeholder
+        const grantsNeedingEnrichment = validGrants.filter(g =>
+          !g.description || !g.title || /^Grant \d+$/.test(g.title) || g.title === 'Untitled Grant'
+        );
 
-        if (grantsWithoutDescriptions.length > 0) {
-          console.log(`[Saved API] Fetching ${grantsWithoutDescriptions.length} descriptions from Grants.gov`);
+        if (grantsNeedingEnrichment.length > 0) {
+          console.log(`[Saved API] Fetching ${grantsNeedingEnrichment.length} grant details from Grants.gov`);
 
-          // Fetch descriptions in batches
+          // Fetch details in batches
           const batchSize = 10;
-          for (let i = 0; i < grantsWithoutDescriptions.length; i += batchSize) {
-            const batch = grantsWithoutDescriptions.slice(i, i + batchSize);
+          for (let i = 0; i < grantsNeedingEnrichment.length; i += batchSize) {
+            const batch = grantsNeedingEnrichment.slice(i, i + batchSize);
 
             await Promise.all(
               batch.map(async (grant) => {
@@ -191,28 +193,40 @@ export default async function handler(
 
                   if (detailsResponse.ok) {
                     const detailsData = await detailsResponse.json();
+                    const title = detailsData?.data?.title || null;
                     const description = detailsData?.data?.synopsis?.synopsisDesc || null;
 
-                    if (description) {
-                      // Update in-memory grant
-                      grant.description = description;
+                    const updates: any = {};
 
-                      // Update database asynchronously
+                    // Update title if it's a placeholder and we have a real title
+                    if (title && (!grant.title || /^Grant \d+$/.test(grant.title) || grant.title === 'Untitled Grant')) {
+                      grant.title = title;
+                      updates.title = title;
+                    }
+
+                    // Update description if missing
+                    if (description && !grant.description) {
+                      grant.description = description;
+                      updates.description = description;
+                    }
+
+                    // Update database asynchronously if we have changes
+                    if (Object.keys(updates).length > 0) {
                       void (async () => {
                         try {
                           await supabase
                             .from('org_grants_saved')
-                            .update({ description })
+                            .update(updates)
                             .eq('id', grant.id);
-                          console.log(`[Saved API] Cached description for grant ${grant.id}`);
+                          console.log(`[Saved API] Cached grant data for ${grant.id}:`, Object.keys(updates).join(', '));
                         } catch (err) {
-                          console.warn(`[Saved API] Failed to cache description:`, err);
+                          console.warn(`[Saved API] Failed to cache grant data:`, err);
                         }
                       })();
                     }
                   }
                 } catch (err) {
-                  console.warn(`[Saved API] Failed to fetch description for grant ${grant.external_id}:`, err);
+                  console.warn(`[Saved API] Failed to fetch details for grant ${grant.external_id}:`, err);
                 }
               })
             );
