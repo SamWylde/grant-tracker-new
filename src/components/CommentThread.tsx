@@ -1,6 +1,6 @@
 import { Stack, Paper, Group, Text, Avatar, ActionIcon, Menu, Button, Textarea, Box } from "@mantine/core";
 import { IconDots, IconEdit, IconTrash, IconCornerDownRight } from "@tabler/icons-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
@@ -28,6 +28,7 @@ interface CommentThreadProps {
   onEdit: (commentId: string, content: string) => void;
   onDelete: (commentId: string) => void;
   level?: number;
+  highlightCommentId?: string | null;
 }
 
 function CommentItem({
@@ -36,20 +37,39 @@ function CommentItem({
   onEdit,
   onDelete,
   level = 0,
+  highlightCommentId,
 }: {
   comment: Comment;
   onReply: (id: string) => void;
   onEdit: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   level: number;
+  highlightCommentId?: string | null;
 }) {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);
   const [isDeleting, setIsDeleting] = useState(false);
+  const commentRef = useRef<HTMLDivElement>(null);
+  const [isHighlighted, setIsHighlighted] = useState(false);
 
   const isOwner = user?.id === comment.user_id;
   const indent = level * 32; // 32px per level
+
+  // Scroll to and highlight this comment if it matches the highlightCommentId
+  useEffect(() => {
+    if (highlightCommentId && comment.id === highlightCommentId) {
+      setIsHighlighted(true);
+      // Scroll to comment after a brief delay to ensure DOM is ready
+      setTimeout(() => {
+        commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setIsHighlighted(false);
+      }, 3000);
+    }
+  }, [highlightCommentId, comment.id]);
 
   const handleSaveEdit = async () => {
     if (editContent.trim() === comment.content.trim()) {
@@ -99,8 +119,18 @@ function CommentItem({
   };
 
   return (
-    <Box ml={indent}>
-      <Paper p="sm" withBorder radius="md" mb="sm">
+    <Box ml={indent} ref={commentRef}>
+      <Paper
+        p="sm"
+        withBorder
+        radius="md"
+        mb="sm"
+        style={{
+          backgroundColor: isHighlighted ? 'var(--mantine-color-blue-0)' : undefined,
+          borderColor: isHighlighted ? 'var(--mantine-color-blue-6)' : undefined,
+          transition: 'all 0.3s ease',
+        }}
+      >
         <Group justify="space-between" align="flex-start" mb="xs">
           <Group gap="sm">
             <Avatar
@@ -220,6 +250,7 @@ function CommentItem({
               onEdit={onEdit}
               onDelete={onDelete}
               level={level + 1}
+              highlightCommentId={highlightCommentId}
             />
           ))}
         </Stack>
@@ -234,6 +265,7 @@ export function CommentThread({
   onEdit,
   onDelete,
   level = 0,
+  highlightCommentId,
 }: CommentThreadProps) {
   if (comments.length === 0) {
     return (
@@ -255,6 +287,7 @@ export function CommentThread({
           onEdit={onEdit}
           onDelete={onDelete}
           level={level}
+          highlightCommentId={highlightCommentId}
         />
       ))}
     </Stack>

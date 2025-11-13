@@ -23,12 +23,30 @@ import {
   IconCalendar,
   IconUser,
   IconCheck,
+  IconGripVertical,
 } from "@tabler/icons-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Task {
   id: string;
@@ -72,6 +90,156 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   custom: "Custom",
 };
 
+// SortableTaskItem component for drag-and-drop
+interface SortableTaskItemProps {
+  task: Task;
+  onToggleComplete: (task: Task) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
+  teamMembers: any[];
+}
+
+function SortableTaskItem({
+  task,
+  onToggleComplete,
+  onEdit,
+  onDelete,
+  teamMembers,
+}: SortableTaskItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Group
+      ref={setNodeRef}
+      style={{
+        ...style,
+        border: "1px solid var(--mantine-color-gray-3)",
+        borderRadius: "var(--mantine-radius-md)",
+        backgroundColor:
+          task.status === "completed"
+            ? "var(--mantine-color-gray-0)"
+            : "white",
+      }}
+      wrap="nowrap"
+      align="flex-start"
+      p="sm"
+      {...attributes}
+    >
+      {/* Drag Handle */}
+      <ActionIcon
+        {...listeners}
+        variant="subtle"
+        color="gray"
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        mt={2}
+      >
+        <IconGripVertical size={16} />
+      </ActionIcon>
+
+      <Checkbox
+        checked={task.status === "completed"}
+        onChange={() => onToggleComplete(task)}
+        size="md"
+        mt={2}
+      />
+      <Stack gap={4} style={{ flex: 1 }}>
+        <Group gap="xs">
+          <Text
+            size="sm"
+            fw={500}
+            td={task.status === "completed" ? "line-through" : undefined}
+            c={task.status === "completed" ? "dimmed" : undefined}
+          >
+            {task.title}
+            {task.is_required && (
+              <Text component="span" c="red" ml={4}>
+                *
+              </Text>
+            )}
+          </Text>
+          <Badge
+            size="xs"
+            color={TASK_TYPE_COLORS[task.task_type] || "gray"}
+            variant="light"
+          >
+            {TASK_TYPE_LABELS[task.task_type] || task.task_type}
+          </Badge>
+          {task.status === "completed" && (
+            <Badge size="xs" color="green" variant="light" leftSection={<IconCheck size={12} />}>
+              Done
+            </Badge>
+          )}
+        </Group>
+        {task.description && (
+          <Text size="xs" c="dimmed">
+            {task.description}
+          </Text>
+        )}
+        <Group gap="md">
+          {task.due_date && (
+            <Group gap={4}>
+              <IconCalendar size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
+              <Text size="xs" c="dimmed">
+                Due {dayjs(task.due_date).format("MMM D, YYYY")}
+              </Text>
+            </Group>
+          )}
+          {task.assigned_to && (
+            <Group gap={4}>
+              <IconUser size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
+              <Text size="xs" c="dimmed">
+                {(() => {
+                  const member = teamMembers?.find((m: any) => m.user_id === task.assigned_to);
+                  return member?.full_name || member?.email || "Assigned";
+                })()}
+              </Text>
+            </Group>
+          )}
+        </Group>
+      </Stack>
+      <Menu position="bottom-end" withinPortal>
+        <Menu.Target>
+          <ActionIcon variant="subtle" color="gray">
+            <IconDots size={16} />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconEdit size={14} />}
+            onClick={() => onEdit(task)}
+          >
+            Edit
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconTrash size={14} />}
+            color="red"
+            onClick={() => {
+              if (confirm("Are you sure you want to delete this task?")) {
+                onDelete(task.id);
+              }
+            }}
+          >
+            Delete
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    </Group>
+  );
+}
+
 export function TaskList({ grantId, orgId }: TaskListProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -84,6 +252,14 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
     due_date: "",
     assigned_to: "",
   });
+
+  // Set up drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Fetch team members for assignment using RPC function
   const { data: teamMembers } = useQuery({
@@ -248,6 +424,66 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
     },
   });
 
+  // Reorder tasks mutation
+  const reorderTasksMutation = useMutation({
+    mutationFn: async (reorderedTasks: Task[]) => {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Update positions for all tasks
+      const updates = reorderedTasks.map((task, index) => ({
+        id: task.id,
+        position: index + 1,
+      }));
+
+      // Update each task's position
+      await Promise.all(
+        updates.map((update) =>
+          fetch(`/api/tasks?id=${update.id}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ position: update.position }),
+          })
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["grant-tasks", grantId] });
+    },
+    onError: () => {
+      notifications.show({
+        title: "Error",
+        message: "Failed to reorder tasks",
+        color: "red",
+      });
+    },
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = tasks.findIndex((t) => t.id === active.id);
+      const newIndex = tasks.findIndex((t) => t.id === over.id);
+
+      const reorderedTasks = arrayMove(tasks, oldIndex, newIndex);
+
+      // Optimistically update the UI
+      queryClient.setQueryData(["grant-tasks", grantId], {
+        tasks: reorderedTasks,
+      });
+
+      // Persist to backend
+      reorderTasksMutation.mutate(reorderedTasks);
+    }
+  };
+
   const handleToggleComplete = (task: Task) => {
     const newStatus = task.status === "completed" ? "pending" : "completed";
     updateTaskMutation.mutate({
@@ -289,113 +525,30 @@ export function TaskList({ grantId, orgId }: TaskListProps) {
         </Box>
       )}
 
-      {/* Task List */}
-      <Stack gap="xs">
-        {tasks.map((task) => (
-          <Group
-            key={task.id}
-            wrap="nowrap"
-            align="flex-start"
-            p="sm"
-            style={{
-              border: "1px solid var(--mantine-color-gray-3)",
-              borderRadius: "var(--mantine-radius-md)",
-              backgroundColor:
-                task.status === "completed"
-                  ? "var(--mantine-color-gray-0)"
-                  : "white",
-            }}
-          >
-            <Checkbox
-              checked={task.status === "completed"}
-              onChange={() => handleToggleComplete(task)}
-              size="md"
-              mt={2}
-            />
-            <Stack gap={4} style={{ flex: 1 }}>
-              <Group gap="xs">
-                <Text
-                  size="sm"
-                  fw={500}
-                  td={task.status === "completed" ? "line-through" : undefined}
-                  c={task.status === "completed" ? "dimmed" : undefined}
-                >
-                  {task.title}
-                  {task.is_required && (
-                    <Text component="span" c="red" ml={4}>
-                      *
-                    </Text>
-                  )}
-                </Text>
-                <Badge
-                  size="xs"
-                  color={TASK_TYPE_COLORS[task.task_type] || "gray"}
-                  variant="light"
-                >
-                  {TASK_TYPE_LABELS[task.task_type] || task.task_type}
-                </Badge>
-                {task.status === "completed" && (
-                  <Badge size="xs" color="green" variant="light" leftSection={<IconCheck size={12} />}>
-                    Done
-                  </Badge>
-                )}
-              </Group>
-              {task.description && (
-                <Text size="xs" c="dimmed">
-                  {task.description}
-                </Text>
-              )}
-              <Group gap="md">
-                {task.due_date && (
-                  <Group gap={4}>
-                    <IconCalendar size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
-                    <Text size="xs" c="dimmed">
-                      Due {dayjs(task.due_date).format("MMM D, YYYY")}
-                    </Text>
-                  </Group>
-                )}
-                {task.assigned_to && (
-                  <Group gap={4}>
-                    <IconUser size={14} style={{ color: "var(--mantine-color-gray-6)" }} />
-                    <Text size="xs" c="dimmed">
-                      {(() => {
-                        const member = teamMembers?.find((m: any) => m.user_id === task.assigned_to);
-                        return member?.full_name || member?.email || "Assigned";
-                      })()}
-                    </Text>
-                  </Group>
-                )}
-              </Group>
-            </Stack>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <ActionIcon variant="subtle" color="gray">
-                  <IconDots size={16} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<IconEdit size={14} />}
-                  onClick={() => setEditingTask(task)}
-                >
-                  Edit
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<IconTrash size={14} />}
-                  color="red"
-                  onClick={() => {
-                    if (confirm("Are you sure you want to delete this task?")) {
-                      deleteTaskMutation.mutate(task.id);
-                    }
-                  }}
-                >
-                  Delete
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Group>
-        ))}
-      </Stack>
+      {/* Task List with Drag and Drop */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <Stack gap="xs">
+            {tasks.map((task) => (
+              <SortableTaskItem
+                key={task.id}
+                task={task}
+                onToggleComplete={handleToggleComplete}
+                onEdit={setEditingTask}
+                onDelete={deleteTaskMutation.mutate}
+                teamMembers={teamMembers || []}
+              />
+            ))}
+          </Stack>
+        </SortableContext>
+      </DndContext>
 
       {/* Add Task Button */}
       <Button

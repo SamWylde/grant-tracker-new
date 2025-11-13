@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Box,
   Container,
@@ -55,8 +56,10 @@ export function PipelinePage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
   const [filters, setFilters] = useState<GrantFilterValues>({
     priority: [],
     assignedTo: [],
@@ -65,6 +68,25 @@ export function PipelinePage() {
 
   // Fetch saved grants using shared hook
   const { data, isLoading, error } = useSavedGrants();
+
+  // Handle URL parameters for deep linking from mentions
+  useEffect(() => {
+    const grantId = searchParams.get('grant');
+    const commentId = searchParams.get('comment');
+
+    if (grantId && data) {
+      // Find the grant in the loaded data
+      const grant = data.grants.find((g: SavedGrant) => g.id === grantId);
+      if (grant) {
+        setSelectedGrant(grant);
+        if (commentId) {
+          setHighlightCommentId(commentId);
+        }
+        // Clear URL parameters after opening
+        setSearchParams({});
+      }
+    }
+  }, [searchParams, data, setSearchParams]);
 
   // Update grant status mutation with optimistic updates
   const updateStatusMutation = useMutation({
@@ -653,7 +675,11 @@ export function PipelinePage() {
       <GrantDetailDrawer
         grant={selectedGrant}
         opened={!!selectedGrant}
-        onClose={() => setSelectedGrant(null)}
+        onClose={() => {
+          setSelectedGrant(null);
+          setHighlightCommentId(null);
+        }}
+        highlightCommentId={highlightCommentId}
       />
     </Box>
   );

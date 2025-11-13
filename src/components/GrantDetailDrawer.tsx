@@ -4,13 +4,13 @@ import {
   Group,
   Title,
   Text,
-  Badge,
   Divider,
   Button,
   Tabs,
   ScrollArea,
   Box,
   ActionIcon,
+  Select,
 } from "@mantine/core";
 import {
   IconExternalLink,
@@ -26,8 +26,8 @@ import {
   IconCheck,
   IconSparkles,
 } from "@tabler/icons-react";
-import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { TaskList } from "./TaskList";
@@ -68,6 +68,7 @@ interface GrantDetailDrawerProps {
   grant: Grant | null;
   opened: boolean;
   onClose: () => void;
+  highlightCommentId?: string | null;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -81,14 +82,63 @@ export function GrantDetailDrawer({
   grant,
   opened,
   onClose,
+  highlightCommentId,
 }: GrantDetailDrawerProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<string | null>("tasks");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [mentionedUsers, setMentionedUsers] = useState<Array<{ userId: string; userName: string }>>([]);
   const [replyingToCommentId, setReplyingToCommentId] = useState<string | null>(null);
   const [replyingToAuthor, setReplyingToAuthor] = useState<string | null>(null);
+
+  // Switch to comments tab when highlightCommentId is provided
+  useEffect(() => {
+    if (highlightCommentId && opened) {
+      setActiveTab("comments");
+    }
+  }, [highlightCommentId, opened]);
+
+  // Mutation for updating grant status/priority
+  const updateGrantMutation = useMutation({
+    mutationFn: async ({ field, value }: { field: 'status' | 'priority'; value: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch(`/api/saved-status?id=${grant?.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update grant');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
+      notifications.show({
+        title: 'Success',
+        message: 'Grant updated successfully',
+        color: 'green',
+      });
+    },
+    onError: (error) => {
+      notifications.show({
+        title: 'Error',
+        message: error instanceof Error ? error.message : 'Failed to update grant',
+        color: 'red',
+      });
+    },
+  });
 
   // Fetch tasks for this grant
   const { data: tasksData } = useQuery({
@@ -304,17 +354,59 @@ export function GrantDetailDrawer({
         {/* Grant Header */}
         <Box>
           <Group mb="xs" gap="xs">
-            {grant.priority && (
-              <Badge
-                color={PRIORITY_COLORS[grant.priority] || "gray"}
-                variant="light"
-              >
-                {grant.priority.charAt(0).toUpperCase() + grant.priority.slice(1)}
-              </Badge>
-            )}
-            <Badge variant="light" color="blue">
-              {grant.status.charAt(0).toUpperCase() + grant.status.slice(1)}
-            </Badge>
+            {/* Inline Priority Editor */}
+            <Select
+              value={grant.priority || 'medium'}
+              onChange={(value) => {
+                if (value) {
+                  updateGrantMutation.mutate({ field: 'priority', value });
+                }
+              }}
+              data={[
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'urgent', label: 'Urgent' },
+              ]}
+              size="xs"
+              w={110}
+              styles={{
+                input: {
+                  backgroundColor: grant.priority ? `var(--mantine-color-${PRIORITY_COLORS[grant.priority]}-0)` : 'var(--mantine-color-gray-0)',
+                  border: `1px solid var(--mantine-color-${PRIORITY_COLORS[grant.priority || 'gray']}-3)`,
+                  color: `var(--mantine-color-${PRIORITY_COLORS[grant.priority || 'gray']}-7)`,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                },
+              }}
+            />
+
+            {/* Inline Status Editor */}
+            <Select
+              value={grant.status}
+              onChange={(value) => {
+                if (value) {
+                  updateGrantMutation.mutate({ field: 'status', value });
+                }
+              }}
+              data={[
+                { value: 'researching', label: 'Researching' },
+                { value: 'drafting', label: 'Drafting' },
+                { value: 'submitted', label: 'Submitted' },
+                { value: 'awarded', label: 'Awarded' },
+              ]}
+              size="xs"
+              w={130}
+              styles={{
+                input: {
+                  backgroundColor: 'var(--mantine-color-blue-0)',
+                  border: '1px solid var(--mantine-color-blue-3)',
+                  color: 'var(--mantine-color-blue-7)',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                },
+              }}
+            />
           </Group>
           <Title order={3} mb="sm">
             {grant.title}
@@ -479,7 +571,7 @@ export function GrantDetailDrawer({
         <Divider />
 
         {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Notes, and Comments */}
-        <Tabs defaultValue="tasks">
+        <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
             <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} />}>
@@ -606,6 +698,7 @@ export function GrantDetailDrawer({
                 onReply={handleReply}
                 onEdit={handleEditComment}
                 onDelete={handleDeleteComment}
+                highlightCommentId={highlightCommentId}
               />
             </Stack>
           </Tabs.Panel>

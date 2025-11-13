@@ -32,6 +32,10 @@ interface GrantsGovOpportunity {
   eligibleApplicants?: string;
   fundingInstrument?: string;
   category?: string;
+  // For fetchOpportunity response (nested structure)
+  synopsis?: {
+    synopsisDesc?: string;
+  };
 }
 
 interface GrantsGovSearchResponse {
@@ -154,7 +158,10 @@ export class GrantsGovAdapter extends BaseGrantAdapter {
 
       // Core data
       title: this.cleanText(opp.title) || 'Untitled Grant',
-      description: this.cleanText(opp.description),
+      // Description can come from two places:
+      // 1. opp.description (from search2 API - usually null)
+      // 2. opp.synopsis.synopsisDesc (from fetchOpportunity API - full description)
+      description: this.cleanText(opp.synopsis?.synopsisDesc || opp.description),
       agency: this.cleanText(opp.agencyName),
       opportunity_number: opp.number,
 
