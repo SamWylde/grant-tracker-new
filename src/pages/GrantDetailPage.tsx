@@ -28,6 +28,7 @@ import {
   IconCheck,
   IconSparkles,
   IconFile,
+  IconClipboardCheck,
 } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -40,6 +41,7 @@ import { PaymentScheduleTab } from "../components/PaymentScheduleTab";
 import { ComplianceTab } from "../components/ComplianceTab";
 import { AISummaryTab } from "../components/AISummaryTab";
 import { DocumentsTab } from "../components/DocumentsTab";
+import { PreFlightChecklistTab } from "../components/PreFlightChecklistTab";
 import { MentionTextarea } from "../components/MentionTextarea";
 import { CommentThread } from "../components/CommentThread";
 import { CommentInput } from "../components/CommentInput";
@@ -669,10 +671,13 @@ export function GrantDetailPage() {
 
           <Divider />
 
-          {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Notes, and Comments */}
+          {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Pre-Flight Checklist, Notes, and Comments */}
           <Tabs value={activeTab} onChange={setActiveTab}>
             <Tabs.List>
               <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
+              <Tabs.Tab value="preflight" leftSection={<IconClipboardCheck size={14} />}>
+                Pre-Flight Checklist
+              </Tabs.Tab>
               <Tabs.Tab value="documents" leftSection={<IconFile size={14} />}>
                 Documents
               </Tabs.Tab>
@@ -697,6 +702,10 @@ export function GrantDetailPage() {
 
             <Tabs.Panel value="tasks" pt="md">
               <TaskList grantId={grant.id} orgId={grant.org_id} />
+            </Tabs.Panel>
+
+            <Tabs.Panel value="preflight" pt="md">
+              <PreFlightChecklistTab grantId={grant.id} orgId={grant.org_id} />
             </Tabs.Panel>
 
             <Tabs.Panel value="documents" pt="md">
