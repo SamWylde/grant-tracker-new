@@ -17,6 +17,7 @@ import {
   IconBellRinging,
   IconCalendar,
   IconCreditCard,
+  IconMail,
   IconShieldLock,
   IconAlertTriangle,
 } from '@tabler/icons-react';
@@ -78,6 +79,12 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
       path: '/settings/billing',
       label: 'Billing',
       icon: IconCreditCard,
+    },
+    {
+      value: 'reports',
+      path: '/settings/reports',
+      label: 'Reports',
+      icon: IconMail,
     },
     {
       value: 'admin',

@@ -81,15 +81,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               </Anchor>
               <Anchor
                 component={Link}
-                to="/saved"
-                c={isActive('/saved') ? 'grape' : 'dark'}
-                fw={isActive('/saved') ? 600 : 400}
-                underline="never"
-              >
-                Saved
-              </Anchor>
-              <Anchor
-                component={Link}
                 to="/pipeline"
                 c={isActive('/pipeline') ? 'grape' : 'dark'}
                 fw={isActive('/pipeline') ? 600 : 400}
@@ -163,16 +154,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   onClick={() => setMobileMenuOpened(false)}
                 >
                   Discover
-                </Anchor>
-                <Anchor
-                  component={Link}
-                  to="/saved"
-                  c={isActive('/saved') ? 'grape' : 'dark'}
-                  fw={isActive('/saved') ? 600 : 400}
-                  underline="never"
-                  onClick={() => setMobileMenuOpened(false)}
-                >
-                  Saved
                 </Anchor>
                 <Anchor
                   component={Link}

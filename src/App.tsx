@@ -3,7 +3,7 @@ import "@mantine/notifications/styles.css";
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
@@ -20,7 +20,6 @@ import { TermsPage } from "./pages/TermsPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { SupportPage } from "./pages/SupportPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
-import { SavedGrantsPage } from "./pages/SavedGrantsPage";
 import { PipelinePage } from "./pages/PipelinePage";
 import { MetricsPage } from "./pages/MetricsPage";
 import { ActivityPage } from "./pages/ActivityPage";
@@ -35,10 +34,12 @@ import {
   ProfilePage,
   OrganizationPage,
   TeamPage,
+  TeamPerformancePage,
   NotificationsPage,
   AlertsPage,
   CalendarPage,
   BillingPage,
+  ReportsPage,
   DangerZonePage,
   AdminPage,
 } from "./pages/settings";
@@ -80,7 +81,8 @@ export default function App() {
 
                 {/* Protected Routes */}
                 <Route path="/discover" element={<ProtectedRoute><DiscoverPage /></ProtectedRoute>} />
-                <Route path="/saved" element={<ProtectedRoute><SavedGrantsPage /></ProtectedRoute>} />
+                {/* Redirect /saved to /pipeline with list view */}
+                <Route path="/saved" element={<Navigate to="/pipeline?view=list" replace />} />
                 <Route path="/pipeline" element={<ProtectedRoute><PipelinePage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
                 <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
@@ -91,10 +93,12 @@ export default function App() {
                 <Route path="/settings/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/settings/org" element={<ProtectedRoute><OrganizationPage /></ProtectedRoute>} />
                 <Route path="/settings/team" element={<ProtectedRoute><TeamPage /></ProtectedRoute>} />
+                <Route path="/settings/team/performance" element={<ProtectedRoute><TeamPerformancePage /></ProtectedRoute>} />
                 <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
                 <Route path="/settings/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
                 <Route path="/settings/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
                 <Route path="/settings/billing" element={<ProtectedRoute><BillingPage /></ProtectedRoute>} />
+                <Route path="/settings/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
                 <Route path="/settings/workflows" element={<AdminRoute><ApprovalWorkflowsPage /></AdminRoute>} />
                 <Route path="/settings/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                 <Route path="/settings/danger" element={<ProtectedRoute><DangerZonePage /></ProtectedRoute>} />

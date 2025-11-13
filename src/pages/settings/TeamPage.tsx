@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Stack,
@@ -17,7 +18,7 @@ import {
   Avatar,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
-import { IconTrash, IconX, IconUserEdit, IconCopy } from '@tabler/icons-react';
+import { IconTrash, IconX, IconUserEdit, IconCopy, IconChartBar } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useOrganization } from '../../contexts/OrganizationContext';
@@ -32,6 +33,7 @@ const ROLES = [
 ];
 
 export function TeamPage() {
+  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
   const { hasPermission, isAdmin } = usePermission();
@@ -440,6 +442,28 @@ export function TeamPage() {
 
             {/* Right Column - Help */}
             <Stack gap="lg">
+              {/* Team Performance Link */}
+              <Paper p="md" withBorder bg="var(--mantine-color-blue-0)">
+                <Stack gap="sm">
+                  <Group>
+                    <IconChartBar size={24} color="var(--mantine-color-blue-6)" />
+                    <Title order={4}>Team Performance</Title>
+                  </Group>
+                  <Text size="sm">
+                    Track individual contributor metrics, submission rates, success rates, and team leaderboard.
+                  </Text>
+                  <Button
+                    variant="light"
+                    color="blue"
+                    fullWidth
+                    leftSection={<IconChartBar size={16} />}
+                    onClick={() => navigate('/settings/team/performance')}
+                  >
+                    View Performance Dashboard
+                  </Button>
+                </Stack>
+              </Paper>
+
               <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
                 <Stack gap="sm">
                   <Title order={4}>About Roles</Title>

@@ -1,9 +1,11 @@
 export { ProfilePage } from './ProfilePage';
 export { OrganizationPage } from './OrganizationPage';
 export { TeamPage } from './TeamPage';
+export { TeamPerformancePage } from './TeamPerformancePage';
 export { NotificationsPage } from './NotificationsPage';
 export { AlertsPage } from './AlertsPage';
 export { CalendarPage } from './CalendarPage';
 export { BillingPage } from './BillingPage';
+export { ReportsPage } from './ReportsPage';
 export { DangerZonePage } from './DangerZonePage';
 export { AdminPage } from './AdminPage';

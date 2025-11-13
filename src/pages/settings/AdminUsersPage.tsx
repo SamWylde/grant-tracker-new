@@ -10,13 +10,18 @@ import {
   TextInput,
   Alert,
   Tooltip,
+  Button,
+  Modal,
+  Loader,
 } from '@mantine/core';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   IconAlertCircle,
   IconShieldCheck,
+  IconEdit,
 } from '@tabler/icons-react';
 import { supabase } from '../../lib/supabase';
+import { notifications } from '@mantine/notifications';
 
 interface User {
   id: string;
@@ -35,6 +40,9 @@ interface User {
 
 export function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editedName, setEditedName] = useState('');
+  const queryClient = useQueryClient();
 
   // Fetch all users
   const { data: users, isLoading, error } = useQuery({
@@ -58,10 +66,60 @@ export function AdminUsersPage() {
     },
   });
 
+  // Update username mutation
+  const updateUsernameMutation = useMutation({
+    mutationFn: async ({ user_id, full_name }: { user_id: string; full_name: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const response = await fetch('/api/admin/update-username', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id, full_name }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update username');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      notifications.show({
+        title: 'Success',
+        message: 'Username updated successfully',
+        color: 'green',
+      });
+      setEditingUser(null);
+    },
+    onError: (error: Error) => {
+      notifications.show({
+        title: 'Error',
+        message: error.message,
+        color: 'red',
+      });
+    },
+  });
+
   const filteredUsers = users?.filter(user =>
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (user.full_name?.toLowerCase()?.includes(searchQuery.toLowerCase()) ?? false)
   );
+
+  const handleOpenEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditedName(user.full_name || '');
+  };
+
+  const handleSaveUsername = () => {
+    if (!editingUser) return;
+    updateUsernameMutation.mutate({ user_id: editingUser.id, full_name: editedName });
+  };
 
   return (
     <Stack gap="lg">
@@ -99,7 +157,10 @@ export function AdminUsersPage() {
           </Group>
 
           {isLoading ? (
-            <Text size="sm" c="dimmed">Loading users...</Text>
+            <Group justify="center" py="xl">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">Loading users...</Text>
+            </Group>
           ) : filteredUsers && filteredUsers.length === 0 ? (
             <Text size="sm" c="dimmed" ta="center" py="xl">
               {searchQuery ? 'No users match your search' : 'No users found'}
@@ -114,6 +175,7 @@ export function AdminUsersPage() {
                     <Table.Th>Status</Table.Th>
                     <Table.Th>Created</Table.Th>
                     <Table.Th>Last Sign In</Table.Th>
+                    <Table.Th>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -169,6 +231,16 @@ export function AdminUsersPage() {
                             : 'Never'}
                         </Text>
                       </Table.Td>
+                      <Table.Td>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={<IconEdit size={14} />}
+                          onClick={() => handleOpenEditModal(user)}
+                        >
+                          Edit
+                        </Button>
+                      </Table.Td>
                     </Table.Tr>
                   ))}
                 </Table.Tbody>
@@ -177,6 +249,46 @@ export function AdminUsersPage() {
           )}
         </Stack>
       </Paper>
+
+      {/* Edit Modal */}
+      <Modal
+        opened={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        title="Edit User"
+        size="md"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Email"
+            value={editingUser?.email || ''}
+            disabled
+            description="Email cannot be changed"
+          />
+
+          <TextInput
+            label="Full Name"
+            placeholder="Enter full name"
+            value={editedName}
+            onChange={(e) => setEditedName(e.target.value)}
+            required
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={() => setEditingUser(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveUsername}
+              loading={updateUsernameMutation.isPending}
+            >
+              Save Changes
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }
