@@ -158,7 +158,9 @@ export function FunderInteractionsLog({ funderId }: FunderInteractionsLogProps) 
           org_id: currentOrg.id,
           funder_id: funderId,
           interaction_type: data.interaction_type,
-          interaction_date: data.interaction_date.toISOString(),
+          interaction_date: typeof data.interaction_date === 'string'
+            ? new Date(data.interaction_date).toISOString()
+            : data.interaction_date.toISOString(),
           contact_id: data.contact_id || null,
           notes: data.notes,
         }),
@@ -205,7 +207,11 @@ export function FunderInteractionsLog({ funderId }: FunderInteractionsLogProps) 
         },
         body: JSON.stringify({
           interaction_type: data.interaction_type,
-          interaction_date: data.interaction_date?.toISOString(),
+          interaction_date: data.interaction_date
+            ? (typeof data.interaction_date === 'string'
+              ? new Date(data.interaction_date).toISOString()
+              : data.interaction_date.toISOString())
+            : undefined,
           contact_id: data.contact_id || null,
           notes: data.notes,
         }),
