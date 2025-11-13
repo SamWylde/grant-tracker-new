@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon, Divider, Button, Avatar } from '@mantine/core';
-import { IconRocket, IconUser, IconSettings, IconLogout, IconBuilding } from '@tabler/icons-react';
+import { IconRocket, IconUser, IconSettings, IconLogout } from '@tabler/icons-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
