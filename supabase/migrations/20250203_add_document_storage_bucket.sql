@@ -46,8 +46,8 @@ WITH CHECK (
   AND (storage.foldername(name))[1] IN (
     SELECT o.id::text
     FROM public.organizations o
-    INNER JOIN public.user_organizations uo ON uo.organization_id = o.id
-    WHERE uo.user_id = auth.uid()
+    INNER JOIN public.org_members om ON om.org_id = o.id
+    WHERE om.user_id = auth.uid()
   )
 );
 
@@ -61,8 +61,8 @@ USING (
   AND (storage.foldername(name))[1] IN (
     SELECT o.id::text
     FROM public.organizations o
-    INNER JOIN public.user_organizations uo ON uo.organization_id = o.id
-    WHERE uo.user_id = auth.uid()
+    INNER JOIN public.org_members om ON om.org_id = o.id
+    WHERE om.user_id = auth.uid()
   )
 );
 
@@ -77,13 +77,13 @@ USING (
     -- User owns the file
     owner = auth.uid()
     OR
-    -- User is admin/owner of the organization
+    -- User is admin of the organization
     (storage.foldername(name))[1] IN (
       SELECT o.id::text
       FROM public.organizations o
-      INNER JOIN public.user_organizations uo ON uo.organization_id = o.id
-      WHERE uo.user_id = auth.uid()
-        AND uo.role IN ('admin', 'owner')
+      INNER JOIN public.org_members om ON om.org_id = o.id
+      WHERE om.user_id = auth.uid()
+        AND om.role = 'admin'
     )
   )
 );
@@ -99,13 +99,13 @@ USING (
     -- User owns the file
     owner = auth.uid()
     OR
-    -- User is admin/owner of the organization
+    -- User is admin of the organization
     (storage.foldername(name))[1] IN (
       SELECT o.id::text
       FROM public.organizations o
-      INNER JOIN public.user_organizations uo ON uo.organization_id = o.id
-      WHERE uo.user_id = auth.uid()
-        AND uo.role IN ('admin', 'owner')
+      INNER JOIN public.org_members om ON om.org_id = o.id
+      WHERE om.user_id = auth.uid()
+        AND om.role = 'admin'
     )
   )
 );
