@@ -41,14 +41,16 @@ BEGIN
       ogs.title IS NULL
       OR ogs.title = ''
       OR ogs.title = 'Untitled Grant'
-      OR ogs.title ~ '^Grant \d+$'           -- Matches "Grant 58617"
+      OR ogs.title = 'Unnamed Grant'
+      OR ogs.title ~ '^Grant [0-9]+$'        -- Matches "Grant 58617" (POSIX regex)
       OR ogs.title ~ '^Custom Grant '        -- Matches "Custom Grant XXX"
     )
     -- Only update if catalog has a real title
     AND gc.title IS NOT NULL
     AND gc.title != ''
     AND gc.title != 'Untitled Grant'
-    AND gc.title !~ '^Grant \d+$';
+    AND gc.title != 'Unnamed Grant'
+    AND gc.title !~ '^Grant [0-9]+$';
 
   GET DIAGNOSTICS v_titles_restored = ROW_COUNT;
   RAISE NOTICE 'Updated % grant titles', v_titles_restored;
