@@ -449,7 +449,7 @@ export function FunderInteractionsLog({ funderId }: FunderInteractionsLogProps) 
             placeholder="Select date and time"
             required
             value={formData.interaction_date}
-            onChange={(value) =>
+            onChange={(value: Date | null) =>
               setFormData({ ...formData, interaction_date: value || new Date() })
             }
           />

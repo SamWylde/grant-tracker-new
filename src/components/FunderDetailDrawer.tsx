@@ -4,10 +4,8 @@ import {
   Group,
   Text,
   Badge,
-  Button,
   Tabs,
   Loader,
-  ActionIcon,
   Box,
   Divider,
   Anchor,
@@ -19,7 +17,7 @@ import {
   IconFileText,
   IconMessage,
 } from "@tabler/icons-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { ContactsSection } from "./ContactsSection";
@@ -56,7 +54,6 @@ interface Grant {
 
 export function FunderDetailDrawer({ funderId, opened, onClose }: FunderDetailDrawerProps) {
   const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
 
   // Fetch funder details
   const { data: funder, isLoading } = useQuery<Funder>({
