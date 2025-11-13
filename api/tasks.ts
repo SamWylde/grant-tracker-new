@@ -1,8 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
+import { generateTaskAssignmentEmail } from '../lib/emails/task-assignment-template';
+import { sendNotifications, getAssignedUserName } from './utils/notifications';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const resendApiKey = process.env.RESEND_API_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Missing Supabase environment variables');
@@ -21,6 +25,101 @@ interface TaskRequest {
   is_required?: boolean;
   notes?: string;
   created_by: string;
+}
+
+/**
+ * Sends task assignment email notification
+ */
+async function sendTaskAssignmentEmail(
+  supabase: any,
+  taskId: string,
+  assigneeId: string,
+  assignerId: string,
+  isReassignment: boolean = false
+) {
+  if (!resendApiKey) {
+    console.warn('[Task Assignment] RESEND_API_KEY not configured - skipping email notification');
+    return;
+  }
+
+  try {
+    // Get task details with grant information
+    const { data: task } = await supabase
+      .from('grant_tasks')
+      .select(`
+        id,
+        title,
+        description,
+        due_date,
+        grant_id,
+        org_grants_saved!inner(
+          id,
+          title
+        ),
+        org_id
+      `)
+      .eq('id', taskId)
+      .single();
+
+    if (!task) {
+      console.error('[Task Assignment] Task not found for email notification');
+      return;
+    }
+
+    // Get assignee details (email from auth.users, name from user_profiles)
+    const { data: assignee } = await supabase
+      .from('user_profiles')
+      .select('id, full_name')
+      .eq('id', assigneeId)
+      .single();
+
+    const { data: assigneeAuth } = await supabase.auth.admin.getUserById(assigneeId);
+
+    if (!assigneeAuth?.user?.email) {
+      console.warn(`[Task Assignment] Skipping email - assignee ${assigneeId} has no email`);
+      return;
+    }
+
+    // Get assigner details
+    const { data: assigner } = await supabase
+      .from('user_profiles')
+      .select('id, full_name')
+      .eq('id', assignerId)
+      .single();
+
+    const { data: assignerAuth } = await supabase.auth.admin.getUserById(assignerId);
+
+    // Get organization name
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('name')
+      .eq('id', task.org_id)
+      .single();
+
+    const resend = new Resend(resendApiKey);
+
+    await resend.emails.send({
+      from: 'GrantCue Tasks <tasks@grantcue.com>',
+      to: assigneeAuth.user.email,
+      subject: `${isReassignment ? 'Task Reassigned' : 'New Task Assigned'}: ${task.title}`,
+      html: generateTaskAssignmentEmail({
+        assignee_name: assignee?.full_name || assigneeAuth.user.email,
+        assigner_name: assigner?.full_name || assignerAuth?.user?.email || 'A team member',
+        task_title: task.title,
+        task_description: task.description,
+        task_due_date: task.due_date,
+        grant_title: task.org_grants_saved.title,
+        grant_id: task.grant_id,
+        task_id: task.id,
+        org_name: org?.name || 'Your Organization',
+        is_reassignment: isReassignment,
+      }),
+    });
+
+    console.log(`[Task Assignment] Email sent to ${assigneeAuth.user.email} for task "${task.title}"`);
+  } catch (error) {
+    console.error('[Task Assignment] Failed to send email notification:', error);
+  }
 }
 
 export default async function handler(
@@ -154,6 +253,51 @@ export default async function handler(
           return res.status(500).json({ error: 'Failed to create task' });
         }
 
+        // Send email notification if task is assigned to someone
+        if (data.assigned_to) {
+          sendTaskAssignmentEmail(
+            supabase,
+            data.id,
+            data.assigned_to,
+            user.id,
+            false
+          ).catch(error => {
+            console.error('Error sending task assignment email:', error);
+          });
+
+          // Send webhook/Slack/Teams notifications
+          (async () => {
+            try {
+              const { data: grant } = await supabase
+                .from('org_grants_saved')
+                .select('title, agency, close_date')
+                .eq('id', taskData.grant_id)
+                .single();
+
+              if (grant) {
+                const assignedUserName = await getAssignedUserName(data.assigned_to);
+                const origin = req.headers.origin || 'https://grantcue.com';
+
+                await sendNotifications({
+                  event: 'grant.task_assigned',
+                  org_id: taskData.org_id,
+                  grant_id: taskData.grant_id,
+                  grant_title: grant.title,
+                  grant_agency: grant.agency,
+                  grant_deadline: grant.close_date,
+                  task_id: data.id,
+                  task_title: data.title,
+                  assigned_to_id: data.assigned_to,
+                  assigned_to_name: assignedUserName || 'Unknown User',
+                  action_url: `${origin}/grants/${taskData.grant_id}`,
+                });
+              }
+            } catch (notificationError) {
+              console.error('Error sending task assignment notifications:', notificationError);
+            }
+          })();
+        }
+
         return res.status(201).json({ task: data });
       }
 
@@ -169,7 +313,7 @@ export default async function handler(
         // Verify the task belongs to an organization the user is a member of
         const { data: task } = await supabase
           .from('grant_tasks')
-          .select('org_id')
+          .select('org_id, assigned_to, grant_id')
           .eq('id', id)
           .single();
 
@@ -187,6 +331,13 @@ export default async function handler(
         if (!membership) {
           return res.status(403).json({ error: 'Access denied to this task' });
         }
+
+        // Track if assignment is changing
+        const oldAssignedTo = task.assigned_to;
+        const newAssignedTo = updates.assigned_to;
+        const isAssignmentChange = newAssignedTo !== undefined && newAssignedTo !== oldAssignedTo;
+        const isNewAssignment = isAssignmentChange && !oldAssignedTo && newAssignedTo;
+        const isReassignment = isAssignmentChange && oldAssignedTo && newAssignedTo;
 
         // Build the update object
         const updateData: any = {};
@@ -210,6 +361,51 @@ export default async function handler(
         if (error) {
           console.error('Error updating task:', error);
           return res.status(500).json({ error: 'Failed to update task' });
+        }
+
+        // Send email notification if task assignment changed
+        if ((isNewAssignment || isReassignment) && newAssignedTo) {
+          sendTaskAssignmentEmail(
+            supabase,
+            id,
+            newAssignedTo,
+            user.id,
+            isReassignment
+          ).catch(error => {
+            console.error('Error sending task assignment email:', error);
+          });
+
+          // Send webhook/Slack/Teams notifications
+          (async () => {
+            try {
+              const { data: grant } = await supabase
+                .from('org_grants_saved')
+                .select('title, agency, close_date')
+                .eq('id', task.grant_id)
+                .single();
+
+              if (grant) {
+                const assignedUserName = await getAssignedUserName(newAssignedTo);
+                const origin = req.headers.origin || 'https://grantcue.com';
+
+                await sendNotifications({
+                  event: 'grant.task_assigned',
+                  org_id: task.org_id,
+                  grant_id: task.grant_id,
+                  grant_title: grant.title,
+                  grant_agency: grant.agency,
+                  grant_deadline: grant.close_date,
+                  task_id: data.id,
+                  task_title: data.title,
+                  assigned_to_id: newAssignedTo,
+                  assigned_to_name: assignedUserName || 'Unknown User',
+                  action_url: `${origin}/grants/${task.grant_id}`,
+                });
+              }
+            } catch (notificationError) {
+              console.error('Error sending task assignment notifications:', notificationError);
+            }
+          })();
         }
 
         return res.status(200).json({ task: data });
