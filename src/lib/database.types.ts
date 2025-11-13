@@ -243,6 +243,7 @@ export interface Database {
           aln: string | null
           open_date: string | null
           close_date: string | null
+          loi_deadline: string | null
           saved_at: string
           created_at: string
           status: string
@@ -262,6 +263,7 @@ export interface Database {
           aln?: string | null
           open_date?: string | null
           close_date?: string | null
+          loi_deadline?: string | null
           saved_at?: string
           created_at?: string
           status?: string
@@ -281,6 +283,7 @@ export interface Database {
           aln?: string | null
           open_date?: string | null
           close_date?: string | null
+          loi_deadline?: string | null
           saved_at?: string
           created_at?: string
           status?: string

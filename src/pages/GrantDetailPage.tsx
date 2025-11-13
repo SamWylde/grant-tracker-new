@@ -58,6 +58,7 @@ interface Grant {
   aln: string | null;
   open_date: string | null;
   close_date: string | null;
+  loi_deadline: string | null;
   description: string | null;
   status: string;
   priority: string | null;
@@ -499,6 +500,41 @@ export function GrantDetailPage() {
               border: '1px solid var(--mantine-color-gray-3)',
             }}
           >
+            {grant.loi_deadline && (
+              <>
+                <Group gap="md">
+                  <IconCalendar
+                    size={20}
+                    style={{ color: "var(--mantine-color-blue-6)" }}
+                  />
+                  <div>
+                    <Text size="sm" fw={500}>
+                      LOI Deadline
+                    </Text>
+                    <Text size="sm" c="dimmed">
+                      {dayjs(grant.loi_deadline).format("MMM D, YYYY")}
+                    </Text>
+                    {(() => {
+                      const loiDaysUntil = dayjs(grant.loi_deadline).diff(dayjs(), "days");
+                      const loiOverdue = loiDaysUntil < 0;
+                      const loiClosingSoon = loiDaysUntil <= 14 && loiDaysUntil >= 0;
+                      return (
+                        <Text
+                          size="xs"
+                          c={loiOverdue ? "red" : loiClosingSoon ? "yellow.8" : "dimmed"}
+                          mt={2}
+                        >
+                          {loiOverdue
+                            ? `Overdue by ${Math.abs(loiDaysUntil)} days`
+                            : `${loiDaysUntil} days remaining`}
+                        </Text>
+                      );
+                    })()}
+                  </div>
+                </Group>
+                <Divider my="sm" />
+              </>
+            )}
             <Group gap="md">
               <IconCalendar
                 size={20}
@@ -512,7 +548,7 @@ export function GrantDetailPage() {
               />
               <div>
                 <Text size="sm" fw={500}>
-                  Deadline
+                  Application Deadline
                 </Text>
                 <Text size="sm" c="dimmed">
                   {grant.close_date

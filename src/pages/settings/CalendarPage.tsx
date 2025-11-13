@@ -463,8 +463,11 @@ export function CalendarPage() {
                         <Button
                           variant="light"
                           color="blue"
-                          onClick={() => {
-                            window.location.href = `/api/oauth/google/authorize?org_id=${currentOrg.id}`;
+                          onClick={async () => {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                              window.location.href = `/api/oauth/google/authorize?org_id=${currentOrg.id}&user_id=${user.id}`;
+                            }
                           }}
                         >
                           Connect Google Calendar

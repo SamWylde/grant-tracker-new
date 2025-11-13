@@ -499,6 +499,14 @@ export function PipelinePage() {
         if (!a.close_date) return 1;
         if (!b.close_date) return -1;
         return new Date(b.close_date).getTime() - new Date(a.close_date).getTime();
+      case "loi-deadline-asc":
+        if (!a.loi_deadline) return 1;
+        if (!b.loi_deadline) return -1;
+        return new Date(a.loi_deadline).getTime() - new Date(b.loi_deadline).getTime();
+      case "loi-deadline-desc":
+        if (!a.loi_deadline) return 1;
+        if (!b.loi_deadline) return -1;
+        return new Date(b.loi_deadline).getTime() - new Date(a.loi_deadline).getTime();
       case "saved-newest":
         return new Date(b.saved_at).getTime() - new Date(a.saved_at).getTime();
       case "saved-oldest":
@@ -664,8 +672,10 @@ export function PipelinePage() {
                   value={sortBy}
                   onChange={(value) => setSortBy(value || "deadline-asc")}
                   data={[
-                    { value: "deadline-asc", label: "Deadline (soonest first)" },
-                    { value: "deadline-desc", label: "Deadline (latest first)" },
+                    { value: "loi-deadline-asc", label: "LOI Deadline (soonest first)" },
+                    { value: "loi-deadline-desc", label: "LOI Deadline (latest first)" },
+                    { value: "deadline-asc", label: "App Deadline (soonest first)" },
+                    { value: "deadline-desc", label: "App Deadline (latest first)" },
                     { value: "saved-newest", label: "Recently saved" },
                     { value: "saved-oldest", label: "Oldest saved" },
                   ]}
@@ -949,7 +959,31 @@ export function PipelinePage() {
                                   })() : "No description available"}
                                 </Text>
 
-                                {/* Deadline */}
+                                {/* LOI Deadline */}
+                                {grant.loi_deadline && (() => {
+                                  const loiDaysUntil = dayjs(grant.loi_deadline).diff(dayjs(), "day");
+                                  const loiClosingSoon = loiDaysUntil <= 14;
+                                  const loiOverdue = loiDaysUntil < 0;
+                                  return (
+                                    <Group gap="xs">
+                                      <IconCalendar size={14} />
+                                      <Text
+                                        size="xs"
+                                        fw={loiClosingSoon || loiOverdue ? 600 : 400}
+                                        c={loiOverdue ? "red" : loiClosingSoon ? "orange" : "blue"}
+                                      >
+                                        LOI: {dayjs(grant.loi_deadline).format("MMM D")}
+                                      </Text>
+                                      {loiDaysUntil !== null && !loiOverdue && (
+                                        <Badge size="xs" color={loiClosingSoon ? "orange" : "blue"} variant="dot">
+                                          {loiDaysUntil}d
+                                        </Badge>
+                                      )}
+                                    </Group>
+                                  );
+                                })()}
+
+                                {/* Application Deadline */}
                                 {grant.close_date && (
                                   <Group gap="xs">
                                     <IconCalendar size={14} />
@@ -958,7 +992,7 @@ export function PipelinePage() {
                                       fw={isClosingSoon || isOverdue ? 600 : 400}
                                       c={isOverdue ? "red" : isClosingSoon ? "orange" : "dimmed"}
                                     >
-                                      {dayjs(grant.close_date).format("MMM D, YYYY")}
+                                      App: {dayjs(grant.close_date).format("MMM D, YYYY")}
                                     </Text>
                                     {daysUntilClose !== null && !isOverdue && (
                                       <Badge size="xs" color={isClosingSoon ? "orange" : "gray"} variant="dot">
