@@ -16,10 +16,12 @@ interface SavedGrantRequest {
   external_id: string;
   title: string;
   agency?: string;
+  program?: string;
   aln?: string;
   open_date?: string;
   close_date?: string;
   loi_deadline?: string;
+  internal_deadline?: string;
   description?: string;
   status?: string;
   priority?: string;
@@ -276,6 +278,7 @@ export default async function handler(
             external_id: grantData.external_id,
             title: grantData.title,
             agency: grantData.agency || null,
+            program: grantData.program || null,
             aln: grantData.aln || null,
             open_date: convertToISO(grantData.open_date),
             close_date: convertToISO(grantData.close_date),
@@ -393,10 +396,12 @@ export default async function handler(
           'description',
           'title',
           'agency',
+          'program',
           'aln',
           'open_date',
           'close_date',
-          'loi_deadline'
+          'loi_deadline',
+          'internal_deadline'
         ];
 
         const updateData: any = {};

@@ -103,7 +103,7 @@ export default async function handler(
       return res.status(403).json({ error: 'Access denied to this grant' });
     }
 
-    const { status, assigned_to, priority } = req.body;
+    const { status, assigned_to, priority, close_date, loi_deadline, internal_deadline } = req.body;
 
     // Validate status if provided
     if (status && !VALID_STATUSES.includes(status)) {
@@ -118,6 +118,9 @@ export default async function handler(
     if (status) updateData.status = status;
     if (assigned_to !== undefined) updateData.assigned_to = assigned_to;
     if (priority) updateData.priority = priority;
+    if (close_date !== undefined) updateData.close_date = close_date;
+    if (loi_deadline !== undefined) updateData.loi_deadline = loi_deadline;
+    if (internal_deadline !== undefined) updateData.internal_deadline = internal_deadline;
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });

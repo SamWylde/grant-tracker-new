@@ -58,6 +58,7 @@ interface Task {
   status: "pending" | "in_progress" | "completed" | "blocked";
   assigned_to?: string;
   due_date?: string;
+  internal_deadline?: string;
   completed_at?: string;
   position: number;
   is_required: boolean;
