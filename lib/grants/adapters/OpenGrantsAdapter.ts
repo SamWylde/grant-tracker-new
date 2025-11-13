@@ -146,7 +146,7 @@ export class OpenGrantsAdapter extends BaseGrantAdapter {
       external_id: opp.id,
 
       // Core data
-      title: this.cleanText(opp.title) || 'Untitled Grant',
+      title: this.cleanText(opp.title) || `Grant ${opp.id}`,
       description: this.cleanText(opp.description),
       agency: this.cleanText(opp.agency),
       opportunity_number: opp.opportunity_number,
