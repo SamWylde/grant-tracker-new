@@ -102,6 +102,13 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
   const [eligibilityNotes, setEligibilityNotes] = useState('');
   const [autoFilterEnabled, setAutoFilterEnabled] = useState(false);
 
+  // Check if profile already exists
+  const hasExistingProfile = currentOrg &&
+    ((currentOrg as any).org_size ||
+     (currentOrg as any).annual_budget_range ||
+     (currentOrg as any).primary_locations?.length ||
+     (currentOrg as any).focus_categories?.length);
+
   // Initialize from current org if profile exists
   useEffect(() => {
     if (currentOrg) {
@@ -185,8 +192,10 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
     onSuccess: () => {
       refreshOrgs();
       notifications.show({
-        title: 'Eligibility profile saved!',
-        message: 'Your profile has been created. You\'ll now see personalized grant recommendations.',
+        title: hasExistingProfile ? 'Profile updated!' : 'Eligibility profile saved!',
+        message: hasExistingProfile
+          ? 'Your eligibility profile has been updated. Grant recommendations will be refreshed.'
+          : 'Your profile has been created. You\'ll now see personalized grant recommendations.',
         color: 'green',
         icon: <IconCheck size={16} />,
       });
@@ -194,7 +203,7 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
       if (onComplete) {
         onComplete();
       } else {
-        navigate('/grants');
+        navigate('/discover');
       }
     },
     onError: (error: any) => {
@@ -246,11 +255,13 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
             <Title order={1}>
               <Group gap="xs">
                 <IconSparkles size={32} />
-                Eligibility Profile Wizard
+                {hasExistingProfile ? 'Update Eligibility Profile' : 'Eligibility Profile Wizard'}
               </Group>
             </Title>
             <Text c="dimmed" size="lg" mt="xs">
-              Let's set up your organization's profile to find the perfect grants
+              {hasExistingProfile
+                ? 'Review and update your organization\'s profile to get better grant matches'
+                : 'Let\'s set up your organization\'s profile to find the perfect grants'}
             </Text>
           </div>
           <Badge size="lg" variant="gradient" gradient={{ from: 'grape', to: 'violet' }}>
@@ -557,7 +568,7 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
               loading={saveMutation.isPending}
               size="md"
             >
-              Complete setup
+              {hasExistingProfile ? 'Save updates' : 'Complete setup'}
             </Button>
           )}
         </Group>

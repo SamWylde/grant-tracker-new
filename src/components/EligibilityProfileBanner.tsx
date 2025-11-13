@@ -1,10 +1,14 @@
 import { Alert, Button, Group, Text } from '@mantine/core';
-import { IconSparkles, IconX } from '@tabler/icons-react';
+import { IconSparkles } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { useOrganization } from '../contexts/OrganizationContext';
 
-export function EligibilityProfileBanner() {
+interface EligibilityProfileBannerProps {
+  showForCompleteProfiles?: boolean;
+}
+
+export function EligibilityProfileBanner({ showForCompleteProfiles = false }: EligibilityProfileBannerProps) {
   const { currentOrg } = useOrganization();
   const [dismissed, setDismissed] = useState(false);
 
@@ -15,17 +19,32 @@ export function EligibilityProfileBanner() {
     !(currentOrg as any).primary_locations?.length ||
     !(currentOrg as any).focus_categories?.length;
 
-  // Don't show if dismissed or profile is complete
-  if (dismissed || !isProfileIncomplete) {
+  // Don't show if dismissed
+  if (dismissed) {
     return null;
   }
+
+  // Show either for incomplete profiles, or for all profiles if showForCompleteProfiles is true
+  if (!isProfileIncomplete && !showForCompleteProfiles) {
+    return null;
+  }
+
+  const title = isProfileIncomplete
+    ? "Get Personalized Grant Recommendations"
+    : "Refresh Your Eligibility Profile";
+
+  const description = isProfileIncomplete
+    ? "Complete your eligibility profile to unlock AI-powered grant matching and see recommendations tailored to your organization's needs."
+    : "Update your eligibility profile to ensure you're seeing the most relevant grant opportunities for your organization.";
+
+  const buttonText = isProfileIncomplete ? "Complete Profile" : "Update Profile";
 
   return (
     <Alert
       variant="light"
       color="violet"
       icon={<IconSparkles size={20} />}
-      title="Get Personalized Grant Recommendations"
+      title={title}
       withCloseButton
       onClose={() => setDismissed(true)}
       closeButtonLabel="Dismiss"
@@ -40,11 +59,13 @@ export function EligibilityProfileBanner() {
       <Group justify="space-between" align="flex-start">
         <div>
           <Text size="sm" mb="xs">
-            Complete your eligibility profile to unlock AI-powered grant matching and see recommendations tailored to your organization's needs.
+            {description}
           </Text>
-          <Text size="xs" c="dimmed">
-            Takes just 2-3 minutes • Get instant grant matches • Improve recommendation accuracy
-          </Text>
+          {isProfileIncomplete && (
+            <Text size="xs" c="dimmed">
+              Takes just 2-3 minutes • Get instant grant matches • Improve recommendation accuracy
+            </Text>
+          )}
         </div>
         <Button
           component={Link}
@@ -54,7 +75,7 @@ export function EligibilityProfileBanner() {
           color="violet"
           leftSection={<IconSparkles size={16} />}
         >
-          Complete Profile
+          {buttonText}
         </Button>
       </Group>
     </Alert>

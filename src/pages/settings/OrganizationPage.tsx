@@ -347,8 +347,9 @@ export function OrganizationPage() {
                       variant="light"
                       size="sm"
                       leftSection={<IconSparkles size={16} />}
+                      title="Use guided wizard to set up or update your eligibility profile"
                     >
-                      Use Wizard
+                      Setup Wizard
                     </Button>
                   </Group>
 
