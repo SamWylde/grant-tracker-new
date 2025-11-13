@@ -21,6 +21,7 @@ import { SecurityPage } from "./pages/SecurityPage";
 import { SupportPage } from "./pages/SupportPage";
 import { DiscoverPage } from "./pages/DiscoverPage";
 import { PipelinePage } from "./pages/PipelinePage";
+import { GrantDetailPage } from "./pages/GrantDetailPage";
 import { MetricsPage } from "./pages/MetricsPage";
 import { ActivityPage } from "./pages/ActivityPage";
 import { GrantHubImportPage } from "./pages/GrantHubImportPage";
@@ -84,6 +85,7 @@ export default function App() {
                 {/* Redirect /saved to /pipeline with list view */}
                 <Route path="/saved" element={<Navigate to="/pipeline?view=list" replace />} />
                 <Route path="/pipeline" element={<ProtectedRoute><PipelinePage /></ProtectedRoute>} />
+                <Route path="/pipeline/grant/:grantId" element={<ProtectedRoute><GrantDetailPage /></ProtectedRoute>} />
                 <Route path="/metrics" element={<ProtectedRoute><MetricsPage /></ProtectedRoute>} />
                 <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
                 <Route path="/import/granthub" element={<ProtectedRoute><GrantHubImportPage /></ProtectedRoute>} />
