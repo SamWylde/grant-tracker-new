@@ -39,22 +39,29 @@ import { MentionTextarea } from "./MentionTextarea";
 import { CommentThread } from "./CommentThread";
 import { CommentInput } from "./CommentInput";
 import { printGrantBrief } from "../utils/printGrant";
+import { stripHtml } from "../utils/htmlUtils";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 
 interface Grant {
   id: string;
   external_id: string;
+  external_source: string;
   title: string;
   agency: string | null;
   aln: string | null;
   open_date: string | null;
   close_date: string | null;
+  description: string | null;
   status: string;
   priority: string | null;
   notes: string | null;
   org_id: string;
+  user_id: string;
   assigned_to: string | null;
+  saved_at: string;
+  stage_updated_at: string | null;
+  created_at: string;
 }
 
 interface GrantDetailDrawerProps {
@@ -388,6 +395,63 @@ export function GrantDetailDrawer({
               </div>
             </Group>
           )}
+        </Box>
+
+        {/* Grant Description */}
+        {grant.description && (
+          <Box
+            p="md"
+            style={{
+              backgroundColor: "var(--mantine-color-gray-0)",
+              borderRadius: "var(--mantine-radius-md)",
+            }}
+          >
+            <Text size="sm" fw={500} mb="sm">
+              Description
+            </Text>
+            <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              {stripHtml(grant.description)}
+            </Text>
+          </Box>
+        )}
+
+        {/* Additional Grant Information */}
+        <Box
+          p="md"
+          style={{
+            backgroundColor: "var(--mantine-color-gray-0)",
+            borderRadius: "var(--mantine-radius-md)",
+          }}
+        >
+          <Text size="sm" fw={500} mb="sm">
+            Grant Information
+          </Text>
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Grant ID</Text>
+              <Text size="sm" fw={500}>{grant.external_id}</Text>
+            </Group>
+            {grant.aln && (
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">Assistance Listing Number (ALN)</Text>
+                <Text size="sm" fw={500}>{grant.aln}</Text>
+              </Group>
+            )}
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Source</Text>
+              <Text size="sm" fw={500}>{grant.external_source}</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Added to Pipeline</Text>
+              <Text size="sm" fw={500}>{dayjs(grant.saved_at).format("MMM D, YYYY h:mm A")}</Text>
+            </Group>
+            {grant.stage_updated_at && (
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">Last Stage Change</Text>
+                <Text size="sm" fw={500}>{dayjs(grant.stage_updated_at).format("MMM D, YYYY h:mm A")}</Text>
+              </Group>
+            )}
+          </Stack>
         </Box>
 
         {/* Quick Actions */}
