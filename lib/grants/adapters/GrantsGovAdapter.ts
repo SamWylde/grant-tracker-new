@@ -4,14 +4,14 @@
  * Implements fetching and normalization for Grants.gov API
  */
 
-import { BaseGrantAdapter } from './BaseGrantAdapter';
+import { BaseGrantAdapter } from './BaseGrantAdapter.js';
 import type {
   CatalogGrant,
   RawGrantData,
   SourceSearchParams,
   SourceFetchResponse,
   OpportunityStatus,
-} from '../types';
+} from '../types.js';
 
 interface GrantsGovOpportunity {
   id?: string;

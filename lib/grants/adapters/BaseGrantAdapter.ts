@@ -12,7 +12,7 @@ import type {
   SourceFetchResponse,
   SyncResult,
   GrantSource,
-} from '../types';
+} from '../types.js';
 
 export abstract class BaseGrantAdapter {
   protected source: GrantSource;
