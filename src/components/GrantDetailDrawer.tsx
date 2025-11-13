@@ -25,6 +25,7 @@ import {
   IconEdit,
   IconCheck,
   IconSparkles,
+  IconFile,
 } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
@@ -35,6 +36,7 @@ import { BudgetTab } from "./BudgetTab";
 import { PaymentScheduleTab } from "./PaymentScheduleTab";
 import { ComplianceTab } from "./ComplianceTab";
 import { AISummaryTab } from "./AISummaryTab";
+import { DocumentsTab } from "./DocumentsTab";
 import { MentionTextarea } from "./MentionTextarea";
 import { CommentThread } from "./CommentThread";
 import { CommentInput } from "./CommentInput";
@@ -574,6 +576,9 @@ export function GrantDetailDrawer({
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
+            <Tabs.Tab value="documents" leftSection={<IconFile size={14} />}>
+              Documents
+            </Tabs.Tab>
             <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} />}>
               Budget
             </Tabs.Tab>
@@ -595,6 +600,10 @@ export function GrantDetailDrawer({
 
           <Tabs.Panel value="tasks" pt="md">
             <TaskList grantId={grant.id} orgId={grant.org_id} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="documents" pt="md">
+            <DocumentsTab grantId={grant.id} orgId={grant.org_id} />
           </Tabs.Panel>
 
           <Tabs.Panel value="budget" pt="md">
