@@ -70,7 +70,12 @@ export function FunderInteractionsLog({ funderId }: FunderInteractionsLogProps) 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInteraction, setEditingInteraction] = useState<Interaction | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    interaction_type: string;
+    interaction_date: Date | string;
+    contact_id: string;
+    notes: string;
+  }>({
     interaction_type: "",
     interaction_date: new Date(),
     contact_id: "",
@@ -449,7 +454,7 @@ export function FunderInteractionsLog({ funderId }: FunderInteractionsLogProps) 
             placeholder="Select date and time"
             required
             value={formData.interaction_date}
-            onChange={(value: Date | null) =>
+            onChange={(value) =>
               setFormData({ ...formData, interaction_date: value || new Date() })
             }
           />
