@@ -127,12 +127,12 @@ export function MetricsPage() {
 
   return (
     <ProtectedRoute>
-      <AppHeader subtitle="Value Metrics" />
+      <AppHeader subtitle="Metrics" />
       <Stack gap="lg" p="md" maw={1400} mx="auto">
         {/* Header */}
         <Group justify="space-between" align="flex-start">
           <div>
-            <Title order={1}>Value Metrics</Title>
+            <Title order={1}>Metrics</Title>
             <Text c="dimmed" size="lg">
               Track your team's performance and demonstrate ROI
             </Text>
