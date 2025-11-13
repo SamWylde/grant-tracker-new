@@ -126,7 +126,7 @@ export function DiscoverPage() {
       currentPage,
     ],
     queryFn: async ({ signal }) => {
-      const response = await fetch("/api/grants/search", {
+      const response = await fetch("/api/grants/search-catalog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
