@@ -13,7 +13,6 @@ import {
   CopyButton,
   Group,
   Image,
-  List,
   Modal,
   Paper,
   PinInput,

@@ -131,11 +131,11 @@ export async function checkUserPermission(
   permission: PermissionName
 ): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('user_has_permission', {
+    const { data, error } = await supabase.rpc('user_has_permission' as any, {
       p_user_id: userId,
       p_org_id: orgId,
       p_permission_name: permission,
-    });
+    } as any);
 
     if (error) {
       console.error('Error checking permission:', error);
@@ -199,17 +199,17 @@ export async function getUserPermissions(
   orgId: string
 ): Promise<Permission[]> {
   try {
-    const { data, error } = await supabase.rpc('get_user_permissions', {
+    const { data, error } = await supabase.rpc('get_user_permissions' as any, {
       p_user_id: userId,
       p_org_id: orgId,
-    });
+    } as any);
 
     if (error) {
       console.error('Error fetching permissions:', error);
       return [];
     }
 
-    return (data || []).map((p: any) => ({
+    return ((data as any[]) || []).map((p: any) => ({
       id: p.id || '',
       name: p.permission_name,
       description: p.permission_description,
@@ -238,17 +238,17 @@ export async function getUserRoles(
   orgId: string
 ): Promise<Role[]> {
   try {
-    const { data, error } = await supabase.rpc('get_user_roles', {
+    const { data, error } = await supabase.rpc('get_user_roles' as any, {
       p_user_id: userId,
       p_org_id: orgId,
-    });
+    } as any);
 
     if (error) {
       console.error('Error fetching roles:', error);
       return [];
     }
 
-    return (data || []).map((r: any) => ({
+    return ((data as any[]) || []).map((r: any) => ({
       id: r.role_id,
       name: r.role_name,
       display_name: r.role_display_name,
@@ -304,7 +304,7 @@ export async function getRoleWithPermissions(
   try {
     // Get role details
     const { data: role, error: roleError } = await supabase
-      .from('roles')
+      .from('roles' as any)
       .select('*')
       .eq('id', roleId)
       .single();
@@ -316,21 +316,21 @@ export async function getRoleWithPermissions(
 
     // Get permissions for this role
     const { data: rolePermissions, error: permError } = await supabase
-      .from('role_permissions')
+      .from('role_permissions' as any)
       .select('permissions(*)')
       .eq('role_id', roleId);
 
     if (permError) {
       console.error('Error fetching role permissions:', permError);
-      return { ...role, permissions: [] };
+      return { ...(role as any), permissions: [] };
     }
 
-    const permissions = (rolePermissions || [])
+    const permissions = ((rolePermissions as any[]) || [])
       .map((rp: any) => rp.permissions)
       .filter(Boolean);
 
     return {
-      ...role,
+      ...(role as any),
       permissions,
     };
   } catch (error) {
@@ -355,12 +355,12 @@ export async function assignRoleToUser(
   assignedBy: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase.from('user_role_assignments').insert({
+    const { error } = await supabase.from('user_role_assignments' as any).insert({
       user_id: userId,
       role_id: roleId,
       org_id: orgId,
       assigned_by: assignedBy,
-    });
+    } as any);
 
     if (error) {
       console.error('Error assigning role:', error);
@@ -467,14 +467,14 @@ export async function createCustomRole(
   try {
     // Create the role
     const { data: role, error: roleError } = await supabase
-      .from('roles')
+      .from('roles' as any)
       .insert({
         name,
         display_name: displayName,
         description,
         is_system_role: false,
         org_id: orgId,
-      })
+      } as any)
       .select()
       .single();
 
@@ -486,23 +486,23 @@ export async function createCustomRole(
     // Assign permissions to the role
     if (permissionIds.length > 0) {
       const rolePermissions = permissionIds.map((permId) => ({
-        role_id: role.id,
+        role_id: (role as any).id,
         permission_id: permId,
       }));
 
       const { error: permError } = await supabase
-        .from('role_permissions')
-        .insert(rolePermissions);
+        .from('role_permissions' as any)
+        .insert(rolePermissions as any);
 
       if (permError) {
         console.error('Error assigning permissions to role:', permError);
         // Rollback: delete the role
-        await supabase.from('roles').delete().eq('id', role.id);
+        await supabase.from('roles' as any).delete().eq('id', (role as any).id);
         return null;
       }
     }
 
-    return role;
+    return role as any;
   } catch (error) {
     console.error('Error creating custom role:', error);
     return null;
@@ -526,8 +526,8 @@ export async function updateCustomRole(
 ): Promise<boolean> {
   try {
     // Update role details
-    const { error: roleError } = await supabase
-      .from('roles')
+    const { error: roleError } = await (supabase
+      .from('roles' as any) as any)
       .update({
         display_name: displayName,
         description,
@@ -542,7 +542,7 @@ export async function updateCustomRole(
 
     // Delete existing permissions
     const { error: deleteError } = await supabase
-      .from('role_permissions')
+      .from('role_permissions' as any)
       .delete()
       .eq('role_id', roleId);
 
@@ -559,8 +559,8 @@ export async function updateCustomRole(
       }));
 
       const { error: permError } = await supabase
-        .from('role_permissions')
-        .insert(rolePermissions);
+        .from('role_permissions' as any)
+        .insert(rolePermissions as any);
 
       if (permError) {
         console.error('Error assigning new permissions:', permError);

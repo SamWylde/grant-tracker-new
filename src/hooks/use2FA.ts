@@ -69,7 +69,7 @@ export function use2FAStatus() {
  * Check if user needs 2FA verification
  * This should be called after successful password login
  */
-export async function check2FARequired(userId: string): Promise<boolean> {
+export async function check2FARequired(): Promise<boolean> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {

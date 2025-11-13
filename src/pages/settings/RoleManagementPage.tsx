@@ -15,7 +15,6 @@ import {
   Textarea,
   Checkbox,
   Accordion,
-  Table,
   ActionIcon,
   ScrollArea,
   Alert,
@@ -76,14 +75,14 @@ export function RoleManagementPage() {
   const canManageRoles = hasPermission('admin:manage_roles');
 
   // Load all roles
-  const { data: roles, isLoading: rolesLoading } = useQuery({
+  const { data: roles } = useQuery({
     queryKey: ['roles', currentOrg?.id],
     queryFn: () => getAvailableRoles(currentOrg?.id),
     enabled: !!currentOrg,
   });
 
   // Load all permissions
-  const { data: permissions, isLoading: permissionsLoading } = useQuery({
+  const { data: permissions } = useQuery({
     queryKey: ['permissions'],
     queryFn: getAllPermissions,
   });

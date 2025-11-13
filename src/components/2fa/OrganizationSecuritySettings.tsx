@@ -6,9 +6,7 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Badge,
   Box,
-  Button,
   Card,
   Group,
   Progress,

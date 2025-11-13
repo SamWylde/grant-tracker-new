@@ -16,7 +16,6 @@ import {
   Radio,
   Checkbox,
   Timeline,
-  Code,
   CopyButton,
   ActionIcon,
   Tooltip,
@@ -30,12 +29,10 @@ import {
   IconFileDownload,
   IconShieldCheck,
   IconCopy,
-  IconExternalLink,
 } from '@tabler/icons-react';
 import { SettingsLayout } from '../../components/SettingsLayout';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
 
 interface ExportRequest {
   id: string;
@@ -61,7 +58,7 @@ export function PrivacyDataPage() {
   const [includeDeleted, setIncludeDeleted] = useState(false);
 
   // Fetch export requests history
-  const { data: exportRequests, isLoading } = useQuery({
+  const { data: exportRequests } = useQuery({
     queryKey: ['exportRequests'],
     queryFn: async () => {
       const response = await fetch('/api/data-export/request', {
@@ -78,9 +75,9 @@ export function PrivacyDataPage() {
       return data.requests as ExportRequest[];
     },
     enabled: !!session,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Refetch every 5 seconds if there's a pending/processing request
-      const hasPending = data?.some(
+      const hasPending = query.state.data?.some(
         (req: ExportRequest) => req.status === 'pending' || req.status === 'processing'
       );
       return hasPending ? 5000 : false;
