@@ -56,10 +56,12 @@ export function GrantFilters({
 
       if (!data) return [];
 
-      return data.map((member: any) => ({
-        value: member.user_id,
-        label: member.full_name || member.email,
-      }));
+      return data
+        .filter((member: any) => member.user_id) // Filter out members without user_id
+        .map((member: any) => ({
+          value: member.user_id,
+          label: member.full_name || member.email || 'Unknown User',
+        }));
     },
     enabled: !!currentOrg?.id,
   });
