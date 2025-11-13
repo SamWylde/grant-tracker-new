@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Anchor, Box, Burger, Container, Drawer, Group, Stack, Text, ThemeIcon, Divider, Button, Avatar } from '@mantine/core';
-import { IconRocket, IconUser, IconSettings, IconLogout } from '@tabler/icons-react';
+import { IconRocket, IconUser, IconSettings, IconLogout, IconHistory } from '@tabler/icons-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
@@ -106,6 +106,15 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
               >
                 Metrics
               </Anchor>
+              <Anchor
+                component={Link}
+                to="/activity"
+                c={isActive('/activity') ? 'grape' : 'dark'}
+                fw={isActive('/activity') ? 600 : 400}
+                underline="never"
+              >
+                Activity
+              </Anchor>
             </Group>
           )}
 
@@ -184,6 +193,16 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   onClick={() => setMobileMenuOpened(false)}
                 >
                   Metrics
+                </Anchor>
+                <Anchor
+                  component={Link}
+                  to="/activity"
+                  c={isActive('/activity') ? 'grape' : 'dark'}
+                  fw={isActive('/activity') ? 600 : 400}
+                  underline="never"
+                  onClick={() => setMobileMenuOpened(false)}
+                >
+                  Activity
                 </Anchor>
               </Stack>
 
