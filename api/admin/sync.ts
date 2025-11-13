@@ -8,7 +8,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { SyncService } from '../../lib/grants/SyncService';
+import { SyncService } from '../../lib/grants/SyncService.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Initialize Supabase client
