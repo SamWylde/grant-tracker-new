@@ -46,12 +46,12 @@ export default async function handler(
       return res.status(404).json({ error: 'Calendar feed not found' });
     }
 
-    // Fetch all grants for this organization with close dates
+    // Fetch all grants for this organization with close dates or LOI deadlines
     const { data: grants, error: grantsError } = await supabase
       .from('org_grants_saved')
-      .select('id, title, agency, close_date, external_id, description')
+      .select('id, title, agency, close_date, loi_deadline, external_id, description')
       .eq('org_id', orgId)
-      .not('close_date', 'is', null)
+      .or('close_date.not.is.null,loi_deadline.not.is.null')
       .order('close_date', { ascending: true });
 
     if (grantsError) {
@@ -73,11 +73,6 @@ export default async function handler(
 
     // Add events for each grant (if any)
     for (const grant of grants || []) {
-      if (!grant.close_date) continue;
-
-      const closeDate = new Date(grant.close_date);
-      const uid = `grant-${grant.id}@grantcue.com`;
-
       // Format date as YYYYMMDD for all-day event
       const formatDate = (date: Date) => {
         const year = date.getFullYear();
@@ -86,7 +81,6 @@ export default async function handler(
         return `${year}${month}${day}`;
       };
 
-      const dtstart = formatDate(closeDate);
       const now = new Date();
       const dtstamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
@@ -97,18 +91,45 @@ export default async function handler(
 
       const grantsGovUrl = `https://www.grants.gov/search-results-detail/${grant.external_id}`;
 
-      icsLines.push(
-        'BEGIN:VEVENT',
-        `UID:${uid}`,
-        `DTSTAMP:${dtstamp}`,
-        `DTSTART;VALUE=DATE:${dtstart}`,
-        `SUMMARY:Grant Deadline: ${grant.title.replace(/,/g, '\\,')}`,
-        `DESCRIPTION:${description}\\n\\nAgency: ${(grant.agency || 'N/A').replace(/,/g, '\\,')}\\n\\nView details: ${grantsGovUrl}`,
-        `URL:${grantsGovUrl}`,
-        'STATUS:CONFIRMED',
-        'TRANSP:TRANSPARENT',
-        'END:VEVENT'
-      );
+      // Add LOI deadline event if present
+      if (grant.loi_deadline) {
+        const loiDate = new Date(grant.loi_deadline);
+        const loiUid = `grant-loi-${grant.id}@grantcue.com`;
+        const loiDtstart = formatDate(loiDate);
+
+        icsLines.push(
+          'BEGIN:VEVENT',
+          `UID:${loiUid}`,
+          `DTSTAMP:${dtstamp}`,
+          `DTSTART;VALUE=DATE:${loiDtstart}`,
+          `SUMMARY:LOI Deadline: ${grant.title.replace(/,/g, '\\,')}`,
+          `DESCRIPTION:Letter of Intent deadline\\n\\n${description}\\n\\nAgency: ${(grant.agency || 'N/A').replace(/,/g, '\\,')}\\n\\nView details: ${grantsGovUrl}`,
+          `URL:${grantsGovUrl}`,
+          'STATUS:CONFIRMED',
+          'TRANSP:TRANSPARENT',
+          'END:VEVENT'
+        );
+      }
+
+      // Add application deadline event if present
+      if (grant.close_date) {
+        const closeDate = new Date(grant.close_date);
+        const uid = `grant-${grant.id}@grantcue.com`;
+        const dtstart = formatDate(closeDate);
+
+        icsLines.push(
+          'BEGIN:VEVENT',
+          `UID:${uid}`,
+          `DTSTAMP:${dtstamp}`,
+          `DTSTART;VALUE=DATE:${dtstart}`,
+          `SUMMARY:Application Deadline: ${grant.title.replace(/,/g, '\\,')}`,
+          `DESCRIPTION:${description}\\n\\nAgency: ${(grant.agency || 'N/A').replace(/,/g, '\\,')}\\n\\nView details: ${grantsGovUrl}`,
+          `URL:${grantsGovUrl}`,
+          'STATUS:CONFIRMED',
+          'TRANSP:TRANSPARENT',
+          'END:VEVENT'
+        );
+      }
     }
 
     icsLines.push('END:VCALENDAR');

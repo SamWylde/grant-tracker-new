@@ -19,11 +19,15 @@ interface GrantFiltersProps {
 
 const DEFAULT_STATUS_OPTIONS = [
   { value: "researching", label: "Researching" },
+  { value: "go-no-go", label: "Go/No-Go" },
   { value: "drafting", label: "Drafting" },
   { value: "submitted", label: "Submitted" },
   { value: "awarded", label: "Awarded" },
+  { value: "not-funded", label: "Not Funded" },
+  { value: "closed-out", label: "Closed Out" },
   { value: "rejected", label: "Rejected" },
   { value: "withdrawn", label: "Withdrawn" },
+  { value: "archived", label: "Archived" },
 ];
 
 const PRIORITY_OPTIONS = [

@@ -19,6 +19,7 @@ import OpenAI from 'openai';
 
 interface NofoSummary {
   key_dates: {
+    loi_deadline?: string;
     application_deadline?: string;
     award_date?: string;
     project_period_start?: string;
@@ -80,6 +81,7 @@ async function generateAISummary(
         content: `You are an expert grant analyst. Extract key information from NOFO (Notice of Funding Opportunity) documents.
 
 Focus on:
+- Letter of Intent (LOI) deadline (format as YYYY-MM-DD) - this often comes before the full application
 - Application deadlines and key dates (format as YYYY-MM-DD)
 - Eligibility requirements (organization types, geographic restrictions)
 - Funding amounts (total program funding, min/max awards, expected # of awards)
@@ -296,6 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Extract key fields for database
       const primaryDeadline = extractPrimaryDeadline(summary);
+      const loiDeadline = summary.key_dates?.loi_deadline ? new Date(summary.key_dates.loi_deadline) : null;
       const costSharingRequired = summary.cost_sharing?.required || false;
       const totalProgramFunding = summary.funding?.total || null;
       const maxAwardAmount = summary.funding?.max_award || null;
@@ -314,6 +317,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           summary: summary as any,
           primary_deadline: primaryDeadline?.toISOString().split('T')[0] || null,
           application_deadline: primaryDeadline?.toISOString().split('T')[0] || null,
+          loi_deadline: loiDeadline?.toISOString().split('T')[0] || null,
           cost_sharing_required: costSharingRequired,
           total_program_funding: totalProgramFunding,
           max_award_amount: maxAwardAmount,

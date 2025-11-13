@@ -1,6 +1,6 @@
 // Approval workflow types
 
-export type GrantStage = 'researching' | 'drafting' | 'submitted' | 'awarded' | 'rejected' | 'withdrawn';
+export type GrantStage = 'researching' | 'go-no-go' | 'drafting' | 'submitted' | 'awarded' | 'not-funded' | 'closed-out' | 'rejected' | 'withdrawn' | 'archived';
 export type ApprovalRole = 'admin' | 'contributor';
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type ApprovalDecision = 'approved' | 'rejected';
@@ -174,19 +174,29 @@ export interface StageTransition {
 // Constants
 export const GRANT_STAGES: { value: GrantStage; label: string; color: string }[] = [
   { value: 'researching', label: 'Researching', color: 'blue' },
-  { value: 'drafting', label: 'Drafting', color: 'yellow' },
-  { value: 'submitted', label: 'Submitted', color: 'cyan' },
+  { value: 'go-no-go', label: 'Go/No-Go', color: 'yellow' },
+  { value: 'drafting', label: 'Drafting', color: 'grape' },
+  { value: 'submitted', label: 'Submitted', color: 'orange' },
   { value: 'awarded', label: 'Awarded', color: 'green' },
-  { value: 'rejected', label: 'Rejected', color: 'red' },
+  { value: 'not-funded', label: 'Not Funded', color: 'red' },
+  { value: 'closed-out', label: 'Closed Out', color: 'teal' },
+  { value: 'rejected', label: 'Rejected', color: 'pink' },
   { value: 'withdrawn', label: 'Withdrawn', color: 'gray' },
+  { value: 'archived', label: 'Archived', color: 'dark' },
 ];
 
 export const COMMON_STAGE_TRANSITIONS: Omit<StageTransition, 'requiresApproval' | 'workflowId'>[] = [
+  { from: 'researching', to: 'go-no-go', label: 'Move to Go/No-Go Decision' },
+  { from: 'go-no-go', to: 'drafting', label: 'Approved - Start Drafting' },
+  { from: 'go-no-go', to: 'rejected', label: 'No-Go Decision' },
   { from: 'researching', to: 'drafting', label: 'Start Drafting' },
   { from: 'drafting', to: 'submitted', label: 'Submit Application' },
   { from: 'submitted', to: 'awarded', label: 'Mark as Awarded' },
+  { from: 'submitted', to: 'not-funded', label: 'Mark as Not Funded' },
   { from: 'submitted', to: 'rejected', label: 'Mark as Rejected' },
+  { from: 'awarded', to: 'closed-out', label: 'Close Out Grant' },
   { from: 'researching', to: 'withdrawn', label: 'Withdraw' },
+  { from: 'go-no-go', to: 'withdrawn', label: 'Withdraw' },
   { from: 'drafting', to: 'withdrawn', label: 'Withdraw' },
 ];
 

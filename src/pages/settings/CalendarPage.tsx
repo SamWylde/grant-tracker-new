@@ -41,6 +41,7 @@ const EVENT_TYPES = [
   { value: 'grant.deadline_approaching', label: 'Deadline Approaching' },
   { value: 'grant.deadline_passed', label: 'Deadline Passed' },
   { value: 'grant.updated', label: 'Grant Updated' },
+  { value: 'grant.task_assigned', label: 'Task Assigned' },
 ];
 
 export function CalendarPage() {
@@ -462,8 +463,11 @@ export function CalendarPage() {
                         <Button
                           variant="light"
                           color="blue"
-                          onClick={() => {
-                            window.location.href = `/api/oauth/google/authorize?org_id=${currentOrg.id}`;
+                          onClick={async () => {
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (user) {
+                              window.location.href = `/api/oauth/google/authorize?org_id=${currentOrg.id}&user_id=${user.id}`;
+                            }
                           }}
                         >
                           Connect Google Calendar
@@ -722,7 +726,7 @@ export function CalendarPage() {
                   </Text>
                   <Text size="sm">
                     <strong>Events:</strong> grant.saved, grant.deadline_approaching,
-                    grant.deadline_passed, grant.updated
+                    grant.deadline_passed, grant.updated, grant.task_assigned
                   </Text>
                 </Stack>
               </Paper>

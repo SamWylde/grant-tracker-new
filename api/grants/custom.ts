@@ -9,6 +9,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { CustomGrantAdapter, type CustomGrantInput } from '../../lib/grants/adapters/CustomGrantAdapter';
 import type { GrantSource } from '../../lib/grants/types';
+import { GoogleCalendarService } from '../../lib/google-calendar/GoogleCalendarService';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -151,6 +152,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (saveError) {
       console.error('Error saving grant to org:', saveError);
       // Don't fail - grant is in catalog
+    }
+
+    // Sync with Google Calendar if grant was saved (async, don't wait)
+    if (savedGrant) {
+      try {
+        const calendarService = new GoogleCalendarService(supabase);
+        void calendarService.syncGrant(savedGrant, org_id);
+      } catch (calErr) {
+        console.error('Exception syncing custom grant with Google Calendar:', calErr);
+        // Continue even if calendar sync fails
+      }
     }
 
     return res.status(201).json({

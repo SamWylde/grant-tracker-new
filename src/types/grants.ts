@@ -59,6 +59,7 @@ export interface SavedGrant {
   aln: string | null;
   open_date: string | null;
   close_date: string | null;
+  loi_deadline: string | null;
   description: string | null;
   status: string;
   priority: string | null;
