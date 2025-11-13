@@ -38,24 +38,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // SECURITY: Verify user is an admin in at least one organization
-  const { data: adminMembership, error: membershipError } = await supabase
-    .from('org_members')
-    .select('role')
-    .eq('user_id', user.id)
-    .eq('role', 'admin')
-    .limit(1)
-    .maybeSingle();
+  // SECURITY: Verify user is a platform admin (NOT organization admin)
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('is_platform_admin')
+    .eq('id', user.id)
+    .single();
 
-  if (membershipError) {
-    console.error('Error checking admin status:', membershipError);
-    return res.status(500).json({ error: 'Failed to verify admin status' });
+  if (profileError) {
+    console.error('Error checking platform admin status:', profileError);
+    return res.status(500).json({ error: 'Failed to verify platform admin status' });
   }
 
-  if (!adminMembership) {
+  if (!profile?.is_platform_admin) {
     return res.status(403).json({
-      error: 'Admin access required',
-      message: 'This endpoint is restricted to admin users only'
+      error: 'Platform admin access required',
+      message: 'This endpoint is restricted to platform administrators only'
     });
   }
 
