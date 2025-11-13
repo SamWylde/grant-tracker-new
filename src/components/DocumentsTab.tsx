@@ -55,7 +55,6 @@ export function DocumentsTab({ grantId, orgId, taskId }: DocumentsTabProps) {
           />
         </Group>
         <DocumentUploadButton
-          orgId={orgId}
           grantId={grantId}
           taskId={taskId}
           compact

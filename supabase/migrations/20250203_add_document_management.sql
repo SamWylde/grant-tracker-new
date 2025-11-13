@@ -13,7 +13,7 @@
 CREATE TABLE IF NOT EXISTS public.grant_documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  grant_id UUID REFERENCES public.saved_grants(id) ON DELETE CASCADE,
+  grant_id UUID REFERENCES public.org_grants_saved(id) ON DELETE CASCADE,
   task_id UUID REFERENCES public.grant_tasks(id) ON DELETE CASCADE,
 
   -- File metadata
