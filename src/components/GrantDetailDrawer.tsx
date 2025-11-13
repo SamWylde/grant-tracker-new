@@ -239,7 +239,7 @@ export function GrantDetailDrawer({
             title: `${user?.email || 'Someone'} mentioned you in notes`,
             message: `You were mentioned in notes for grant: ${grant.title}`,
             related_grant_id: grant.external_id,
-            action_url: `/saved?grant=${grant.id}`,
+            action_url: `/pipeline/grant/${grant.id}`,
             action_label: 'View Grant',
           } as any);
         } catch (notifError) {

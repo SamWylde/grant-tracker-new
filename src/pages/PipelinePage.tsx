@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -48,7 +48,6 @@ import dayjs from "dayjs";
 import { AppHeader } from "../components/AppHeader";
 import { GrantFilters, type GrantFilterValues } from "../components/GrantFilters";
 import { useOrganization } from "../contexts/OrganizationContext";
-import { GrantDetailDrawer } from "../components/GrantDetailDrawer";
 import { ImportWizard } from "../components/ImportWizard";
 import { useSavedGrants, type SavedGrant } from "../hooks/useSavedGrants";
 import { useAuth } from "../contexts/AuthContext";
@@ -72,10 +71,9 @@ export function PipelinePage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
-  const [selectedGrant, setSelectedGrant] = useState<SavedGrant | null>(null);
-  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
   const [filters, setFilters] = useState<GrantFilterValues>({
     priority: [],
     assignedTo: [],
@@ -116,15 +114,14 @@ export function PipelinePage() {
       // Find the grant in the loaded data
       const grant = data.grants.find((g: SavedGrant) => g.id === grantId);
       if (grant) {
-        setSelectedGrant(grant);
-        if (commentId) {
-          setHighlightCommentId(commentId);
-        }
-        // Clear URL parameters after opening
-        setSearchParams({});
+        // Navigate to grant detail page with optional comment ID
+        const url = commentId
+          ? `/pipeline/grant/${grantId}?comment=${commentId}`
+          : `/pipeline/grant/${grantId}`;
+        navigate(url, { replace: true });
       }
     }
-  }, [searchParams, data, setSearchParams]);
+  }, [searchParams, data, navigate]);
 
   // Update grant status mutation with optimistic updates
   const updateStatusMutation = useMutation({
@@ -846,14 +843,14 @@ export function PipelinePage() {
                               draggable
                               onDragStart={(e) => handleDragStart(e, grant.id)}
                               onDragEnd={handleDragEnd}
-                              onClick={() => setSelectedGrant(grant)}
+                              onClick={() => navigate(`/pipeline/grant/${grant.id}`)}
                               role="button"
                               tabIndex={0}
                               aria-label={`${grant.title} - Click to view details or use menu to move`}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
                                   e.preventDefault();
-                                  setSelectedGrant(grant);
+                                  navigate(`/pipeline/grant/${grant.id}`);
                                 }
                               }}
                               style={{
@@ -1070,7 +1067,7 @@ export function PipelinePage() {
                         transition: "all 0.2s ease",
                         backgroundColor: selectedGrantIds.has(grant.id) ? "var(--mantine-color-grape-0)" : undefined,
                       }}
-                      onClick={() => setSelectedGrant(grant)}
+                      onClick={() => navigate(`/pipeline/grant/${grant.id}`)}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
                         e.currentTarget.style.transform = "translateY(-2px)";
@@ -1239,17 +1236,6 @@ export function PipelinePage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
         }}
-      />
-
-      {/* Grant Detail Drawer */}
-      <GrantDetailDrawer
-        grant={selectedGrant}
-        opened={!!selectedGrant}
-        onClose={() => {
-          setSelectedGrant(null);
-          setHighlightCommentId(null);
-        }}
-        highlightCommentId={highlightCommentId}
       />
     </Box>
   );
