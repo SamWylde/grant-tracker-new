@@ -70,7 +70,9 @@ export class SyncService {
       } else if (jobType === 'incremental' && source.last_sync_at) {
         result = await adapter.performIncrementalSync(new Date(source.last_sync_at));
       } else {
-        result = await adapter.performFullSync();
+        // Skip fetching full details during bulk sync to avoid timeout
+        // The search API provides enough data for the catalog
+        result = await adapter.performFullSync(false);
       }
 
       // Process grants and save to catalog
