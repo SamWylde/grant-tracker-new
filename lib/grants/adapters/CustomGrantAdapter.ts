@@ -84,13 +84,7 @@ export class CustomGrantAdapter extends BaseGrantAdapter {
       external_id: externalId,
 
       // Core data
-      title: (() => {
-        const cleanedTitle = this.cleanText(input.title);
-        if (!cleanedTitle) {
-          throw new Error(`Custom grant ${input.external_id} is missing required title field`);
-        }
-        return cleanedTitle;
-      })(),
+      title: this.cleanText(input.title) || `Custom Grant ${externalId}`,
       description: this.cleanText(input.description),
       agency: this.cleanText(input.agency),
       opportunity_number: input.opportunity_number,
