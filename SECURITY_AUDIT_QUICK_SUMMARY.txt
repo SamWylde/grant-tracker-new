@@ -1,0 +1,201 @@
+================================================================================
+GRANT TRACKER SECURITY AUDIT - QUICK REFERENCE
+Generated: November 15, 2025
+================================================================================
+
+CRITICAL SEVERITY (6 issues - FIX IMMEDIATELY)
+================================================================================
+
+1. CSRF in OAuth Flows
+   Location: /api/oauth/google/authorize.ts:39, /api/oauth/google/callback.ts:42
+            /api/oauth/slack/callback.ts:54
+   Issue: State parameter lacks cryptographic signing
+   Impact: Attackers can perform OAuth CSRF attacks, enumerate users/orgs
+   Fix: Use cryptographically signed state tokens with storage and expiration
+
+2. XSS in Comments
+   Location: /src/components/CommentThread.tsx:211
+   Issue: dangerouslySetInnerHTML without sanitization verification
+   Impact: Arbitrary JavaScript execution, session hijacking, data theft
+   Fix: Use DOMPurify.sanitize() or react-markdown component
+
+3. SSRF in PDF Endpoint
+   Location: /api/grants/fetch-pdf.ts:74-114
+   Issue: Accepts any HTTPS URL without validation
+   Impact: Access AWS metadata, internal networks, DoS attacks
+   Fix: Implement URL allowlist, block private IP ranges
+
+4. Weak CRON Secret Validation
+   Location: /api/reports/generate-content.ts:194
+   Issue: Simple string comparison, no timing attack protection
+   Impact: Attackers can trigger reports for any organization
+   Fix: Use constant-time comparison and HMAC-based validation
+
+5. User Enumeration
+   Location: /api/auth/check-user.ts
+   Issue: Public endpoint reveals if email exists
+   Impact: Privacy violation, enables phishing, credential stuffing
+   Fix: Require authentication OR return generic response always
+
+6. Hardcoded UUID in Production
+   Location: /api/grants/search.ts:276
+   Issue: Placeholder UUID '00000000-0000-0000-0000-000000000001'
+   Impact: Data integrity issues, magic values in production
+   Fix: Fetch actual source_id from database
+
+
+HIGH SEVERITY (12 issues - FIX THIS MONTH)
+================================================================================
+
+7. Information Disclosure
+   Location: 19 API endpoints across the codebase
+   Issue: Error messages leak database structure, paths, library versions
+   Impact: Helps attackers understand system for targeted attacks
+   Fix: Centralize error handling, return generic messages to clients
+
+8. Weak CORS Configuration
+   Location: /api/saved.ts:36
+   Issue: Access-Control-Allow-Origin: *
+   Impact: Any website can make API requests on behalf of users
+   Fix: Whitelist specific origins only
+
+9. Missing Security Headers
+   Location: All API endpoints (global issue)
+   Issue: No X-Content-Type-Options, X-Frame-Options, CSP, HSTS
+   Impact: Increased attack surface for various exploit types
+   Fix: Create security headers middleware
+
+10. Weak URL Validation in OAuth
+    Location: /api/oauth/google/authorize.ts:27-28
+    Issue: Error reveals GOOGLE_CLIENT_ID environment variable expectation
+    Impact: Information disclosure about configuration
+    Fix: Return generic error message
+
+11. Missing Rate Limiting
+    Location: /api/grants/search.ts, /api/auth/check-user.ts, and others
+    Issue: No rate limiting on public/authenticated endpoints
+    Impact: Brute force, DoS, enumeration attacks
+    Fix: Implement @upstash/ratelimit or similar
+
+12. Inconsistent Database Table Names
+    Location: /api/documents/upload.ts:66 uses 'user_organizations'
+              All others use 'org_members'
+    Issue: Authorization checks use different tables
+    Impact: Potential authorization bypass
+    Fix: Standardize on 'org_members' everywhere
+
+
+MEDIUM SEVERITY (15 issues - FIX NEXT QUARTER)
+================================================================================
+
+13. Missing Input Validation - Comments
+14. Weak Backup Code Implementation  
+15. Missing API Key Rotation - OpenAI
+16. Incomplete Document Upload Validation
+17. Missing Audit Logging - Admin Operations
+18. Missing Request Logging/Monitoring
+19. No Request Signing - Webhooks
+20. Missing Encryption - Sensitive Fields
+21. No Session Timeout Handling
+22. Insufficient Database Query Limits
+23-27. [See full report for details]
+
+
+LOW SEVERITY (8 issues - FIX ONGOING)
+================================================================================
+
+28-35. Various issues including missing health checks, request size limits,
+       cache invalidation strategy, etc.
+       [See full report for details]
+
+
+IMMEDIATE ACTION ITEMS (Next 7 Days)
+================================================================================
+
+Priority 1 - CRITICAL (Block deployment):
+[ ] Fix CSRF vulnerabilities in OAuth flows
+[ ] Sanitize comment HTML with DOMPurify
+[ ] Add SSRF protection to PDF endpoint
+[ ] Protect user enumeration endpoint
+[ ] Remove hardcoded UUID from search.ts
+[ ] Implement rate limiting on public endpoints
+
+Priority 2 - HIGH (Fix before production):
+[ ] Centralize error handling
+[ ] Fix CORS configuration  
+[ ] Add security headers middleware
+[ ] Fix CRON secret validation
+[ ] Standardize database table references
+
+Priority 3 - MEDIUM (Schedule for next sprint):
+[ ] Add audit logging for admin operations
+[ ] Implement comprehensive request logging
+[ ] Add input validation library (zod/joi)
+[ ] Add file upload validation
+[ ] OpenAI key rotation strategy
+
+
+DEPLOYMENT CHECKLIST
+================================================================================
+
+Authentication & Authorization:
+  [ ] CSRF tokens on OAuth flows
+  [ ] Rate limiting on login/sensitive endpoints
+  [ ] Consistent database permission checks
+  
+Input & Output:
+  [ ] All user input validated
+  [ ] HTML output sanitized (DOMPurify)
+  [ ] Error messages don't expose internals
+  [ ] SSRF protection on URL inputs
+
+API Security:
+  [ ] All endpoints require authentication (except public ones)
+  [ ] Rate limiting configured
+  [ ] Security headers set
+  [ ] CORS properly restricted
+  [ ] Request size limits enforced
+
+Data Protection:
+  [ ] Sensitive data encrypted
+  [ ] Audit logging for critical operations
+  [ ] Secrets not in version control
+  [ ] Database backups tested
+
+Monitoring:
+  [ ] Error tracking (Sentry)
+  [ ] Request logging
+  [ ] Security event alerts
+  [ ] Rate limit breach alerts
+
+
+TOOLS TO INSTALL
+================================================================================
+
+npm install --save dompurify @upstash/ratelimit @upstash/redis
+npm install --save-dev zod joi
+
+# Optional but recommended:
+npm install --save-dev @snyk/cli    # Dependency scanning
+npm install --save axios             # Better HTTP requests with timeouts
+
+
+RESOURCES
+================================================================================
+
+Full Report: SECURITY_AUDIT_REPORT.md (in project root)
+OWASP Top 10 2021: https://owasp.org/Top10/
+OWASP API Security: https://owasp.org/www-project-api-security/
+CWE/CVSS References included in full report
+
+
+NEXT AUDIT
+================================================================================
+
+Schedule: Quarterly (next: Feb 2026)
+Type: Full security audit
+Scope: Code review + dependency scanning + penetration testing
+Owner: [Assign security champion]
+
+
+Questions? See SECURITY_AUDIT_REPORT.md for detailed remediation code examples.
