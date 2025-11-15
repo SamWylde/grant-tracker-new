@@ -1,18 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { ErrorHandlers, generateRequestId, wrapHandler } from './utils/error-handler';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default wrapHandler(async function handler(req: VercelRequest, res: VercelResponse) {
+  const requestId = generateRequestId();
+
   // Create Supabase client with user's token
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).json({ error: 'Missing authorization header' });
+    return ErrorHandlers.unauthorized(res, 'Missing authorization header', undefined, requestId);
   }
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Server configuration error' });
+    return ErrorHandlers.serverError(res, new Error('Server configuration error'), requestId);
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -30,10 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
 
   if (authError || !user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return ErrorHandlers.unauthorized(res, 'Unauthorized', undefined, requestId);
   }
-
-  try {
     // GET - List all alerts for user's org
     if (req.method === 'GET') {
       const { org_id } = req.query;
@@ -221,13 +222,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    console.error('Error in alerts API:', error);
-    // Import sanitizeError from error-handler
-    const { sanitizeError } = await import('../utils/error-handler.js');
-    return res.status(500).json({
-      error: sanitizeError(error, 'processing request'),
-    });
-  }
-}
+  return ErrorHandlers.methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'], requestId);
+});

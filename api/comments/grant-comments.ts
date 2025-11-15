@@ -18,6 +18,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { validateQuery, validateBody, validateId, commentQuerySchema, commentCreateSchema, commentUpdateSchema } from '../utils/validation';
 
 interface CreateCommentRequest {
   grant_id: string;
@@ -84,11 +85,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // =====================================================
   if (req.method === 'GET') {
     try {
-      const { grant_id } = req.query;
+      const validationResult = validateQuery(req, res, commentQuerySchema);
+      if (!validationResult.success) return;
 
-      if (!grant_id) {
-        return res.status(400).json({ error: 'grant_id is required' });
-      }
+      const { grant_id } = validationResult.data;
 
       // Get grant to verify access and get org_id
       const { data: grant, error: grantError } = await supabase
@@ -189,24 +189,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // =====================================================
   if (req.method === 'POST') {
     try {
+      const validationResult = validateBody(req, res, commentCreateSchema);
+      if (!validationResult.success) return;
+
       const {
         grant_id,
         content,
         parent_comment_id,
         mentioned_user_ids,
-      }: CreateCommentRequest = req.body;
-
-      if (!grant_id) {
-        return res.status(400).json({ error: 'grant_id is required' });
-      }
-
-      if (!content || content.trim().length === 0) {
-        return res.status(400).json({ error: 'content is required' });
-      }
-
-      if (content.length > 10000) {
-        return res.status(400).json({ error: 'content must be 10000 characters or less' });
-      }
+      } = validationResult.data;
 
       // Get grant to verify access and get org_id
       const { data: grant, error: grantError } = await supabase
@@ -275,20 +266,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // =====================================================
   if (req.method === 'PUT') {
     try {
-      const { id } = req.query;
-      const { content }: UpdateCommentRequest = req.body;
+      const idValidation = validateId(req, res);
+      if (!idValidation.success) return;
+      const id = idValidation.data;
 
-      if (!id) {
-        return res.status(400).json({ error: 'comment id is required' });
-      }
+      const validationResult = validateBody(req, res, commentUpdateSchema);
+      if (!validationResult.success) return;
 
-      if (!content || content.trim().length === 0) {
-        return res.status(400).json({ error: 'content is required' });
-      }
-
-      if (content.length > 10000) {
-        return res.status(400).json({ error: 'content must be 10000 characters or less' });
-      }
+      const { content } = validationResult.data;
 
       // Get comment to verify ownership
       const { data: comment, error: commentError } = await supabase
@@ -343,11 +328,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // =====================================================
   if (req.method === 'DELETE') {
     try {
-      const { id } = req.query;
-
-      if (!id) {
-        return res.status(400).json({ error: 'comment id is required' });
-      }
+      const idValidation = validateId(req, res);
+      if (!idValidation.success) return;
+      const id = idValidation.data;
 
       // Get comment to verify ownership
       const { data: comment, error: commentError } = await supabase

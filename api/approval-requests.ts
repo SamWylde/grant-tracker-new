@@ -176,6 +176,8 @@ async function sendApprovalEmails(
       console.log(`[Approval Requests] Email sent to ${approver.email} for request ${requestId}`);
     } catch (error) {
       console.error(`[Approval Requests] Failed to send email to ${approver.email}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     }
   }
 }
@@ -694,8 +696,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Approval requests API error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: sanitizeError(error, 'processing request'),
+      error: sanitizeError(error, 'approval-requests'),
     });
   }
 }

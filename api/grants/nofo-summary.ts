@@ -381,6 +381,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (grant_id || saved_grant_id) {
         try {
+          // Import sanitizeError from error-handler
+          const { sanitizeError } = await import('../utils/error-handler.js');
+
           await supabase
             .from('grant_ai_summaries')
             .insert({
@@ -391,7 +394,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               model: 'gpt-4o-mini',
               summary: {} as any,
               status: 'failed',
-              error_message: sanitizeError(error),
+              error_message: sanitizeError(error, 'nofo-summary'),
             })
             .select()
             .single();

@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitPublic, handleRateLimit } from '../utils/ratelimit';
 import { createRequestLogger } from '../utils/logger';
+import { validateBody, checkUserSchema } from '../utils/validation';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -34,11 +35,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  const { email } = req.body;
+  // Validate request body
+  const validationResult = validateBody(req, res, checkUserSchema);
+  if (!validationResult.success) return;
 
-  if (!email || typeof email !== 'string') {
-    return res.status(400).json({ error: 'Email is required' });
-  }
+  const { email } = validationResult.data;
 
   try {
     // Create Supabase admin client

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { rateLimitPublic, handleRateLimit } from '../utils/ratelimit';
 import { validateBody, grantSearchQuerySchema } from '../utils/validation';
 import { createRequestLogger } from '../utils/logger';
-import { ErrorHandlers, generateRequestId, wrapHandler } from '../utils/error-handler';
+import { ErrorHandlers, generateRequestId, wrapHandler, sanitizeError } from '../utils/error-handler';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -399,22 +399,17 @@ export default wrapHandler(async function handler(
       // Set cache headers (60 seconds)
       res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
-      return res.status(200).json(responseData);
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
-    }
-  } catch (error) {
-    logger.error('Error in grants search', error);
+    return res.status(200).json(responseData);
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
 
-    if (error instanceof Error) {
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        return res.status(504).json({ error: 'Request timeout - please try again' });
+    if (fetchError instanceof Error) {
+      if (fetchError.name === 'AbortError' || fetchError.message.includes('timeout')) {
+        logger.error('Request timeout', fetchError);
+        return ErrorHandlers.timeout(res, 'Request timeout - please try again', requestId);
       }
     }
 
-    return res.status(500).json({
-      error: sanitizeError(error, 'processing request')
-    });
+    throw fetchError;
   }
-}
+});

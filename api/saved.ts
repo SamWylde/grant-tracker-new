@@ -5,6 +5,7 @@ import { GoogleCalendarService } from '../lib/google-calendar/GoogleCalendarServ
 import { setCorsHeaders } from './utils/cors.js';
 import { validateQuery, validateBody, validateId, savedGrantQuerySchema, savedGrantCreateSchema, savedGrantUpdateSchema } from './utils/validation';
 import { fetchWithTimeout, TimeoutPresets } from './utils/timeout.js';
+import { ErrorHandlers, generateRequestId, wrapHandler } from './utils/error-handler';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,10 +32,12 @@ interface SavedGrantRequest {
   assigned_to?: string;
 }
 
-export default async function handler(
+export default wrapHandler(async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  const requestId = generateRequestId();
+
   // Set secure CORS headers based on whitelisted origins
   setCorsHeaders(res, req.headers.origin);
 
@@ -45,7 +48,7 @@ export default async function handler(
 
   // Initialize Supabase client
   if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Server configuration error' });
+    return ErrorHandlers.serverError(res, new Error('Server configuration error'), requestId);
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -53,7 +56,7 @@ export default async function handler(
   // Verify authentication
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    return ErrorHandlers.unauthorized(res, 'Missing or invalid authorization header', undefined, requestId);
   }
 
   const token = authHeader.substring(7);
@@ -521,12 +524,6 @@ export default async function handler(
       }
 
       default:
-        return res.status(405).json({ error: 'Method not allowed' });
+        return ErrorHandlers.methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'], requestId);
     }
-  } catch (error) {
-    console.error('Error in saved grants API:', error);
-    return res.status(500).json({
-      error: sanitizeError(error, 'processing request')
-    });
-  }
-}
+});

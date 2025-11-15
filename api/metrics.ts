@@ -1,12 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { setCorsHeaders } from './utils/cors.js';
+import { ErrorHandlers, generateRequestId, wrapHandler } from './utils/error-handler';
 
 // Use server-side environment variables (not VITE_ prefixed)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default wrapHandler(async function handler(req: VercelRequest, res: VercelResponse) {
+  const requestId = generateRequestId();
+
   // Set secure CORS headers based on whitelisted origins
   setCorsHeaders(res, req.headers.origin, {
     methods: 'GET,OPTIONS,POST',
@@ -18,32 +21,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== 'POST' && req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return ErrorHandlers.methodNotAllowed(res, ['GET', 'POST'], requestId);
   }
 
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return ErrorHandlers.unauthorized(res, 'Unauthorized', undefined, requestId);
+  }
 
-    const token = authHeader.replace('Bearer ', '');
+  const token = authHeader.replace('Bearer ', '');
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return res.status(500).json({ error: 'Server configuration error' });
-    }
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return ErrorHandlers.serverError(res, new Error('Server configuration error'), requestId);
+  }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify user token
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+  // Verify user token
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser(token);
 
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
+  if (authError || !user) {
+    return ErrorHandlers.unauthorized(res, 'Invalid token', undefined, requestId);
+  }
 
     const { orgId, timeframe, startDate, endDate } = req.method === 'GET' ? req.query : req.body;
 
@@ -223,12 +225,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })),
     };
 
-    return res.status(200).json(metricsData);
-  } catch (error) {
-    console.error('Metrics API error:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-}
+  return res.status(200).json(metricsData);
+});

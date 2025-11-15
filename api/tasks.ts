@@ -458,8 +458,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Error in tasks API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: sanitizeError(error, 'processing request')
+      error: sanitizeError(error, 'tasks API')
     });
   }
 }

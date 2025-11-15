@@ -4,6 +4,7 @@ import { IconLink, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { useAuth } from '../contexts/AuthContext';
+import { ErrorBoundary } from './ErrorBoundary';
 
 interface QuickAddGrantModalProps {
   opened: boolean;
@@ -133,7 +134,8 @@ export function QuickAddGrantModal({ opened, onClose, onSuccess }: QuickAddGrant
 
   return (
     <Modal opened={opened} onClose={handleClose} title="Quick Add Grant from URL" size="md">
-      <Stack gap="md">
+      <ErrorBoundary boundaryName="QuickAddGrantModal">
+        <Stack gap="md">
         <Text size="sm" c="dimmed">
           Paste a Grants.gov URL or grant ID to quickly save it to your collection.
         </Text>
@@ -170,7 +172,8 @@ export function QuickAddGrantModal({ opened, onClose, onSuccess }: QuickAddGrant
             Add Grant
           </Button>
         </Group>
-      </Stack>
+        </Stack>
+      </ErrorBoundary>
     </Modal>
   );
 }

@@ -1,16 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { ErrorHandlers, generateRequestId, wrapHandler } from './utils/error-handler';
 
 // Use server-side environment variables (not VITE_ prefixed)
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default async function handler(
+export default wrapHandler(async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  const requestId = generateRequestId();
+
   if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Server configuration error' });
+    return ErrorHandlers.serverError(res, new Error('Server configuration error'), requestId);
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -18,14 +21,14 @@ export default async function handler(
   // Get user from auth header
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return ErrorHandlers.unauthorized(res, 'Unauthorized', undefined, requestId);
   }
 
   const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
   if (authError || !user) {
-    return res.status(401).json({ error: 'Invalid token' });
+    return ErrorHandlers.unauthorized(res, 'Invalid token', undefined, requestId);
   }
 
   // GET - List webhooks
@@ -216,5 +219,5 @@ export default async function handler(
     return res.status(200).json({ success: true });
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
-}
+  return ErrorHandlers.methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'], requestId);
+});

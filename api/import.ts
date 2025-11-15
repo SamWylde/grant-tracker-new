@@ -159,6 +159,8 @@ export default async function handler(
         });
       } catch (err) {
         console.error(`Failed to create tasks for grant ${grant.id}:`, err);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
         // Don't fail the import if task creation fails
       }
     });
@@ -173,8 +175,10 @@ export default async function handler(
     });
   } catch (error) {
     console.error('Error in import API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: sanitizeError(error, 'processing request'),
+      error: sanitizeError(error, 'import'),
     });
   }
 }

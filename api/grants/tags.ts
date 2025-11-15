@@ -12,6 +12,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { createRequestLogger } from '../utils/logger';
 
 /**
  * Normalize tag name to slug format
@@ -70,6 +71,7 @@ Return JSON array only.`,
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const logger = createRequestLogger(req, { module: 'grants/tags' });
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -145,7 +147,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         count: tags.length,
       });
     } catch (error) {
-      console.error('[Tags GET] Error:', error);
+      logger.error('Failed to retrieve tags', error);
       return res.status(500).json({
         error: 'Failed to retrieve tags',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -194,12 +196,15 @@ Agency: ${agency || 'N/A'}
 Description: ${description || 'N/A'}
       `.trim();
 
-      console.log(`[Tags] Generating tags for grant: ${grant_id}`);
+      logger.info('Generating tags for grant', { grantId: grant_id });
 
       // Generate tags using AI
       const generatedTags = await generateTags(openai, grantText);
 
-      console.log(`[Tags] Generated ${generatedTags.length} tags`);
+      logger.info('Tags generated', {
+        grantId: grant_id,
+        tagsCount: generatedTags.length
+      });
 
       // Create or find tags in database
       const assignedTags: any[] = [];
@@ -234,7 +239,7 @@ Description: ${description || 'N/A'}
             .single();
 
           if (tagError) {
-            console.error(`[Tags] Failed to create tag "${tagName}":`, tagError);
+            logger.error('Failed to create tag', tagError, { tagName, tagSlug });
             continue;
           }
 
@@ -262,7 +267,7 @@ Description: ${description || 'N/A'}
               confidence: tagData.confidence,
             });
           } else {
-            console.error(`[Tags] Failed to assign tag "${tagName}":`, assignError);
+            logger.error('Failed to assign tag', assignError, { tagName, grantId: grant_id });
           }
         }
       }
@@ -274,7 +279,7 @@ Description: ${description || 'N/A'}
         count: assignedTags.length,
       });
     } catch (error) {
-      console.error('[Tags POST] Error:', error);
+      logger.error('Failed to generate tags', error);
       return res.status(500).json({
         error: 'Failed to generate tags',
         details: error instanceof Error ? error.message : 'Unknown error',

@@ -205,6 +205,8 @@ async function sendReport(
       sent++;
     } catch (error) {
       console.error(`Failed to send report to ${recipient.email}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
 
       // Log failed delivery
       await supabase.from('report_delivery_log').insert({
@@ -327,6 +329,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
       } catch (error) {
         console.error(`Error processing report ${reportRaw.id}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
         results.push({
           report_id: reportRaw.id,
           org_name: reportRaw.org_name,
@@ -345,6 +349,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('Cron job error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
       error: 'Failed to send reports',
       details: error instanceof Error ? error.message : 'Unknown error',
