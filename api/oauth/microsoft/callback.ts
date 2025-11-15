@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitStandard, handleRateLimit } from '../../utils/ratelimit';
+import { fetchWithTimeout, TimeoutPresets, isTimeoutError } from '../../utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -105,22 +106,35 @@ export default async function handler(
       return res.status(403).json({ error: 'Only admins can connect integrations' });
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens with timeout protection
     const tokenUrl = `https://login.microsoftonline.com/${microsoftTenantId}/oauth2/v2.0/token`;
-    const tokenResponse = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: microsoftClientId,
-        client_secret: microsoftClientSecret,
-        code: code as string,
-        redirect_uri: microsoftRedirectUri,
-        grant_type: 'authorization_code',
-        scope: 'https://graph.microsoft.com/.default offline_access',
-      }),
-    });
+    let tokenResponse;
+    try {
+      tokenResponse = await fetchWithTimeout(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: microsoftClientId,
+          client_secret: microsoftClientSecret,
+          code: code as string,
+          redirect_uri: microsoftRedirectUri,
+          grant_type: 'authorization_code',
+          scope: 'https://graph.microsoft.com/.default offline_access',
+        }).toString(),
+        timeoutMs: TimeoutPresets.OAUTH_CALLBACK, // 10 seconds
+        retry: true,
+        maxRetries: 2,
+      });
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        console.error('[Microsoft OAuth] Token exchange timed out');
+        return res.redirect('/settings/integrations?error=token_exchange_timeout');
+      }
+      console.error('[Microsoft OAuth] Token exchange failed:', error);
+      return res.redirect('/settings/integrations?error=token_exchange_failed');
+    }
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();

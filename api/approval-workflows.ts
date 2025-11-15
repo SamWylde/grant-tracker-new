@@ -163,7 +163,7 @@ export default async function handler(
 
         if (error) {
           console.error('Error creating workflow:', error);
-          return res.status(500).json({ error: 'Failed to create workflow', details: error.message });
+          return res.status(500).json({ error: 'Failed to create workflow', details: sanitizeError(error) });
         }
 
         return res.status(201).json({ workflow });
@@ -315,9 +315,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Approval workflows API error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

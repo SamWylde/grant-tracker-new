@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { fetchWithTimeout, TimeoutPresets, isTimeoutError } from './utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -79,28 +80,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid OpenAI endpoint' });
     }
 
-    // Forward request to OpenAI
-    const openaiResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    // Forward request to OpenAI with timeout and retry logic
+    try {
+      const openaiResponse = await fetchWithTimeout(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`,
+        },
+        body: JSON.stringify(body),
+        timeoutMs: TimeoutPresets.AI_OPERATION, // 45 seconds
+        retry: true,
+        maxRetries: 2,
+        retryDelayMs: 2000,
+      });
 
-    const data = await openaiResponse.json();
+      const data = await openaiResponse.json();
 
-    if (!openaiResponse.ok) {
-      return res.status(openaiResponse.status).json(data);
+      if (!openaiResponse.ok) {
+        return res.status(openaiResponse.status).json(data);
+      }
+
+      return res.status(200).json(data);
+    } catch (error) {
+      // Handle timeout errors specifically
+      if (isTimeoutError(error)) {
+        console.error('[OpenAI Proxy] Request timed out');
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
+        return res.status(408).json({
+          error: 'Request timeout',
+          message: 'OpenAI API request timed out. Please try again.',
+        });
+      }
+
+      throw error;
     }
-
-    return res.status(200).json(data);
   } catch (error) {
     console.error('Error in OpenAI proxy:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

@@ -8,11 +8,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotifications } from '../utils/notifications.js';
+import { verifyCronAuth } from '../utils/auth.js';
+import { createRequestLogger } from '../utils/logger';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const logger = createRequestLogger(req, { module: 'cron/check-deadlines' });
+
+  // Verify this is a cron request using timing-safe comparison
+  // SECURITY: Timing-safe comparison prevents timing attacks that could be used to guess the secret
+  // NOTE: CRON_SECRET should be rotated regularly (recommended: every 90 days)
+  const authHeader = req.headers.authorization;
+
+  if (!verifyCronAuth(authHeader)) {
+    logger.warn('Unauthorized cron request attempt');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   // Only allow POST or GET for cron
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -86,9 +100,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
           });
           passedCount++;
-          console.log(`[Deadline Check] Sent deadline_passed notification for grant: ${grant.title}`);
+          logger.info('Sent deadline_passed notification', {
+            grantId: grant.id,
+            grantTitle: grant.title
+          });
         } catch (error) {
-          console.error(`[Deadline Check] Error sending deadline_passed notification for grant ${grant.id}:`, error);
+          logger.error('Error sending deadline_passed notification', error, {
+            grantId: grant.id,
+            grantTitle: grant.title
+          });
         }
       }
       // Check if deadline is approaching (within 3, 7, or 14 days)
@@ -110,12 +130,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             },
           });
           approachingCount++;
-          console.log(`[Deadline Check] Sent deadline_approaching notification for grant: ${grant.title} (${daysUntilDeadline} days)`);
+          logger.info('Sent deadline_approaching notification', {
+            grantId: grant.id,
+            grantTitle: grant.title,
+            daysUntilDeadline
+          });
         } catch (error) {
-          console.error(`[Deadline Check] Error sending deadline_approaching notification for grant ${grant.id}:`, error);
+          logger.error('Error sending deadline_approaching notification', error, {
+            grantId: grant.id,
+            grantTitle: grant.title
+          });
         }
       }
     }
+
+    logger.info('Deadline check completed', {
+      grantsChecked: grants.length,
+      approachingNotifications: approachingCount,
+      passedNotifications: passedCount
+    });
 
     return res.status(200).json({
       message: 'Deadline check completed',
@@ -125,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[Deadline Check] Error:', error);
+    logger.error('Deadline check failed', error);
     return res.status(500).json({
       error: 'Deadline check failed',
       details: error instanceof Error ? error.message : 'Unknown error',

@@ -340,7 +340,7 @@ async function sendWebhook(
       response_status: null,
       response_body: null,
       delivered_at: new Date().toISOString(),
-      error_message: error instanceof Error ? error.message : 'Unknown error',
+      error_message: sanitizeError(error),
     });
 
     // Update webhook stats

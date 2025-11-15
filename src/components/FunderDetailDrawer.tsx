@@ -20,6 +20,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { useOrganization } from "../contexts/OrganizationContext";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { ContactsSection } from "./ContactsSection";
 import { FunderInteractionsLog } from "./FunderInteractionsLog";
 import { Link } from "react-router-dom";
@@ -115,7 +116,8 @@ export function FunderDetailDrawer({ funderId, opened, onClose }: FunderDetailDr
         </Group>
       }
     >
-      {isLoading ? (
+      <ErrorBoundary boundaryName="FunderDetailDrawer">
+        {isLoading ? (
         <Group justify="center" py="xl">
           <Loader />
         </Group>
@@ -253,6 +255,7 @@ export function FunderDetailDrawer({ funderId, opened, onClose }: FunderDetailDr
           Funder not found
         </Text>
       )}
+      </ErrorBoundary>
     </Drawer>
   );
 }

@@ -84,9 +84,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Error in data export API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }
@@ -324,7 +325,7 @@ async function processExportRequest(supabase: any, requestId: string, user: any)
       .from('data_export_requests')
       .update({
         status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error',
+        error_message: sanitizeError(error),
       })
       .eq('id', requestId);
   }

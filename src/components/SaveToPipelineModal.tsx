@@ -2,6 +2,7 @@ import { Modal, Stack, Select, Button, Group, Text } from "@mantine/core";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "../contexts/OrganizationContext";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { supabase } from "../lib/supabase";
 
 const PIPELINE_STAGES = [
@@ -95,7 +96,8 @@ export function SaveToPipelineModal({
       title="Save to Pipeline"
       size="md"
     >
-      <Stack gap="md">
+      <ErrorBoundary boundaryName="SaveToPipelineModal">
+        <Stack gap="md">
         <Text size="sm" c="dimmed">
           Configure how to save <strong>{grantTitle}</strong> to your pipeline
         </Text>
@@ -137,7 +139,8 @@ export function SaveToPipelineModal({
             Save to Pipeline
           </Button>
         </Group>
-      </Stack>
+        </Stack>
+      </ErrorBoundary>
     </Modal>
   );
 }

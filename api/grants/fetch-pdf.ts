@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { fetchWithTimeout, TimeoutPresets, isTimeoutError } from '../utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -150,34 +151,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`[PDF Fetch] Fetching PDF from: ${urlToFetch}`);
 
-    // Fetch the PDF with timeout protection (5 seconds)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-
+    // Fetch the PDF with timeout protection
     try {
-      const pdfResponse = await fetch(urlToFetch, {
+      const pdfResponse = await fetchWithTimeout(urlToFetch, {
         headers: {
           'User-Agent': 'GrantCue-NOFO-Analyzer/1.0',
         },
-        signal: controller.signal,
+        timeoutMs: TimeoutPresets.PDF_FETCH, // 30 seconds
+        retry: true,
+        maxRetries: 2,
       });
-      clearTimeout(timeoutId);
 
-    if (!pdfResponse.ok) {
-      throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
-    }
+      if (!pdfResponse.ok) {
+        throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`);
+      }
 
-    // Check content type
-    const contentType = pdfResponse.headers.get('content-type');
-    if (!contentType?.includes('pdf')) {
-      throw new Error(`URL does not point to a PDF file. Content-Type: ${contentType}`);
-    }
+      // Check content type
+      const contentType = pdfResponse.headers.get('content-type');
+      if (!contentType?.includes('pdf')) {
+        throw new Error(`URL does not point to a PDF file. Content-Type: ${contentType}`);
+      }
 
-    // Get PDF as array buffer
-    const pdfBuffer = await pdfResponse.arrayBuffer();
-    const pdfSize = pdfBuffer.byteLength;
+      // Get PDF as array buffer
+      const pdfBuffer = await pdfResponse.arrayBuffer();
+      const pdfSize = pdfBuffer.byteLength;
 
-    console.log(`[PDF Fetch] Downloaded PDF: ${pdfSize} bytes`);
+      console.log(`[PDF Fetch] Downloaded PDF: ${pdfSize} bytes`);
 
       // For now, we'll use pdf-parse on the server side
       // Note: This requires installing pdf-parse package
@@ -192,14 +191,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // In production, we'd extract text here using pdf-parse
       });
     } catch (fetchError) {
-      clearTimeout(timeoutId);
-
       // Handle timeout errors specifically
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+      if (isTimeoutError(fetchError)) {
         console.error('[PDF Fetch] Request timeout');
         return res.status(408).json({
           error: 'Request timeout',
-          message: 'PDF fetch request timed out after 5 seconds'
+          message: 'PDF fetch request timed out. The PDF may be too large or the server is slow to respond.'
         });
       }
 

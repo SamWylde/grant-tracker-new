@@ -109,7 +109,7 @@ export default async function handler(
         console.error('Error deleting document:', deleteError);
         return res.status(500).json({
           error: 'Failed to delete document',
-          details: deleteError.message
+          details: sanitizeError(deleteError)
         });
       }
 
@@ -132,7 +132,7 @@ export default async function handler(
       console.error('Error soft deleting document:', updateError);
       return res.status(500).json({
         error: 'Failed to delete document',
-        details: updateError.message
+        details: sanitizeError(updateError)
       });
     }
 
@@ -151,9 +151,10 @@ export default async function handler(
 
   } catch (error) {
     console.error('Document delete error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

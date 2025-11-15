@@ -138,13 +138,13 @@ export default async function handler(
       if (error.code === '23505') {
         return res.status(409).json({
           error: 'Some grants already exist',
-          details: error.message,
+          details: sanitizeError(error),
         });
       }
 
       return res.status(500).json({
         error: 'Failed to import grants',
-        details: error.message,
+        details: sanitizeError(error),
         code: error.code,
       });
     }
@@ -174,8 +174,7 @@ export default async function handler(
   } catch (error) {
     console.error('Error in import API:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

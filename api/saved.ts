@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { sendNotifications } from './utils/notifications.js';
 import { GoogleCalendarService } from '../lib/google-calendar/GoogleCalendarService.js';
 import { setCorsHeaders } from './utils/cors.js';
+import { validateQuery, validateBody, validateId, savedGrantQuerySchema, savedGrantCreateSchema, savedGrantUpdateSchema } from './utils/validation';
+import { fetchWithTimeout, TimeoutPresets } from './utils/timeout.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -69,11 +71,10 @@ export default async function handler(
     switch (req.method) {
       case 'GET': {
         // List saved grants for an organization
-        const { org_id, format } = req.query;
+        const validationResult = validateQuery(req, res, savedGrantQuerySchema);
+        if (!validationResult.success) return;
 
-        if (!org_id || typeof org_id !== 'string') {
-          return res.status(400).json({ error: 'org_id is required' });
-        }
+        const { org_id, format } = validationResult.data;
 
         // Verify user is a member of the organization
         const { data: membership } = await supabase
@@ -128,10 +129,11 @@ export default async function handler(
             await Promise.all(
               batch.map(async (grant) => {
                 try {
-                  const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+                  const detailsResponse = await fetchWithTimeout('https://api.grants.gov/v1/api/fetchOpportunity', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ opportunityId: Number(grant.external_id) }),
+                    timeoutMs: TimeoutPresets.EXTERNAL_API_FAST, // 10 seconds
                   });
 
                   if (detailsResponse.ok) {
@@ -242,13 +244,10 @@ export default async function handler(
 
       case 'POST': {
         // Save a new grant
-        const grantData = req.body as SavedGrantRequest;
+        const validationResult = validateBody(req, res, savedGrantCreateSchema);
+        if (!validationResult.success) return;
 
-        if (!grantData.org_id || !grantData.user_id || !grantData.external_id || !grantData.title) {
-          return res.status(400).json({
-            error: 'Missing required fields: org_id, user_id, external_id, title'
-          });
-        }
+        const grantData = validationResult.data;
 
         // Verify user is a member of the organization
         const { data: membership } = await supabase
@@ -317,9 +316,8 @@ export default async function handler(
           console.error('Error saving grant:', error);
           return res.status(500).json({
             error: 'Failed to save grant',
-            details: error.message,
-            code: error.code,
-            hint: error.hint
+            details: sanitizeError(error),
+            // code and hint removed to prevent information disclosure
           });
         }
 
@@ -337,6 +335,8 @@ export default async function handler(
           }
         } catch (taskErr) {
           console.error('Exception creating default tasks:', taskErr);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
           // Continue even if task creation fails
         }
 
@@ -375,12 +375,14 @@ export default async function handler(
 
       case 'PATCH': {
         // Update a saved grant (notes, status, priority, etc.)
-        const { id } = req.query;
-        const updates = req.body;
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const validationResult = validateBody(req, res, savedGrantUpdateSchema);
+        if (!validationResult.success) return;
+
+        const updates = validationResult.data;
 
         // Get the grant to verify access
         const { data: grant } = await supabase
@@ -405,33 +407,8 @@ export default async function handler(
           return res.status(403).json({ error: 'Access denied to this grant' });
         }
 
-        // Build the update object - only update allowed fields
-        const allowedFields = [
-          'notes',
-          'status',
-          'priority',
-          'assigned_to',
-          'description',
-          'title',
-          'agency',
-          'program',
-          'aln',
-          'open_date',
-          'close_date',
-          'loi_deadline',
-          'internal_deadline'
-        ];
-
-        const updateData: any = {};
-        for (const field of allowedFields) {
-          if (field in updates) {
-            updateData[field] = updates[field];
-          }
-        }
-
-        if (Object.keys(updateData).length === 0) {
-          return res.status(400).json({ error: 'No valid fields to update' });
-        }
+        // Use validated updates directly (schema already filters allowed fields)
+        const updateData = updates;
 
         // Perform the update
         const { data: updated, error } = await supabase
@@ -445,7 +422,7 @@ export default async function handler(
           console.error('Error updating grant:', error);
           return res.status(500).json({
             error: 'Failed to update grant',
-            details: error.message
+            details: sanitizeError(error)
           });
         }
 
@@ -490,11 +467,9 @@ export default async function handler(
 
       case 'DELETE': {
         // Delete a saved grant by ID
-        const { id } = req.query;
-
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
         // Verify the grant belongs to an organization the user is a member of
         const { data: grant } = await supabase
@@ -551,8 +526,7 @@ export default async function handler(
   } catch (error) {
     console.error('Error in saved grants API:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'processing request')
     });
   }
 }

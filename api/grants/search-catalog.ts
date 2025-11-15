@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { fetchWithTimeout, TimeoutPresets } from '../utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -166,10 +167,11 @@ export default async function handler(
         await Promise.all(
           batch.map(async (grant) => {
             try {
-              const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+              const detailsResponse = await fetchWithTimeout('https://api.grants.gov/v1/api/fetchOpportunity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ opportunityId: Number(grant.id) }),
+                timeoutMs: TimeoutPresets.EXTERNAL_API_FAST, // 10 seconds
               });
 
               if (detailsResponse.ok) {
@@ -242,18 +244,15 @@ export default async function handler(
         if (agencies) grantsGovRequest.agencies = agencies;
         if (aln) grantsGovRequest.aln = aln;
 
-        // Call Grants.gov API with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 25000);
-
-        const response = await fetch('https://api.grants.gov/v1/api/search2', {
+        // Call Grants.gov API with timeout and retry logic
+        const response = await fetchWithTimeout('https://api.grants.gov/v1/api/search2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(grantsGovRequest),
-          signal: controller.signal,
+          timeoutMs: TimeoutPresets.GRANT_SEARCH, // 25 seconds
+          retry: true,
+          maxRetries: 2,
         });
-
-        clearTimeout(timeoutId);
 
         if (response.ok) {
           const apiResponse = await response.json();
@@ -291,10 +290,11 @@ export default async function handler(
               await Promise.all(
                 batch.map(async (grant) => {
                   try {
-                    const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
+                    const detailsResponse = await fetchWithTimeout('https://api.grants.gov/v1/api/fetchOpportunity', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ opportunityId: Number(grant.id) }),
+                      timeoutMs: TimeoutPresets.EXTERNAL_API_FAST, // 10 seconds
                     });
 
                     if (detailsResponse.ok) {
@@ -365,6 +365,8 @@ export default async function handler(
         }
       } catch (apiError) {
         console.error('[Catalog Search] Live API error:', apiError);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
 
         // Always return catalog results even if API fails
         return res.status(200).json({
@@ -388,8 +390,7 @@ export default async function handler(
   } catch (error) {
     console.error('[Catalog Search] Error:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

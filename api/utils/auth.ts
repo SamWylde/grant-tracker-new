@@ -1,4 +1,5 @@
 import { timingSafeEqual } from 'crypto';
+import { logError } from './logger';
 
 /**
  * Authentication Utilities
@@ -27,7 +28,7 @@ export function verifyCronAuth(authHeader: string | undefined): boolean {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
-    console.error('[Auth] CRON_SECRET is not configured');
+    logError('CRON_SECRET is not configured', undefined, { module: 'auth' });
     return false;
   }
 
@@ -51,7 +52,7 @@ export function verifyCronAuth(authHeader: string | undefined): boolean {
   } catch (error) {
     // This can happen if the strings have different lengths
     // (though we check above, being extra safe)
-    console.error('[Auth] Error in timing-safe comparison:', error);
+    logError('Error in timing-safe comparison', error, { module: 'auth' });
     return false;
   }
 }

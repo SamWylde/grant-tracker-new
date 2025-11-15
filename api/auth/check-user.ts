@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitPublic, handleRateLimit } from '../utils/ratelimit';
+import { createRequestLogger } from '../utils/logger';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,6 +17,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * but is not exposed to the client.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const logger = createRequestLogger(req, { module: 'auth/check-user' });
+
   // Apply rate limiting (100 req/min per IP)
   const rateLimitResult = await rateLimitPublic(req);
   if (handleRateLimit(res, rateLimitResult)) {
@@ -50,7 +53,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: { users }, error } = await supabase.auth.admin.listUsers();
 
     if (error) {
-      console.error('Error checking user:', error);
+      logger.error('Error checking user', error);
       // Even on error, return generic message to prevent enumeration
       return res.status(200).json({
         message: 'If an account exists for this email, you will receive instructions shortly.'
@@ -61,7 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userExists = users?.some(user => user.email?.toLowerCase() === email.toLowerCase());
 
     // Log for analytics/monitoring (internal use only)
-    console.log(`[check-user] Email check for ${email.substring(0, 3)}*** - ${userExists ? 'exists' : 'new'}`);
+    logger.info('Email check completed', {
+      emailPrefix: email.substring(0, 3),
+      userExists,
+      status: userExists ? 'exists' : 'new'
+    });
 
     // SECURITY: Always return the same generic message regardless of whether user exists
     // This prevents attackers from discovering valid email addresses in the system
@@ -69,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'If an account exists for this email, you will receive instructions shortly.'
     });
   } catch (error) {
-    console.error('Error in check-user API:', error);
+    logger.error('Error in check-user API', error);
     // Even on error, return generic message to prevent enumeration
     return res.status(200).json({
       message: 'If an account exists for this email, you will receive instructions shortly.'

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitStandard, handleRateLimit } from '../../utils/ratelimit';
+import { fetchWithTimeout, TimeoutPresets, isTimeoutError } from '../../utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -102,20 +103,33 @@ export default async function handler(
       return res.status(403).json({ error: 'Only admins can connect integrations' });
     }
 
-    // Exchange code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        code: code as string,
-        client_id: googleClientId,
-        client_secret: googleClientSecret,
-        redirect_uri: googleRedirectUri,
-        grant_type: 'authorization_code',
-      }),
-    });
+    // Exchange code for tokens with timeout protection
+    let tokenResponse;
+    try {
+      tokenResponse = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          code: code as string,
+          client_id: googleClientId,
+          client_secret: googleClientSecret,
+          redirect_uri: googleRedirectUri,
+          grant_type: 'authorization_code',
+        }).toString(),
+        timeoutMs: TimeoutPresets.OAUTH_CALLBACK, // 10 seconds
+        retry: true,
+        maxRetries: 2,
+      });
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        console.error('[Google OAuth] Token exchange timed out');
+        return res.redirect('/settings/integrations?error=token_exchange_timeout');
+      }
+      console.error('[Google OAuth] Token exchange failed:', error);
+      return res.redirect('/settings/integrations?error=token_exchange_failed');
+    }
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();

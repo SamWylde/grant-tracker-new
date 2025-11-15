@@ -1,4 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { ErrorHandlers, generateRequestId, wrapHandler } from '../utils/error-handler';
+import { validateBody, grantDetailsSchema } from '../utils/validation';
+import { createRequestLogger } from '../utils/logger';
 
 // Interface for applicant types array
 interface ApplicantType {
@@ -130,95 +133,101 @@ function normalizeGrantDetail(detail: GrantsGovOpportunityDetail): NormalizedGra
   };
 }
 
-export default async function handler(
+export default wrapHandler(async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  const requestId = generateRequestId();
+  const logger = createRequestLogger(req, { module: 'grants/details', requestId });
+
   // Only allow POST
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+    return ErrorHandlers.methodNotAllowed(res, ['POST'], requestId);
   }
+
+  // Validate request body
+  const validationResult = validateBody(req, res, grantDetailsSchema);
+  if (!validationResult.success) return;
+
+  const { id } = validationResult.data;
+
+  // Convert to number - Grants.gov expects numeric opportunityId
+  const opportunityId = Number(id);
+  if (Number.isNaN(opportunityId)) {
+    return ErrorHandlers.validation(
+      res,
+      'Opportunity ID must be numeric',
+      `Received ID: "${id}". The Grants.gov details API requires a numeric opportunity ID, not the opportunity number.`,
+      requestId
+    );
+  }
+
+  // Set up timeout with AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
   try {
-    const { id } = req.body || {};
+    // Call Grants.gov fetchOpportunity API (POST with JSON body)
+    const response = await fetch(
+      'https://api.grants.gov/v1/api/fetchOpportunity',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ opportunityId }),
+        signal: controller.signal,
+      }
+    );
 
-    // Validate ID
-    if (!id) {
-      return res.status(400).json({ error: 'Opportunity ID is required' });
-    }
+    clearTimeout(timeoutId);
 
-    // Convert to number - Grants.gov expects numeric opportunityId
-    const opportunityId = Number(id);
-    if (Number.isNaN(opportunityId)) {
-      return res.status(400).json({
-        error: 'Opportunity ID must be numeric',
-        details: `Received ID: "${id}". The Grants.gov details API requires a numeric opportunity ID, not the opportunity number.`
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('Grants.gov API error', undefined, {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
       });
-    }
-
-    // Set up timeout with AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
-
-    try {
-      // Call Grants.gov fetchOpportunity API (POST with JSON body)
-      const response = await fetch(
-        'https://api.grants.gov/v1/api/fetchOpportunity',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ opportunityId }),
-          signal: controller.signal,
-        }
+      return ErrorHandlers.externalApi(
+        res,
+        'Grants.gov',
+        new Error(`${response.statusText}: ${errorText}`),
+        requestId
       );
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Grants.gov API error:', response.status, response.statusText, errorText);
-        return res.status(response.status).json({
-          error: 'Failed to fetch grant details from Grants.gov',
-          details: response.statusText,
-        });
-      }
-
-      const apiResponse: GrantsGovDetailResponse = await response.json();
-
-      // Validate response structure
-      if (!apiResponse.data) {
-        console.error('Invalid Grants.gov response structure:', apiResponse);
-        return res.status(500).json({
-          error: 'Invalid response from Grants.gov',
-          details: 'Response missing data object',
-        });
-      }
-
-      // Normalize the response
-      const normalizedDetail = normalizeGrantDetail(apiResponse.data);
-
-      // Set cache headers (5 minutes)
-      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-
-      return res.status(200).json(normalizedDetail);
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
     }
-  } catch (error) {
-    console.error('Error in grant details:', error);
 
-    if (error instanceof Error) {
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        return res.status(504).json({ error: 'Request timeout - please try again' });
+    const apiResponse: GrantsGovDetailResponse = await response.json();
+
+    // Validate response structure
+    if (!apiResponse.data) {
+      logger.error('Invalid Grants.gov response structure', undefined, {
+        hasData: !!apiResponse.data
+      });
+      return ErrorHandlers.externalApi(
+        res,
+        'Grants.gov',
+        new Error('Response missing data object'),
+        requestId
+      );
+    }
+
+    // Normalize the response
+    const normalizedDetail = normalizeGrantDetail(apiResponse.data);
+
+    // Set cache headers (5 minutes)
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+
+    return res.status(200).json(normalizedDetail);
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
+
+    if (fetchError instanceof Error) {
+      if (fetchError.name === 'AbortError' || fetchError.message.includes('timeout')) {
+        return ErrorHandlers.timeout(res, 'Request timeout - please try again', requestId);
       }
     }
 
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    throw fetchError;
   }
-}
+});

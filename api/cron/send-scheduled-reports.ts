@@ -214,7 +214,7 @@ async function sendReport(
         report_type: report.report_type,
         status: 'failed',
         recipient_email: recipient.email,
-        error_message: error instanceof Error ? error.message : 'Unknown error',
+        error_message: sanitizeError(error),
       });
 
       failed++;

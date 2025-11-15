@@ -311,9 +311,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Error in saved views API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'processing request')
     });
   }
 }

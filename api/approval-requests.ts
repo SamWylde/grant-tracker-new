@@ -601,7 +601,7 @@ export default async function handler(
               console.error('Error updating grant status:', updateError);
               return res.status(500).json({
                 error: 'Request approved but failed to update grant status',
-                details: updateError.message
+                details: sanitizeError(updateError)
               });
             }
 
@@ -695,8 +695,7 @@ export default async function handler(
   } catch (error) {
     console.error('Approval requests API error:', error);
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

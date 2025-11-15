@@ -81,7 +81,7 @@ export default async function handler(
     if (error) {
       return res.status(500).json({
         error: 'Failed to fetch grants',
-        details: error.message
+        details: sanitizeError(error)
       });
     }
 
@@ -192,9 +192,10 @@ export default async function handler(
 
   } catch (error) {
     console.error('[Fix Grant Titles] Error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }
