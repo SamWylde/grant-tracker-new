@@ -12,6 +12,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { setCorsHeaders } from '../utils/cors.js';
+import { withTimeout, TimeoutPresets, isTimeoutError } from '../utils/timeout.js';
+import { createRequestLogger } from '../utils/logger';
 
 // =====================================================
 // TYPE DEFINITIONS
@@ -73,12 +76,14 @@ async function generateAISummary(
 }> {
   const startTime = Date.now();
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini', // Cost-effective model
-    messages: [
-      {
-        role: 'system',
-        content: `You are an expert grant analyst. Extract key information from NOFO (Notice of Funding Opportunity) documents.
+  // Wrap OpenAI call with timeout protection
+  const response = await withTimeout(
+    async () => openai.chat.completions.create({
+      model: 'gpt-4o-mini', // Cost-effective model
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert grant analyst. Extract key information from NOFO (Notice of Funding Opportunity) documents.
 
 Focus on:
 - Letter of Intent (LOI) deadline (format as YYYY-MM-DD) - this often comes before the full application
@@ -92,20 +97,28 @@ Focus on:
 - Contact information
 
 Return a structured JSON object with all available information. Use null for missing fields.`,
-      },
-      {
-        role: 'user',
-        content: `Extract key information from this NOFO for: ${grantTitle}
+        },
+        {
+          role: 'user',
+          content: `Extract key information from this NOFO for: ${grantTitle}
 
 NOFO Text:
 ${pdfText.slice(0, 30000)}
 
 Please extract all key dates, eligibility criteria, funding details, priorities, and requirements. Return valid JSON only.`,
-      },
-    ],
-    response_format: { type: 'json_object' },
-    temperature: 0.3,
-  });
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    }),
+    {
+      timeoutMs: TimeoutPresets.AI_OPERATION, // 45 seconds
+      operation: 'OpenAI NOFO Summary',
+      retry: true,
+      maxRetries: 2,
+      retryDelayMs: 2000,
+    }
+  );
 
   const processingTimeMs = Date.now() - startTime;
   const content = response.choices[0]?.message?.content;
@@ -149,10 +162,10 @@ function extractPrimaryDeadline(summary: NofoSummary): Date | null {
 // =====================================================
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  const logger = createRequestLogger(req, { module: 'grants/nofo-summary' });
+
+  // Set secure CORS headers based on whitelisted origins
+  setCorsHeaders(res, req.headers.origin, { methods: 'GET, POST, OPTIONS' });
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -222,7 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model: data.model,
       });
     } catch (error) {
-      console.error('[NOFO Summary GET] Error:', error);
+      logger.error('Failed to retrieve summary', error);
       return res.status(500).json({
         error: 'Failed to retrieve summary',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -287,7 +300,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Generate AI summary
-      console.log(`[NOFO Summary] Generating summary for: ${grant_title}`);
+      logger.info('Generating NOFO summary', { grantTitle: grant_title });
 
       const {
         summary,
@@ -333,11 +346,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .single();
 
       if (dbError) {
-        console.error('[NOFO Summary] Database error:', dbError);
+        logger.error('Database error saving summary', dbError);
         throw dbError;
       }
 
-      console.log(`[NOFO Summary] Summary generated successfully (${tokenCount} tokens, $${costUsd.toFixed(4)})`);
+      logger.info('Summary generated successfully', {
+        tokenCount,
+        costUsd: costUsd.toFixed(4),
+        processingTimeMs
+      });
 
       return res.status(200).json({
         success: true,
@@ -353,7 +370,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       });
     } catch (error) {
-      console.error('[NOFO Summary POST] Error:', error);
+      logger.error('NOFO summary generation failed', error);
 
       // Save failed attempt to database if we have the required info
       const {
@@ -364,6 +381,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (grant_id || saved_grant_id) {
         try {
+          // Import sanitizeError from error-handler
+          const { sanitizeError } = await import('../utils/error-handler.js');
+
           await supabase
             .from('grant_ai_summaries')
             .insert({
@@ -374,13 +394,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               model: 'gpt-4o-mini',
               summary: {} as any,
               status: 'failed',
-              error_message: error instanceof Error ? error.message : 'Unknown error',
+              error_message: sanitizeError(error, 'nofo-summary'),
             })
             .select()
             .single();
         } catch (err) {
-          console.error('[NOFO Summary] Failed to save error state:', err);
+          logger.error('Failed to save error state', err);
         }
+      }
+
+      // Handle timeout errors specifically
+      if (isTimeoutError(error)) {
+        logger.error('NOFO summary request timed out');
+        return res.status(408).json({
+          error: 'Request timeout',
+          message: 'AI summary generation timed out. Please try again.',
+        });
       }
 
       return res.status(500).json({

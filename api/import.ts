@@ -138,13 +138,13 @@ export default async function handler(
       if (error.code === '23505') {
         return res.status(409).json({
           error: 'Some grants already exist',
-          details: error.message,
+          details: sanitizeError(error),
         });
       }
 
       return res.status(500).json({
         error: 'Failed to import grants',
-        details: error.message,
+        details: sanitizeError(error),
         code: error.code,
       });
     }
@@ -159,6 +159,8 @@ export default async function handler(
         });
       } catch (err) {
         console.error(`Failed to create tasks for grant ${grant.id}:`, err);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
         // Don't fail the import if task creation fails
       }
     });
@@ -173,9 +175,10 @@ export default async function handler(
     });
   } catch (error) {
     console.error('Error in import API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'import'),
     });
   }
 }

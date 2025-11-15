@@ -331,6 +331,8 @@ async function sendWebhook(
     );
   } catch (error) {
     console.error(`[Notifications] Failed to send webhook ${webhook.name}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
 
     // Log failed delivery
     await supabase.from('webhook_deliveries').insert({
@@ -340,7 +342,7 @@ async function sendWebhook(
       response_status: null,
       response_body: null,
       delivered_at: new Date().toISOString(),
-      error_message: error instanceof Error ? error.message : 'Unknown error',
+      error_message: sanitizeError(error),
     });
 
     // Update webhook stats
@@ -389,6 +391,8 @@ async function sendSlackNotification(
     }
   } catch (error) {
     console.error('[Notifications] Failed to send Slack notification:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
   }
 }
 
@@ -426,6 +430,8 @@ async function sendTeamsNotification(
     }
   } catch (error) {
     console.error('[Notifications] Failed to send Teams notification:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
   }
 }
 
@@ -476,6 +482,8 @@ export async function sendNotifications(payload: NotificationPayload): Promise<v
     }
   } catch (error) {
     console.error('[Notifications] Error sending notifications:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
   }
 }
 

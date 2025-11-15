@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { verifyCronAuth } from '../utils/auth.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -190,8 +191,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // This endpoint can be called either by authenticated user (preview) or by cron (with secret)
+  // SECURITY: Use timing-safe comparison to prevent timing attacks on CRON_SECRET
+  // NOTE: CRON_SECRET should be rotated regularly (recommended: every 90 days)
   const authHeader = req.headers.authorization;
-  const isCronRequest = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+  const isCronRequest = verifyCronAuth(authHeader);
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Server configuration error' });
@@ -302,9 +305,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('Error generating report content:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

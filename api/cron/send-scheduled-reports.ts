@@ -18,6 +18,7 @@ import {
   generateWeeklyDigestEmail,
   generateMonthlySummaryEmail,
 } from '../../lib/emails/report-templates.js';
+import { verifyCronAuth } from '../utils/auth.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -204,6 +205,8 @@ async function sendReport(
       sent++;
     } catch (error) {
       console.error(`Failed to send report to ${recipient.email}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
 
       // Log failed delivery
       await supabase.from('report_delivery_log').insert({
@@ -213,7 +216,7 @@ async function sendReport(
         report_type: report.report_type,
         status: 'failed',
         recipient_email: recipient.email,
-        error_message: error instanceof Error ? error.message : 'Unknown error',
+        error_message: sanitizeError(error),
       });
 
       failed++;
@@ -224,10 +227,12 @@ async function sendReport(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify this is a cron request
+  // Verify this is a cron request using timing-safe comparison
+  // SECURITY: Timing-safe comparison prevents timing attacks that could be used to guess the secret
+  // NOTE: CRON_SECRET should be rotated regularly (recommended: every 90 days)
   const authHeader = req.headers.authorization;
 
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(authHeader)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -324,6 +329,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
       } catch (error) {
         console.error(`Error processing report ${reportRaw.id}:`, error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
         results.push({
           report_id: reportRaw.id,
           org_name: reportRaw.org_name,
@@ -342,6 +349,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('Cron job error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
       error: 'Failed to send reports',
       details: error instanceof Error ? error.message : 'Unknown error',

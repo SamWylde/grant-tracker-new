@@ -172,9 +172,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (error) {
     console.error('Error creating custom grant:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Failed to create grant',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'creating custom grant'),
     });
   }
 }

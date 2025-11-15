@@ -103,7 +103,7 @@ export default async function handler(
       console.error('Error fetching quota:', quotaError);
       return res.status(500).json({
         error: 'Failed to fetch quota',
-        details: quotaError.message
+        details: sanitizeError(quotaError)
       });
     }
 
@@ -136,9 +136,10 @@ export default async function handler(
 
   } catch (error) {
     console.error('Document quota error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

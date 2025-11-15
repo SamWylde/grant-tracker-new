@@ -20,6 +20,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { generateDataExportReadyEmail } from '../../lib/emails/data-export-template.js';
+import { rateLimitStandard, handleRateLimit } from '../utils/ratelimit';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -29,6 +30,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * Main handler for data export requests
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Apply rate limiting (60 req/min per IP)
+  const rateLimitResult = await rateLimitStandard(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Verify authentication
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -77,9 +84,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (error) {
     console.error('Error in data export API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }
@@ -317,7 +325,7 @@ async function processExportRequest(supabase: any, requestId: string, user: any)
       .from('data_export_requests')
       .update({
         status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error',
+        error_message: sanitizeError(error),
       })
       .eq('id', requestId);
   }

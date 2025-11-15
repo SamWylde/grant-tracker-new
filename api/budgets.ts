@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { setCorsHeaders } from './utils/cors.js';
+import { ErrorHandlers, generateRequestId, wrapHandler } from './utils/error-handler';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,21 +10,21 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.error('Missing Supabase environment variables');
 }
 
-export default async function handler(
+export default wrapHandler(async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  const requestId = generateRequestId();
+
+  // Set secure CORS headers based on whitelisted origins
+  setCorsHeaders(res, req.headers.origin);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Server configuration error' });
+    return ErrorHandlers.serverError(res, new Error('Server configuration error'), requestId);
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -30,7 +32,7 @@ export default async function handler(
   // Verify authentication
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    return ErrorHandlers.unauthorized(res, 'Missing or invalid authorization header', undefined, requestId);
   }
 
   const token = authHeader.substring(7);
@@ -41,10 +43,8 @@ export default async function handler(
   } = await supabase.auth.getUser(token);
 
   if (authError || !user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return ErrorHandlers.unauthorized(res, 'Unauthorized', undefined, requestId);
   }
-
-  try {
     // GET - Get budget for a grant
     if (req.method === 'GET') {
       const { grant_id, org_id, budget_id } = req.query;
@@ -61,10 +61,12 @@ export default async function handler(
           .eq('id', budget_id)
           .single();
 
-        if (budgetError) throw budgetError;
+        if (budgetError) {
+          return ErrorHandlers.database(res, budgetError, requestId);
+        }
 
         if (!budget) {
-          return res.status(404).json({ error: 'Budget not found' });
+          return ErrorHandlers.notFound(res, 'Budget', requestId);
         }
 
         // Verify access
@@ -76,7 +78,7 @@ export default async function handler(
           .single();
 
         if (!membership) {
-          return res.status(403).json({ error: 'Access denied' });
+          return ErrorHandlers.forbidden(res, 'Access denied', undefined, requestId);
         }
 
         // Get budget summary separately (it's a view, not a table)
@@ -318,12 +320,5 @@ export default async function handler(
       return res.status(200).json({ success: true });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    console.error('Error in budgets API:', error);
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    });
-  }
-}
+  return ErrorHandlers.methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'], requestId);
+});

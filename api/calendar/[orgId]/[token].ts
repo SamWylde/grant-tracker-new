@@ -146,9 +146,10 @@ export default async function handler(
     return res.status(200).send(icsContent);
   } catch (error) {
     console.error('Error generating ICS feed:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'processing request')
     });
   }
 }

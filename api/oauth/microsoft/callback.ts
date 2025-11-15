@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitStandard, handleRateLimit } from '../../utils/ratelimit';
+import { fetchWithTimeout, TimeoutPresets, isTimeoutError } from '../../utils/timeout';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,6 +24,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Apply rate limiting (60 req/min per IP)
+  const rateLimitResult = await rateLimitStandard(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Only allow GET (OAuth callback)
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -41,12 +49,6 @@ export default async function handler(
       return res.status(400).json({ error: 'Missing code or state parameter' });
     }
 
-    // State should be in format: userId:orgId
-    const [userId, orgId] = (state as string).split(':');
-    if (!userId || !orgId) {
-      return res.status(400).json({ error: 'Invalid state parameter' });
-    }
-
     // Validate environment variables
     if (!supabaseUrl || !supabaseServiceKey) {
       return res.status(500).json({ error: 'Server configuration error' });
@@ -57,6 +59,40 @@ export default async function handler(
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validate state token - CSRF protection
+    const { data: stateData, error: stateError } = await supabase
+      .from('oauth_state_tokens')
+      .select('user_id, org_id, expires_at, used, provider')
+      .eq('state_token', state as string)
+      .eq('provider', 'microsoft')
+      .single();
+
+    if (stateError || !stateData) {
+      console.error('Invalid state token:', stateError);
+      return res.redirect('/settings/integrations?error=invalid_state_token');
+    }
+
+    // Check if token has expired
+    if (new Date(stateData.expires_at) < new Date()) {
+      console.error('State token has expired');
+      return res.redirect('/settings/integrations?error=state_token_expired');
+    }
+
+    // Check if token has already been used
+    if (stateData.used) {
+      console.error('State token has already been used');
+      return res.redirect('/settings/integrations?error=state_token_reused');
+    }
+
+    // Mark state token as used
+    await supabase
+      .from('oauth_state_tokens')
+      .update({ used: true })
+      .eq('state_token', state as string);
+
+    const userId = stateData.user_id;
+    const orgId = stateData.org_id;
 
     // Verify user has access to this organization
     const { data: membership } = await supabase
@@ -70,22 +106,35 @@ export default async function handler(
       return res.status(403).json({ error: 'Only admins can connect integrations' });
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens with timeout protection
     const tokenUrl = `https://login.microsoftonline.com/${microsoftTenantId}/oauth2/v2.0/token`;
-    const tokenResponse = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: microsoftClientId,
-        client_secret: microsoftClientSecret,
-        code: code as string,
-        redirect_uri: microsoftRedirectUri,
-        grant_type: 'authorization_code',
-        scope: 'https://graph.microsoft.com/.default offline_access',
-      }),
-    });
+    let tokenResponse;
+    try {
+      tokenResponse = await fetchWithTimeout(tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: microsoftClientId,
+          client_secret: microsoftClientSecret,
+          code: code as string,
+          redirect_uri: microsoftRedirectUri,
+          grant_type: 'authorization_code',
+          scope: 'https://graph.microsoft.com/.default offline_access',
+        }).toString(),
+        timeoutMs: TimeoutPresets.OAUTH_CALLBACK, // 10 seconds
+        retry: true,
+        maxRetries: 2,
+      });
+    } catch (error) {
+      if (isTimeoutError(error)) {
+        console.error('[Microsoft OAuth] Token exchange timed out');
+        return res.redirect('/settings/integrations?error=token_exchange_timeout');
+      }
+      console.error('[Microsoft OAuth] Token exchange failed:', error);
+      return res.redirect('/settings/integrations?error=token_exchange_failed');
+    }
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();

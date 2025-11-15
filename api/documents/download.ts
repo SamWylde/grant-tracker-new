@@ -79,7 +79,7 @@ export default async function handler(
         console.error('Error generating signed URL:', signedUrlError);
         return res.status(500).json({
           error: 'Failed to generate download URL',
-          details: signedUrlError.message
+          details: sanitizeError(signedUrlError)
         });
       }
 
@@ -118,9 +118,10 @@ export default async function handler(
 
   } catch (error) {
     console.error('Document download error:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

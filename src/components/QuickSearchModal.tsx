@@ -4,6 +4,7 @@ import { IconClock, IconSearch, IconAlertCircle } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { supabase } from "../lib/supabase";
 
 interface RecentSearch {
@@ -121,7 +122,8 @@ export function QuickSearchModal({
       size="lg"
       centered
     >
-      <Stack gap="md">
+      <ErrorBoundary boundaryName="QuickSearchModal">
+        <Stack gap="md">
         <TextInput
           placeholder="Search grants or select recent search..."
           value={searchQuery}
@@ -258,7 +260,8 @@ export function QuickSearchModal({
           {" + "}
           <Kbd size="xs">K</Kbd> to open quick search
         </Text>
-      </Stack>
+        </Stack>
+      </ErrorBoundary>
     </Modal>
   );
 }

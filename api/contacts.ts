@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { validateQuery, validateBody, validateId, contactQuerySchema, contactCreateSchema, contactUpdateSchema } from './utils/validation';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -50,11 +51,10 @@ export default async function handler(
     switch (req.method) {
       case 'GET': {
         // List contacts for a funder or organization
-        const { org_id, funder_id, id } = req.query;
+        const validationResult = validateQuery(req, res, contactQuerySchema);
+        if (!validationResult.success) return;
 
-        if (!org_id || typeof org_id !== 'string') {
-          return res.status(400).json({ error: 'org_id is required' });
-        }
+        const { org_id, funder_id, id } = validationResult.data;
 
         // Verify user is a member of the organization
         const { data: membership } = await supabase
@@ -118,13 +118,10 @@ export default async function handler(
 
       case 'POST': {
         // Create a new contact
-        const contactData = req.body as ContactRequest;
+        const validationResult = validateBody(req, res, contactCreateSchema);
+        if (!validationResult.success) return;
 
-        if (!contactData.org_id || !contactData.funder_id || !contactData.name) {
-          return res.status(400).json({
-            error: 'Missing required fields: org_id, funder_id, name'
-          });
-        }
+        const contactData = validationResult.data;
 
         // Verify user is a member of the organization
         const { data: membership } = await supabase
@@ -174,12 +171,14 @@ export default async function handler(
 
       case 'PATCH': {
         // Update an existing contact
-        const { id } = req.query;
-        const updates = req.body;
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const validationResult = validateBody(req, res, contactUpdateSchema);
+        if (!validationResult.success) return;
+
+        const updates = validationResult.data;
 
         // Verify the contact belongs to an organization the user is a member of
         const { data: contact } = await supabase
@@ -203,14 +202,8 @@ export default async function handler(
           return res.status(403).json({ error: 'Access denied to this contact' });
         }
 
-        // Build the update object
-        const updateData: any = {};
-        if (updates.name !== undefined) updateData.name = updates.name;
-        if (updates.email !== undefined) updateData.email = updates.email;
-        if (updates.phone !== undefined) updateData.phone = updates.phone;
-        if (updates.title !== undefined) updateData.title = updates.title;
-        if (updates.notes !== undefined) updateData.notes = updates.notes;
-        if (updates.funder_id !== undefined) updateData.funder_id = updates.funder_id;
+        // Use validated updates directly (schema already filters allowed fields)
+        const updateData = updates;
 
         const { data, error } = await supabase
           .from('contacts')
@@ -229,11 +222,9 @@ export default async function handler(
 
       case 'DELETE': {
         // Delete a contact
-        const { id } = req.query;
-
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
         // Verify the contact belongs to an organization the user is a member of
         const { data: contact } = await supabase
@@ -275,9 +266,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Error in contacts API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'processing request')
     });
   }
 }

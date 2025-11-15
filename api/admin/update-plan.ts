@@ -1,10 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitAdmin, handleRateLimit } from '../utils/ratelimit';
+import { createRequestLogger } from '../utils/logger';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const logger = createRequestLogger(req, { module: 'admin/update-plan' });
+
+  // Apply rate limiting (30 req/min per IP)
+  const rateLimitResult = await rateLimitAdmin(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -46,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .single();
 
   if (profileError) {
-    console.error('Error checking platform admin status:', profileError);
+    logger.error('Error checking platform admin status', profileError);
     return res.status(500).json({ error: 'Failed to verify platform admin status' });
   }
 
@@ -99,11 +109,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (error) {
-      console.error('Error updating organization settings:', error);
+      logger.error('Error updating organization settings', error, { orgId: org_id });
       throw error;
     }
 
-    console.log(`[Admin] User ${user.id} updated plan for org ${org_id}: ${plan_name} (${plan_status})`);
+    logger.info('Organization plan updated successfully', {
+      adminUserId: user.id,
+      orgId: org_id,
+      planName: plan_name,
+      planStatus: plan_status
+    });
 
     return res.status(200).json({
       success: true,
@@ -111,10 +126,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       data,
     });
   } catch (error) {
-    console.error('Error updating organization plan:', error);
+    logger.error('Error updating organization plan', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, 'processing request'),
     });
   }
 }

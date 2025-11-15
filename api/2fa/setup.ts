@@ -10,11 +10,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { generate2FASetup } from '../../src/lib/twoFactor.js';
+import { rateLimitAuth, handleRateLimit } from '../utils/ratelimit';
+import { createRequestLogger } from '../utils/logger';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const logger = createRequestLogger(req, { module: '2fa/setup' });
+
+  // Apply rate limiting (10 req/min per IP)
+  const rateLimitResult = await rateLimitAuth(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -59,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .single();
 
     if (profileError) {
-      console.error('Error fetching user profile:', profileError);
+      logger.error('Error fetching user profile', profileError);
       return res.status(500).json({ error: 'Failed to fetch user profile' });
     }
 
@@ -84,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Error updating user profile:', updateError);
+      logger.error('Error updating user profile', updateError);
       return res.status(500).json({ error: 'Failed to save 2FA setup' });
     }
 
@@ -107,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .insert(backupCodeRecords);
 
     if (backupCodesError) {
-      console.error('Error storing backup codes:', backupCodesError);
+      logger.error('Error storing backup codes', backupCodesError);
       return res.status(500).json({ error: 'Failed to save backup codes' });
     }
 
@@ -133,10 +143,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Scan the QR code with your authenticator app, then verify with a 6-digit code to enable 2FA.',
     });
   } catch (error) {
-    console.error('Error in 2FA setup:', error);
+    logger.error('Error in 2FA setup', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      error: sanitizeError(error, '2FA setup'),
     });
   }
 }

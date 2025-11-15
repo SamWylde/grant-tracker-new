@@ -1,11 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { logError, createRequestLogger } from './utils/logger';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables');
+  logError('Missing Supabase environment variables', undefined, { module: 'funder-interactions' });
 }
 
 interface InteractionRequest {
@@ -21,6 +22,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  const logger = createRequestLogger(req, { module: 'funder-interactions' });
+
   // Initialize Supabase client
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Server configuration error' });
@@ -85,7 +88,7 @@ export default async function handler(
         const { data, error } = await query;
 
         if (error) {
-          console.error('Error fetching interactions:', error);
+          logger.error('Error fetching interactions', error, { orgId: org_id, funderId: funder_id });
           return res.status(500).json({ error: 'Failed to fetch interactions' });
         }
 
@@ -157,7 +160,10 @@ export default async function handler(
           .single();
 
         if (error) {
-          console.error('Error creating interaction:', error);
+          logger.error('Error creating interaction', error, {
+            orgId: interactionData.org_id,
+            funderId: interactionData.funder_id
+          });
           return res.status(500).json({ error: 'Failed to create interaction' });
         }
 
@@ -210,7 +216,7 @@ export default async function handler(
           .single();
 
         if (error) {
-          console.error('Error updating interaction:', error);
+          logger.error('Error updating interaction', error, { interactionId: id });
           return res.status(500).json({ error: 'Failed to update interaction' });
         }
 
@@ -253,7 +259,7 @@ export default async function handler(
           .eq('id', id);
 
         if (error) {
-          console.error('Error deleting interaction:', error);
+          logger.error('Error deleting interaction', error, { interactionId: id });
           return res.status(500).json({ error: 'Failed to delete interaction' });
         }
 
@@ -264,10 +270,11 @@ export default async function handler(
         return res.status(405).json({ error: 'Method not allowed' });
     }
   } catch (error) {
-    console.error('Error in funder-interactions API:', error);
+    logger.error('Error in funder-interactions API', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'processing request')
     });
   }
 }

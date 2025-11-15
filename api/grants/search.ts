@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitPublic, handleRateLimit } from '../utils/ratelimit';
+import { validateBody, grantSearchQuerySchema } from '../utils/validation';
+import { createRequestLogger } from '../utils/logger';
+import { ErrorHandlers, generateRequestId, wrapHandler, sanitizeError } from '../utils/error-handler';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -58,81 +62,98 @@ function normalizeOpportunity(opp: GrantsGovOpportunity): NormalizedGrant {
   };
 }
 
-export default async function handler(
+export default wrapHandler(async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  const requestId = generateRequestId();
+  const logger = createRequestLogger(req, { module: 'grants/search', requestId });
+
+  // Apply rate limiting (100 req/min per IP)
+  const rateLimitResult = await rateLimitPublic(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
   }
 
-  try {
-    const {
-      keyword,
-      fundingCategories,
-      agencies,
-      oppStatuses,
-      aln,
-      dueInDays,
-      sortBy,
-      rows = 15,
-      startRecordNum = 0,
-    } = req.body;
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return ErrorHandlers.methodNotAllowed(res, ['POST'], requestId);
+  }
+  // Validate request body
+  const validationResult = validateBody(req, res, grantSearchQuerySchema);
+  if (!validationResult.success) return;
 
-    // Input validation
-    if (rows && (rows < 1 || rows > 50)) {
-      return res.status(400).json({ error: 'rows must be between 1 and 50' });
+  const {
+    keyword,
+    fundingCategories,
+    agencies,
+    oppStatuses,
+    aln,
+    dueInDays,
+    sortBy,
+    rows = 15,
+    startRecordNum = 0,
+  } = validationResult.data;
+
+  // Build request body for Grants.gov
+  const grantsGovRequest: Record<string, unknown> = {
+    oppStatuses: oppStatuses || 'posted|forecasted',
+    rows: Math.min(rows, 50),
+    startRecordNum: startRecordNum || 0,
+  };
+
+  // Add optional filters
+  if (keyword) grantsGovRequest.keyword = keyword;
+  if (fundingCategories) grantsGovRequest.fundingCategories = fundingCategories;
+  if (agencies) grantsGovRequest.agencies = agencies;
+  if (aln) grantsGovRequest.aln = aln;
+
+  // Set up timeout with AbortController (compatible with all Node versions)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
+  try {
+    // Call Grants.gov API
+    const response = await fetch('https://api.grants.gov/v1/api/search2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(grantsGovRequest),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      logger.error('Grants.gov API error', undefined, {
+        status: response.status,
+        statusText: response.statusText
+      });
+      return ErrorHandlers.externalApi(
+        res,
+        'Grants.gov',
+        new Error(`${response.statusText}`),
+        requestId
+      );
     }
 
-    // Build request body for Grants.gov
-    const grantsGovRequest: Record<string, unknown> = {
-      oppStatuses: oppStatuses || 'posted|forecasted',
-      rows: Math.min(rows, 50),
-      startRecordNum: startRecordNum || 0,
-    };
+    const apiResponse: GrantsGovSearchResponse = await response.json();
 
-    // Add optional filters
-    if (keyword) grantsGovRequest.keyword = keyword;
-    if (fundingCategories) grantsGovRequest.fundingCategories = fundingCategories;
-    if (agencies) grantsGovRequest.agencies = agencies;
-    if (aln) grantsGovRequest.aln = aln;
-
-    // Set up timeout with AbortController (compatible with all Node versions)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
-
-    try {
-      // Call Grants.gov API
-      const response = await fetch('https://api.grants.gov/v1/api/search2', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(grantsGovRequest),
-        signal: controller.signal,
+    // Validate response structure
+    if (!apiResponse.data || !apiResponse.data.oppHits || !Array.isArray(apiResponse.data.oppHits)) {
+      logger.error('Invalid Grants.gov response structure', undefined, {
+        hasData: !!apiResponse.data,
+        hasOppHits: !!apiResponse.data?.oppHits,
+        isArray: Array.isArray(apiResponse.data?.oppHits)
       });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        console.error('Grants.gov API error:', response.status, response.statusText);
-        return res.status(response.status).json({
-          error: 'Failed to fetch from Grants.gov',
-          details: response.statusText,
-        });
-      }
-
-      const apiResponse: GrantsGovSearchResponse = await response.json();
-
-      // Validate response structure
-      if (!apiResponse.data || !apiResponse.data.oppHits || !Array.isArray(apiResponse.data.oppHits)) {
-        console.error('Invalid Grants.gov response structure:', apiResponse);
-        return res.status(500).json({
-          error: 'Invalid response from Grants.gov',
-          details: 'Response missing data.oppHits array',
-        });
-      }
+      return ErrorHandlers.externalApi(
+        res,
+        'Grants.gov',
+        new Error('Response missing data.oppHits array'),
+        requestId
+      );
+    }
 
       // Normalize the response
       let normalizedGrants = apiResponse.data.oppHits.map(normalizeOpportunity);
@@ -202,14 +223,31 @@ export default async function handler(
       }
 
       // Enrich with descriptions (hybrid: catalog + live fetch)
-      console.log(`[Search API] Description enrichment check - Supabase URL: ${!!supabaseUrl}, Service Key: ${!!supabaseServiceKey}, Grants count: ${normalizedGrants.length}`);
+      logger.debug('Description enrichment check', {
+        hasSupabaseUrl: !!supabaseUrl,
+        hasServiceKey: !!supabaseServiceKey,
+        grantsCount: normalizedGrants.length
+      });
 
       if (supabaseUrl && supabaseServiceKey && normalizedGrants.length > 0) {
         try {
           const supabase = createClient(supabaseUrl, supabaseServiceKey);
           const grantIds = normalizedGrants.map(g => g.id);
-          console.log(`[Search API] Enriching ${grantIds.length} grants with descriptions`);
-          console.log(`[Search API] Grant IDs to enrich:`, grantIds.slice(0, 5)); // Log first 5 IDs
+          logger.info('Starting grant enrichment', {
+            totalGrants: grantIds.length,
+            sampleIds: grantIds.slice(0, 5)
+          });
+
+          // Fetch the actual grants_gov source_id (used for caching)
+          const { data: grantsGovSource } = await supabase
+            .from('grant_sources')
+            .select('id')
+            .eq('source_key', 'grants_gov')
+            .single();
+
+          if (!grantsGovSource) {
+            logger.warn('grants_gov source not found in grant_sources table');
+          }
 
           // Step 1: Check catalog first
           const { data: catalogGrants } = await supabase
@@ -217,7 +255,9 @@ export default async function handler(
             .select('external_id, description')
             .in('external_id', grantIds);
 
-          console.log(`[Search API] Found ${catalogGrants?.length || 0} grants in catalog`);
+          logger.info('Catalog lookup completed', {
+            catalogGrantsFound: catalogGrants?.length || 0
+          });
 
           const descriptionMap = new Map(
             catalogGrants?.map(g => [g.external_id, g.description]) || []
@@ -230,14 +270,19 @@ export default async function handler(
           }));
 
           const grantsWithDescriptions = normalizedGrants.filter(g => g.description).length;
-          console.log(`[Search API] ${grantsWithDescriptions} grants have descriptions from catalog`);
+          logger.info('Applied cached descriptions', {
+            grantsWithDescriptions,
+            totalGrants: normalizedGrants.length
+          });
 
           // Step 2: Fetch missing descriptions live from Grants.gov
           const grantsWithoutDescriptions = normalizedGrants.filter(g => !g.description);
 
           if (grantsWithoutDescriptions.length > 0) {
-            console.log(`[Search API] Fetching ${grantsWithoutDescriptions.length} descriptions live from Grants.gov`);
-            console.log(`[Search API] First grant without description:`, grantsWithoutDescriptions[0]);
+            logger.info('Fetching missing descriptions from Grants.gov', {
+              missingCount: grantsWithoutDescriptions.length,
+              firstGrant: grantsWithoutDescriptions[0]
+            });
 
             // Fetch details in parallel (limit to 10 concurrent to avoid overwhelming API)
             const batchSize = 10;
@@ -247,78 +292,101 @@ export default async function handler(
               await Promise.all(
                 batch.map(async (grant) => {
                   try {
-                    console.log(`[Search API] Fetching details for grant ${grant.id}`);
+                    logger.debug('Fetching grant details', { grantId: grant.id });
                     const detailsResponse = await fetch('https://api.grants.gov/v1/api/fetchOpportunity', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ opportunityId: Number(grant.id) }),
                     });
 
-                    console.log(`[Search API] Details response status for ${grant.id}: ${detailsResponse.status}`);
+                    logger.debug('Grant details response received', {
+                      grantId: grant.id,
+                      status: detailsResponse.status
+                    });
 
                     if (detailsResponse.ok) {
                       const detailsData = await detailsResponse.json();
                       const description = detailsData?.data?.synopsis?.synopsisDesc || null;
 
-                      console.log(`[Search API] Description found for ${grant.id}: ${description ? 'YES' : 'NO'}`);
+                      logger.debug('Description extraction result', {
+                        grantId: grant.id,
+                        hasDescription: !!description
+                      });
 
                       if (description) {
                         // Update in-memory grant
                         grant.description = description;
-                        console.log(`[Search API] Updated grant ${grant.id} with description (length: ${description.length})`);
+                        logger.debug('Grant updated with description', {
+                          grantId: grant.id,
+                          descriptionLength: description.length
+                        });
 
                         // Cache in database asynchronously (don't wait)
-                        void (async () => {
-                          try {
-                            await supabase
-                              .from('grants_catalog')
-                              .upsert({
-                                source_id: '00000000-0000-0000-0000-000000000001', // Placeholder source ID
-                                source_key: 'grants_gov',
-                                external_id: grant.id,
-                                title: grant.title,
-                                description: description,
-                                agency: grant.agency,
-                                opportunity_number: grant.number,
-                                close_date: grant.closeDate,
-                                open_date: grant.openDate,
-                                opportunity_status: grant.status as any,
-                                first_seen_at: new Date().toISOString(),
-                                last_updated_at: new Date().toISOString(),
-                                last_synced_at: new Date().toISOString(),
-                                is_active: true,
-                              }, {
-                                onConflict: 'source_key,external_id',
-                              });
-                            console.log(`Cached description for grant ${grant.id}`);
-                          } catch (err) {
-                            console.warn(`Failed to cache description:`, err);
-                          }
-                        })();
+                        // Only cache if we have a valid source_id
+                        if (grantsGovSource?.id) {
+                          void (async () => {
+                            try {
+                              await supabase
+                                .from('grants_catalog')
+                                .upsert({
+                                  source_id: grantsGovSource.id,
+                                  source_key: 'grants_gov',
+                                  external_id: grant.id,
+                                  title: grant.title,
+                                  description: description,
+                                  agency: grant.agency,
+                                  opportunity_number: grant.number,
+                                  close_date: grant.closeDate,
+                                  open_date: grant.openDate,
+                                  opportunity_status: grant.status as any,
+                                  first_seen_at: new Date().toISOString(),
+                                  last_updated_at: new Date().toISOString(),
+                                  last_synced_at: new Date().toISOString(),
+                                  is_active: true,
+                                }, {
+                                  onConflict: 'source_key,external_id',
+                                });
+                              logger.debug('Description cached successfully', { grantId: grant.id });
+                            } catch (err) {
+                              logger.warn('Failed to cache description', { grantId: grant.id, error: err });
+                            }
+                          })();
+                        } else {
+                          logger.warn('Skipping cache - no valid source_id', { grantId: grant.id });
+                        }
                       }
                     } else {
-                      console.warn(`[Search API] Non-OK response for ${grant.id}: ${detailsResponse.status}`);
+                      logger.warn('Non-OK response from Grants.gov', {
+                        grantId: grant.id,
+                        status: detailsResponse.status
+                      });
                     }
                   } catch (err) {
-                    console.error(`[Search API] Failed to fetch description for grant ${grant.id}:`, err);
+                    logger.error('Failed to fetch grant description', err, { grantId: grant.id });
                   }
                 })
               );
             }
           } else {
-            console.log(`[Search API] All grants already have descriptions from catalog`);
+            logger.info('All grants have descriptions from catalog');
           }
         } catch (dbError) {
           // Silently fail - descriptions are optional enhancement
-          console.error('[Search API] Could not fetch descriptions from database:', dbError);
+          logger.error('Could not fetch descriptions from database', dbError);
         }
       } else {
-        console.warn(`[Search API] Skipping description enrichment - Missing config or no grants`);
+        logger.warn('Skipping description enrichment', {
+          reason: 'Missing config or no grants'
+        });
       }
 
       // Log final description enrichment results
       const finalDescriptionCount = normalizedGrants.filter(g => g.description).length;
-      console.log(`[Search API] Final result: ${finalDescriptionCount}/${normalizedGrants.length} grants have descriptions`);
+      logger.info('Grant enrichment completed', {
+        grantsWithDescriptions: finalDescriptionCount,
+        totalGrants: normalizedGrants.length,
+        enrichmentRate: `${((finalDescriptionCount / normalizedGrants.length) * 100).toFixed(1)}%`
+      });
 
       // Return normalized response
       const responseData = {
@@ -331,23 +399,17 @@ export default async function handler(
       // Set cache headers (60 seconds)
       res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate');
 
-      return res.status(200).json(responseData);
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
-    }
-  } catch (error) {
-    console.error('Error in grants search:', error);
+    return res.status(200).json(responseData);
+  } catch (fetchError) {
+    clearTimeout(timeoutId);
 
-    if (error instanceof Error) {
-      if (error.name === 'AbortError' || error.message.includes('timeout')) {
-        return res.status(504).json({ error: 'Request timeout - please try again' });
+    if (fetchError instanceof Error) {
+      if (fetchError.name === 'AbortError' || fetchError.message.includes('timeout')) {
+        logger.error('Request timeout', fetchError);
+        return ErrorHandlers.timeout(res, 'Request timeout - please try again', requestId);
       }
     }
 
-    return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    throw fetchError;
   }
-}
+});

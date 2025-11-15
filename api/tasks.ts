@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { generateTaskAssignmentEmail } from '../lib/emails/task-assignment-template.js';
 import { sendNotifications, getAssignedUserName } from './utils/notifications.js';
+import { validateQuery, validateBody, validateId, taskQuerySchema, taskCreateSchema, taskUpdateSchema } from './utils/validation';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -119,6 +120,8 @@ async function sendTaskAssignmentEmail(
     console.log(`[Task Assignment] Email sent to ${assigneeAuth.user.email} for task "${task.title}"`);
   } catch (error) {
     console.error('[Task Assignment] Failed to send email notification:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('../utils/error-handler.js');
   }
 }
 
@@ -154,11 +157,10 @@ export default async function handler(
     switch (req.method) {
       case 'GET': {
         // List tasks for a grant
-        const { grant_id, org_id } = req.query;
+        const validationResult = validateQuery(req, res, taskQuerySchema);
+        if (!validationResult.success) return;
 
-        if (!grant_id || typeof grant_id !== 'string') {
-          return res.status(400).json({ error: 'grant_id is required' });
-        }
+        const { grant_id, org_id } = validationResult.data;
 
         // Verify the grant belongs to an organization the user is a member of
         const { data: grant } = await supabase
@@ -204,13 +206,10 @@ export default async function handler(
 
       case 'POST': {
         // Create a new task
-        const taskData = req.body as TaskRequest;
+        const validationResult = validateBody(req, res, taskCreateSchema);
+        if (!validationResult.success) return;
 
-        if (!taskData.grant_id || !taskData.org_id || !taskData.title || !taskData.created_by) {
-          return res.status(400).json({
-            error: 'Missing required fields: grant_id, org_id, title, created_by'
-          });
-        }
+        const taskData = validationResult.data;
 
         // Verify user is a member of the organization
         const { data: membership } = await supabase
@@ -303,12 +302,14 @@ export default async function handler(
 
       case 'PATCH': {
         // Update an existing task
-        const { id } = req.query;
-        const updates = req.body;
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const validationResult = validateBody(req, res, taskUpdateSchema);
+        if (!validationResult.success) return;
+
+        const updates = validationResult.data;
 
         // Verify the task belongs to an organization the user is a member of
         const { data: task } = await supabase
@@ -413,11 +414,9 @@ export default async function handler(
 
       case 'DELETE': {
         // Delete a task
-        const { id } = req.query;
-
-        if (!id || typeof id !== 'string') {
-          return res.status(400).json({ error: 'id is required' });
-        }
+        const idValidation = validateId(req, res);
+        if (!idValidation.success) return;
+        const id = idValidation.data;
 
         // Verify the task belongs to an organization the user is a member of
         const { data: task } = await supabase
@@ -459,9 +458,10 @@ export default async function handler(
     }
   } catch (error) {
     console.error('Error in tasks API:', error);
+    // Import sanitizeError from error-handler
+    const { sanitizeError } = await import('./utils/error-handler.js');
     return res.status(500).json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      error: sanitizeError(error, 'tasks API')
     });
   }
 }

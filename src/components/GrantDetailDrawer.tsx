@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { TaskList } from "./TaskList";
 import { BudgetTab } from "./BudgetTab";
 import { PaymentScheduleTab } from "./PaymentScheduleTab";
@@ -354,7 +355,8 @@ export function GrantDetailDrawer({
       withCloseButton={false}
       scrollAreaComponent={ScrollArea.Autosize}
     >
-      <Stack gap="lg">
+      <ErrorBoundary boundaryName="GrantDetailDrawer">
+        <Stack gap="lg">
         {/* Grant Header */}
         <Box>
           <Group mb="xs" gap="xs">
@@ -714,7 +716,8 @@ export function GrantDetailDrawer({
             </Stack>
           </Tabs.Panel>
         </Tabs>
-      </Stack>
+        </Stack>
+      </ErrorBoundary>
     </Drawer>
   );
 }
