@@ -3,6 +3,8 @@ import { IconFilter, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { supabase } from "../lib/supabase";
+import { GRANT_STATUS_OPTIONS, GRANT_PRIORITY_OPTIONS } from "../constants";
+import type { TeamMember, TeamMemberOption } from "../types/api";
 
 export interface GrantFilterValues {
   status?: string[];
@@ -17,25 +19,15 @@ interface GrantFiltersProps {
   statusOptions?: { value: string; label: string }[];
 }
 
-const DEFAULT_STATUS_OPTIONS = [
-  { value: "researching", label: "Researching" },
-  { value: "go-no-go", label: "Go/No-Go" },
-  { value: "drafting", label: "Drafting" },
-  { value: "submitted", label: "Submitted" },
-  { value: "awarded", label: "Awarded" },
-  { value: "not-funded", label: "Not Funded" },
-  { value: "closed-out", label: "Closed Out" },
-  { value: "rejected", label: "Rejected" },
-  { value: "withdrawn", label: "Withdrawn" },
-  { value: "archived", label: "Archived" },
-];
+const DEFAULT_STATUS_OPTIONS = GRANT_STATUS_OPTIONS.map(option => ({
+  value: option.value,
+  label: option.label,
+}));
 
-const PRIORITY_OPTIONS = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "urgent", label: "Urgent" },
-];
+const PRIORITY_OPTIONS = GRANT_PRIORITY_OPTIONS.map(option => ({
+  value: option.value,
+  label: option.label,
+}));
 
 export function GrantFilters({
   value,
@@ -46,12 +38,13 @@ export function GrantFilters({
   const { currentOrg } = useOrganization();
 
   // Fetch team members for assignee filter using RPC function
-  const { data: teamMembers } = useQuery({
+  const { data: teamMembers } = useQuery<TeamMemberOption[]>({
     queryKey: ["teamMembers", currentOrg?.id],
     queryFn: async () => {
       if (!currentOrg?.id) return [];
 
-      const { data, error } = await (supabase.rpc as any)("get_org_team_members", { org_uuid: currentOrg.id });
+      // @ts-expect-error - Supabase type inference issue with RPC functions
+      const { data, error } = await supabase.rpc("get_org_team_members", { org_uuid: currentOrg.id });
 
       if (error) {
         console.error("Failed to fetch team members:", error);
@@ -60,9 +53,10 @@ export function GrantFilters({
 
       if (!data) return [];
 
-      return data
-        .filter((member: any) => member.user_id) // Filter out members without user_id
-        .map((member: any) => ({
+      const members = data as unknown as TeamMember[];
+      return members
+        .filter((member) => member.user_id) // Filter out members without user_id
+        .map((member) => ({
           value: member.user_id,
           label: member.full_name || member.email || 'Unknown User',
         }));

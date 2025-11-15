@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '../contexts/OrganizationContext';
 import { supabase } from '../lib/supabase';
+import type { OrganizationSettings } from '../types/api';
+import { PLAN_NAMES, PLAN_STATUSES, type PlanName, type PlanStatus } from '../constants';
 
 export type AIFeatureAccess = 'none' | 'limited' | 'full';
 
@@ -45,19 +47,20 @@ export function useAIFeatures(): AIFeaturesResult {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  const plan = (data as any)?.plan_name || 'free';
-  const status = (data as any)?.plan_status || 'active';
+  const settings = data as unknown as OrganizationSettings | null;
+  const plan: PlanName = settings?.plan_name || PLAN_NAMES.FREE;
+  const status: PlanStatus = settings?.plan_status || PLAN_STATUSES.ACTIVE;
 
   // Determine access level
   let accessLevel: AIFeatureAccess = 'none';
   let hasAIAccess = false;
 
   // Only grant access if plan is active
-  if (status === 'active') {
-    if (plan === 'starter') {
+  if (status === PLAN_STATUSES.ACTIVE) {
+    if (plan === PLAN_NAMES.STARTER) {
       accessLevel = 'limited';
       hasAIAccess = true;
-    } else if (plan === 'pro' || plan === 'enterprise') {
+    } else if (plan === PLAN_NAMES.PRO || plan === PLAN_NAMES.ENTERPRISE) {
       accessLevel = 'full';
       hasAIAccess = true;
     }

@@ -131,11 +131,12 @@ export async function checkUserPermission(
   permission: PermissionName
 ): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc('user_has_permission' as any, {
+    // @ts-expect-error - Supabase type inference issue with RPC functions
+    const { data, error } = await supabase.rpc('user_has_permission', {
       p_user_id: userId,
       p_org_id: orgId,
       p_permission_name: permission,
-    } as any);
+    });
 
     if (error) {
       console.error('Error checking permission:', error);
@@ -199,21 +200,22 @@ export async function getUserPermissions(
   orgId: string
 ): Promise<Permission[]> {
   try {
-    const { data, error } = await supabase.rpc('get_user_permissions' as any, {
+    // @ts-expect-error - Supabase type inference issue with RPC functions
+    const { data, error } = await supabase.rpc('get_user_permissions', {
       p_user_id: userId,
       p_org_id: orgId,
-    } as any);
+    });
 
     if (error) {
       console.error('Error fetching permissions:', error);
       return [];
     }
 
-    return ((data as any[]) || []).map((p: any) => ({
+    return ((data as any) || []).map((p: any) => ({
       id: p.id || '',
-      name: p.permission_name,
-      description: p.permission_description,
-      category: p.permission_category,
+      name: p.permission_name as PermissionName,
+      description: p.description,
+      category: '',
       created_at: '',
     }));
   } catch (error) {
@@ -238,21 +240,22 @@ export async function getUserRoles(
   orgId: string
 ): Promise<Role[]> {
   try {
-    const { data, error } = await supabase.rpc('get_user_roles' as any, {
+    // @ts-expect-error - Supabase type inference issue with RPC functions
+    const { data, error } = await supabase.rpc('get_user_roles', {
       p_user_id: userId,
       p_org_id: orgId,
-    } as any);
+    });
 
     if (error) {
       console.error('Error fetching roles:', error);
       return [];
     }
 
-    return ((data as any[]) || []).map((r: any) => ({
+    return ((data as any) || []).map((r: any) => ({
       id: r.role_id,
-      name: r.role_name,
-      display_name: r.role_display_name,
-      description: r.role_description,
+      name: r.role_name as RoleName,
+      display_name: r.role_name,
+      description: r.description,
       is_system_role: true, // Assume system role for now
       org_id: orgId,
       created_at: '',
@@ -261,6 +264,59 @@ export async function getUserRoles(
   } catch (error) {
     console.error('Error fetching roles:', error);
     return [];
+  }
+}
+
+/**
+ * Get both permissions and roles for a user in a single query (optimized)
+ * This function eliminates N+1 queries by combining both calls into one RPC
+ *
+ * @param userId - The user's ID
+ * @param orgId - The organization's ID
+ * @returns Promise<{permissions: Permission[], roles: Role[]}> - Object with permissions and roles
+ */
+export async function getUserPermissionsAndRoles(
+  userId: string,
+  orgId: string
+): Promise<{ permissions: Permission[]; roles: Role[] }> {
+  try {
+    // @ts-expect-error - Supabase type inference issue with RPC functions
+    const { data, error } = await supabase.rpc('get_user_permissions_and_roles', {
+      p_user_id: userId,
+      p_org_id: orgId,
+    });
+
+    if (error) {
+      console.error('Error fetching permissions and roles:', error);
+      return { permissions: [], roles: [] };
+    }
+
+    // Parse the JSON response
+    const result = data as any;
+
+    const permissions = ((result?.permissions as any[]) || []).map((p: any) => ({
+      id: p.id || '',
+      name: p.permission_name as PermissionName,
+      description: p.permission_description,
+      category: p.permission_category,
+      created_at: '',
+    }));
+
+    const roles = ((result?.roles as any[]) || []).map((r: any) => ({
+      id: r.role_id,
+      name: r.role_name as RoleName,
+      display_name: r.role_display_name,
+      description: r.role_description,
+      is_system_role: true,
+      org_id: orgId,
+      created_at: '',
+      updated_at: '',
+    }));
+
+    return { permissions, roles };
+  } catch (error) {
+    console.error('Error fetching permissions and roles:', error);
+    return { permissions: [], roles: [] };
   }
 }
 
@@ -304,7 +360,7 @@ export async function getRoleWithPermissions(
   try {
     // Get role details
     const { data: role, error: roleError } = await supabase
-      .from('roles' as any)
+      .from('roles')
       .select('*')
       .eq('id', roleId)
       .single();
@@ -316,23 +372,23 @@ export async function getRoleWithPermissions(
 
     // Get permissions for this role
     const { data: rolePermissions, error: permError } = await supabase
-      .from('role_permissions' as any)
+      .from('role_permissions')
       .select('permissions(*)')
       .eq('role_id', roleId);
 
     if (permError) {
       console.error('Error fetching role permissions:', permError);
-      return { ...(role as any), permissions: [] };
+      return { ...(role as any), permissions: [] } as RoleWithPermissions;
     }
 
-    const permissions = ((rolePermissions as any[]) || [])
-      .map((rp: any) => rp.permissions)
+    const permissions = (rolePermissions || [])
+      .map((rp) => (rp as unknown as { permissions: Permission }).permissions)
       .filter(Boolean);
 
     return {
       ...(role as any),
       permissions,
-    };
+    } as RoleWithPermissions;
   } catch (error) {
     console.error('Error fetching role with permissions:', error);
     return null;
@@ -355,12 +411,13 @@ export async function assignRoleToUser(
   assignedBy: string
 ): Promise<boolean> {
   try {
-    const { error } = await supabase.from('user_role_assignments' as any).insert({
+    // @ts-expect-error - Supabase type inference issue
+    const { error } = await supabase.from('user_role_assignments').insert({
       user_id: userId,
       role_id: roleId,
       org_id: orgId,
       assigned_by: assignedBy,
-    } as any);
+    });
 
     if (error) {
       console.error('Error assigning role:', error);
@@ -428,14 +485,14 @@ export async function getOrgRoleAssignments(
       return [];
     }
 
-    return (data || []).map((ra: any) => ({
+    return ((data as any) || []).map((ra: any) => ({
       id: ra.id,
       user_id: ra.user_id,
       role_id: ra.role_id,
       org_id: ra.org_id,
       assigned_by: ra.assigned_by,
       assigned_at: ra.assigned_at,
-      role: ra.roles,
+      role: (ra as unknown as { roles: Role }).roles,
     }));
   } catch (error) {
     console.error('Error fetching role assignments:', error);
@@ -467,14 +524,14 @@ export async function createCustomRole(
   try {
     // Create the role
     const { data: role, error: roleError } = await supabase
-      .from('roles' as any)
+      .from('roles')
       .insert({
         name,
         display_name: displayName,
         description,
         is_system_role: false,
         org_id: orgId,
-      } as any)
+      } as never)
       .select()
       .single();
 
@@ -491,18 +548,18 @@ export async function createCustomRole(
       }));
 
       const { error: permError } = await supabase
-        .from('role_permissions' as any)
-        .insert(rolePermissions as any);
+        .from('role_permissions')
+        .insert(rolePermissions as never);
 
       if (permError) {
         console.error('Error assigning permissions to role:', permError);
         // Rollback: delete the role
-        await supabase.from('roles' as any).delete().eq('id', (role as any).id);
+        await supabase.from('roles').delete().eq('id', (role as any).id);
         return null;
       }
     }
 
-    return role as any;
+    return role as Role;
   } catch (error) {
     console.error('Error creating custom role:', error);
     return null;
@@ -526,12 +583,12 @@ export async function updateCustomRole(
 ): Promise<boolean> {
   try {
     // Update role details
-    const { error: roleError } = await (supabase
-      .from('roles' as any) as any)
+    const { error: roleError } = await supabase
+      .from('roles')
       .update({
         display_name: displayName,
         description,
-      })
+      } as never)
       .eq('id', roleId)
       .eq('is_system_role', false); // Only allow updating custom roles
 
@@ -542,7 +599,7 @@ export async function updateCustomRole(
 
     // Delete existing permissions
     const { error: deleteError } = await supabase
-      .from('role_permissions' as any)
+      .from('role_permissions')
       .delete()
       .eq('role_id', roleId);
 
@@ -559,8 +616,8 @@ export async function updateCustomRole(
       }));
 
       const { error: permError } = await supabase
-        .from('role_permissions' as any)
-        .insert(rolePermissions as any);
+        .from('role_permissions')
+        .insert(rolePermissions as never);
 
       if (permError) {
         console.error('Error assigning new permissions:', permError);

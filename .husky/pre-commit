@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+# Run lint-staged (which runs ESLint and Prettier)
+yarn lint-staged
+
+# Run type checking
+yarn type-check

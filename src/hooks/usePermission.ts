@@ -4,8 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   PermissionName,
   checkUserPermission,
-  getUserPermissions,
-  getUserRoles,
+  getUserPermissionsAndRoles,
   Permission,
   Role,
 } from '../lib/rbac';
@@ -36,7 +35,7 @@ export function usePermission() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load user's permissions and roles
+  // Load user's permissions and roles with single optimized query
   useEffect(() => {
     async function loadPermissions() {
       if (!user || !currentOrg) {
@@ -48,10 +47,12 @@ export function usePermission() {
 
       setLoading(true);
       try {
-        const [userPerms, userRoles] = await Promise.all([
-          getUserPermissions(user.id, currentOrg.id),
-          getUserRoles(user.id, currentOrg.id),
-        ]);
+        // Use combined RPC to fetch both permissions and roles in a single query
+        // This eliminates the N+1 query issue
+        const { permissions: userPerms, roles: userRoles } = await getUserPermissionsAndRoles(
+          user.id,
+          currentOrg.id
+        );
 
         setPermissions(userPerms);
         setRoles(userRoles);

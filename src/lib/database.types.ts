@@ -293,12 +293,149 @@ export interface Database {
           notes?: string | null
         }
       }
+      permissions: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          category?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category?: string
+          created_at?: string
+        }
+      }
+      roles: {
+        Row: {
+          id: string
+          name: string
+          display_name: string
+          description: string | null
+          is_system_role: boolean
+          org_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          display_name: string
+          description?: string | null
+          is_system_role?: boolean
+          org_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          display_name?: string
+          description?: string | null
+          is_system_role?: boolean
+          org_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      role_permissions: {
+        Row: {
+          role_id: string
+          permission_id: string
+        }
+        Insert: {
+          role_id: string
+          permission_id: string
+        }
+        Update: {
+          role_id?: string
+          permission_id?: string
+        }
+      }
+      user_role_assignments: {
+        Row: {
+          id: string
+          user_id: string
+          role_id: string
+          org_id: string
+          assigned_by: string
+          assigned_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          role_id: string
+          org_id: string
+          assigned_by: string
+          assigned_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          role_id?: string
+          org_id?: string
+          assigned_by?: string
+          assigned_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_has_permission: {
+        Args: {
+          p_user_id: string
+          p_org_id: string
+          p_permission_name: string
+        }
+        Returns: boolean
+      }
+      get_user_permissions: {
+        Args: {
+          p_user_id: string
+          p_org_id: string
+        }
+        Returns: Array<{
+          id: string
+          permission_name: string
+          description: string | null
+        }>
+      }
+      get_user_roles: {
+        Args: {
+          p_user_id: string
+          p_org_id: string
+        }
+        Returns: Array<{
+          role_id: string
+          role_name: string
+          description: string | null
+        }>
+      }
+      get_org_team_members: {
+        Args: {
+          org_uuid: string
+        }
+        Returns: Array<{
+          user_id: string
+          full_name: string | null
+          email: string | null
+          avatar_url: string | null
+          role: string
+          joined_at: string
+        }>
+      }
     }
     Enums: {
       [_ in never]: never
