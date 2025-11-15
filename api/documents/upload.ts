@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitStandard, handleRateLimit } from '../utils/ratelimit';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -17,6 +18,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Apply rate limiting (60 req/min per IP)
+  const rateLimitResult = await rateLimitStandard(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

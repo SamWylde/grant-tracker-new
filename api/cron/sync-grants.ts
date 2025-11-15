@@ -14,12 +14,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { SyncService } from '../../lib/grants/SyncService.js';
+import { verifyCronAuth } from '../utils/auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify this is a cron request (Vercel sets this header)
+  // Verify this is a cron request using timing-safe comparison
+  // SECURITY: Timing-safe comparison prevents timing attacks that could be used to guess the secret
+  // NOTE: CRON_SECRET should be rotated regularly (recommended: every 90 days)
   const authHeader = req.headers.authorization;
 
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(authHeader)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

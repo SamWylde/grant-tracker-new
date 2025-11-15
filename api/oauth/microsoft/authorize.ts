@@ -29,12 +29,13 @@ export default async function handler(
   }
 
   // Get OAuth credentials from environment
-  const clientId = process.env.SLACK_CLIENT_ID;
-  const redirectUri = process.env.SLACK_REDIRECT_URI || 'https://grantcue.com/api/oauth/slack/callback';
+  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  const redirectUri = process.env.MICROSOFT_REDIRECT_URI || 'https://grantcue.com/api/oauth/microsoft/callback';
+  const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
 
   if (!clientId) {
     return res.status(500).json({
-      error: 'Slack OAuth not configured. Please set SLACK_CLIENT_ID environment variable.'
+      error: 'Microsoft OAuth not configured. Please set MICROSOFT_CLIENT_ID environment variable.'
     });
   }
 
@@ -54,7 +55,7 @@ export default async function handler(
         state_token: stateToken,
         user_id,
         org_id,
-        provider: 'slack',
+        provider: 'microsoft',
         expires_at: expiresAt.toISOString(),
       });
 
@@ -67,16 +68,18 @@ export default async function handler(
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
-      scope: 'incoming-webhook,chat:write',
+      response_type: 'code',
+      scope: 'https://graph.microsoft.com/.default offline_access',
+      response_mode: 'query',
       state: stateToken,
     });
 
-    const authUrl = `https://slack.com/oauth/v2/authorize?${params.toString()}`;
+    const authUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params.toString()}`;
 
-    // Redirect to Slack OAuth
+    // Redirect to Microsoft OAuth
     res.redirect(authUrl);
   } catch (error) {
-    console.error('Error in Slack OAuth authorize:', error);
+    console.error('Error in Microsoft OAuth authorize:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

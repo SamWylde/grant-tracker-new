@@ -9,8 +9,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { SyncService } from '../../lib/grants/SyncService.js';
+import { rateLimitAdmin, handleRateLimit } from '../utils/ratelimit';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Apply rate limiting (30 req/min per IP)
+  const rateLimitResult = await rateLimitAdmin(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Initialize Supabase client
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

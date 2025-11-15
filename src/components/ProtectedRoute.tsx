@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermission } from '../hooks/usePermission';
 import { Box, Container, Stack, Title, Text, Button, Paper, ThemeIcon, Loader } from '@mantine/core';
@@ -68,6 +68,8 @@ export function AccessDenied({
   message = 'You don\'t have permission to access this page. Please contact your organization admin.',
   action,
 }: AccessDeniedProps) {
+  const navigate = useNavigate();
+
   return (
     <Box bg="var(--mantine-color-gray-0)" mih="100vh" style={{ display: 'flex', alignItems: 'center' }}>
       <Container size="sm">
@@ -83,7 +85,7 @@ export function AccessDenied({
               </Text>
             </Stack>
             {action || (
-              <Button component="a" href="/discover" variant="light">
+              <Button onClick={() => navigate('/discover')} variant="light">
                 Go to Discover
               </Button>
             )}

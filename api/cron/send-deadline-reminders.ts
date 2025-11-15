@@ -17,6 +17,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { generateDeadlineReminderEmail } from '../../lib/emails/report-templates.js';
+import { verifyCronAuth } from '../utils/auth.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -378,10 +379,12 @@ async function createInAppNotifications(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify this is a cron request
+  // Verify this is a cron request using timing-safe comparison
+  // SECURITY: Timing-safe comparison prevents timing attacks that could be used to guess the secret
+  // NOTE: CRON_SECRET should be rotated regularly (recommended: every 90 days)
   const authHeader = req.headers.authorization;
 
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronAuth(authHeader)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

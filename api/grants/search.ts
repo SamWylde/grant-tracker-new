@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitPublic, handleRateLimit } from '../utils/ratelimit';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -62,6 +63,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Apply rate limiting (100 req/min per IP)
+  const rateLimitResult = await rateLimitPublic(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -211,6 +218,17 @@ export default async function handler(
           console.log(`[Search API] Enriching ${grantIds.length} grants with descriptions`);
           console.log(`[Search API] Grant IDs to enrich:`, grantIds.slice(0, 5)); // Log first 5 IDs
 
+          // Fetch the actual grants_gov source_id (used for caching)
+          const { data: grantsGovSource } = await supabase
+            .from('grant_sources')
+            .select('id')
+            .eq('source_key', 'grants_gov')
+            .single();
+
+          if (!grantsGovSource) {
+            console.warn('[Search API] grants_gov source not found in grant_sources table');
+          }
+
           // Step 1: Check catalog first
           const { data: catalogGrants } = await supabase
             .from('grants_catalog')
@@ -268,33 +286,38 @@ export default async function handler(
                         console.log(`[Search API] Updated grant ${grant.id} with description (length: ${description.length})`);
 
                         // Cache in database asynchronously (don't wait)
-                        void (async () => {
-                          try {
-                            await supabase
-                              .from('grants_catalog')
-                              .upsert({
-                                source_id: '00000000-0000-0000-0000-000000000001', // Placeholder source ID
-                                source_key: 'grants_gov',
-                                external_id: grant.id,
-                                title: grant.title,
-                                description: description,
-                                agency: grant.agency,
-                                opportunity_number: grant.number,
-                                close_date: grant.closeDate,
-                                open_date: grant.openDate,
-                                opportunity_status: grant.status as any,
-                                first_seen_at: new Date().toISOString(),
-                                last_updated_at: new Date().toISOString(),
-                                last_synced_at: new Date().toISOString(),
-                                is_active: true,
-                              }, {
-                                onConflict: 'source_key,external_id',
-                              });
-                            console.log(`Cached description for grant ${grant.id}`);
-                          } catch (err) {
-                            console.warn(`Failed to cache description:`, err);
-                          }
-                        })();
+                        // Only cache if we have a valid source_id
+                        if (grantsGovSource?.id) {
+                          void (async () => {
+                            try {
+                              await supabase
+                                .from('grants_catalog')
+                                .upsert({
+                                  source_id: grantsGovSource.id,
+                                  source_key: 'grants_gov',
+                                  external_id: grant.id,
+                                  title: grant.title,
+                                  description: description,
+                                  agency: grant.agency,
+                                  opportunity_number: grant.number,
+                                  close_date: grant.closeDate,
+                                  open_date: grant.openDate,
+                                  opportunity_status: grant.status as any,
+                                  first_seen_at: new Date().toISOString(),
+                                  last_updated_at: new Date().toISOString(),
+                                  last_synced_at: new Date().toISOString(),
+                                  is_active: true,
+                                }, {
+                                  onConflict: 'source_key,external_id',
+                                });
+                              console.log(`[Search API] Cached description for grant ${grant.id}`);
+                            } catch (err) {
+                              console.warn(`[Search API] Failed to cache description:`, err);
+                            }
+                          })();
+                        } else {
+                          console.warn(`[Search API] Skipping cache for grant ${grant.id} - no valid source_id`);
+                        }
                       }
                     } else {
                       console.warn(`[Search API] Non-OK response for ${grant.id}: ${detailsResponse.status}`);

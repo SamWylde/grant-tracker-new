@@ -543,8 +543,11 @@ export function CalendarPage() {
                             variant="light"
                             color="violet"
                             leftSection={<IconBrandSlack size={16} />}
-                            onClick={() => {
-                              window.location.href = `/api/oauth/slack/authorize?org_id=${currentOrg.id}`;
+                            onClick={async () => {
+                              const { data: { user } } = await supabase.auth.getUser();
+                              if (user) {
+                                window.location.href = `/api/oauth/slack/authorize?org_id=${currentOrg.id}&user_id=${user.id}`;
+                              }
                             }}
                           >
                             Connect Slack

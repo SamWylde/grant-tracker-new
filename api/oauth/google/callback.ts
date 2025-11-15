@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitStandard, handleRateLimit } from '../../utils/ratelimit';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,6 +20,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  // Apply rate limiting (60 req/min per IP)
+  const rateLimitResult = await rateLimitStandard(req);
+  if (handleRateLimit(res, rateLimitResult)) {
+    return;
+  }
+
   // Only allow GET (OAuth callback)
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -38,12 +45,6 @@ export default async function handler(
       return res.status(400).json({ error: 'Missing code or state parameter' });
     }
 
-    // State should be in format: userId:orgId
-    const [userId, orgId] = (state as string).split(':');
-    if (!userId || !orgId) {
-      return res.status(400).json({ error: 'Invalid state parameter' });
-    }
-
     // Validate environment variables
     if (!supabaseUrl || !supabaseServiceKey) {
       return res.status(500).json({ error: 'Server configuration error' });
@@ -54,6 +55,40 @@ export default async function handler(
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validate state token - CSRF protection
+    const { data: stateData, error: stateError } = await supabase
+      .from('oauth_state_tokens')
+      .select('user_id, org_id, expires_at, used, provider')
+      .eq('state_token', state as string)
+      .eq('provider', 'google')
+      .single();
+
+    if (stateError || !stateData) {
+      console.error('Invalid state token:', stateError);
+      return res.redirect('/settings/integrations?error=invalid_state_token');
+    }
+
+    // Check if token has expired
+    if (new Date(stateData.expires_at) < new Date()) {
+      console.error('State token has expired');
+      return res.redirect('/settings/integrations?error=state_token_expired');
+    }
+
+    // Check if token has already been used
+    if (stateData.used) {
+      console.error('State token has already been used');
+      return res.redirect('/settings/integrations?error=state_token_reused');
+    }
+
+    // Mark state token as used
+    await supabase
+      .from('oauth_state_tokens')
+      .update({ used: true })
+      .eq('state_token', state as string);
+
+    const userId = stateData.user_id;
+    const orgId = stateData.org_id;
 
     // Verify user has access to this organization
     const { data: membership } = await supabase

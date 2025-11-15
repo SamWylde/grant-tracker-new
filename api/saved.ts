@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { sendNotifications } from './utils/notifications.js';
 import { GoogleCalendarService } from '../lib/google-calendar/GoogleCalendarService.js';
+import { setCorsHeaders } from './utils/cors.js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -32,10 +33,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  // Set CORS headers for all requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Set secure CORS headers based on whitelisted origins
+  setCorsHeaders(res, req.headers.origin);
 
   // Handle OPTIONS preflight request
   if (req.method === 'OPTIONS') {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Container,
   Stack,
@@ -687,10 +688,10 @@ export function GrantHubImportPage() {
                     </Text>
 
                     <Group mt="md">
-                      <Button component="a" href="/pipeline" variant="filled" rightSection={<IconArrowRight size={16} />}>
+                      <Button component={Link} to="/pipeline" variant="filled" rightSection={<IconArrowRight size={16} />}>
                         Go to Pipeline
                       </Button>
-                      <Button component="a" href="/saved" variant="light">
+                      <Button component={Link} to="/pipeline?view=list" variant="light">
                         View Saved Grants
                       </Button>
                     </Group>

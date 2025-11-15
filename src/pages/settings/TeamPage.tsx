@@ -510,17 +510,7 @@ export function TeamPage() {
 
               <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
                 <Stack gap="sm">
-                  <Group justify="space-between">
-                    <Title order={4}>About Roles</Title>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      leftSection={<IconShieldCheck size={14} />}
-                      onClick={() => navigate('/settings/roles')}
-                    >
-                      Manage Roles
-                    </Button>
-                  </Group>
+                  <Title order={4}>About Roles</Title>
                   <Text size="sm" fw={600}>
                     Legacy Roles (Admin / Contributor)
                   </Text>

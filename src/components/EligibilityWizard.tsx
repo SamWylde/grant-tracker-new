@@ -545,7 +545,7 @@ export function EligibilityWizard({ onComplete }: EligibilityWizardProps) {
         <Group>
           <Button
             variant="subtle"
-            onClick={() => navigate('/grants')}
+            onClick={() => navigate('/pipeline')}
             size="md"
           >
             Skip for now

@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import DOMPurify from "dompurify";
 
 dayjs.extend(relativeTime);
 
@@ -208,7 +209,7 @@ function CommentItem({
           <>
             {comment.content_html ? (
               <div
-                dangerouslySetInnerHTML={{ __html: comment.content_html }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(comment.content_html) }}
                 style={{
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
