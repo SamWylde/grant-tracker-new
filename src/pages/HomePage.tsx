@@ -6,7 +6,6 @@ import {
   Container,
   Divider,
   Group,
-  Image,
   SimpleGrid,
   Stack,
   Text,
@@ -19,6 +18,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { AppHeader } from "../components/AppHeader";
 import { MarketingHeader } from "../components/MarketingHeader";
+import { OptimizedImage } from "../components/OptimizedImage";
 
 export function HomePage() {
   const { user } = useAuth();
@@ -130,9 +130,36 @@ export function HomePage() {
                     Collaborators active today
                   </Text>
                   <Group gap="sm">
-                    <Image src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39" alt="Team member" h={48} w={48} radius="xl" />
-                    <Image src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde" alt="Team member" h={48} w={48} radius="xl" />
-                    <Image src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39" alt="Team member" h={48} w={48} radius="xl" />
+                    <OptimizedImage
+                      src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=96&q=80"
+                      webpSrc="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=96&q=80&fm=webp"
+                      alt="Team member avatar"
+                      width={48}
+                      height={48}
+                      radius="xl"
+                      lazy={true}
+                      blurPlaceholder={true}
+                    />
+                    <OptimizedImage
+                      src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=96&q=80"
+                      webpSrc="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=96&q=80&fm=webp"
+                      alt="Team member avatar"
+                      width={48}
+                      height={48}
+                      radius="xl"
+                      lazy={true}
+                      blurPlaceholder={true}
+                    />
+                    <OptimizedImage
+                      src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=96&q=80"
+                      webpSrc="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=96&q=80&fm=webp"
+                      alt="Team member avatar"
+                      width={48}
+                      height={48}
+                      radius="xl"
+                      lazy={true}
+                      blurPlaceholder={true}
+                    />
                     <Badge variant="default">+12</Badge>
                   </Group>
                 </Stack>
