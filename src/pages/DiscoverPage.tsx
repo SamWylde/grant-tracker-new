@@ -56,6 +56,7 @@ import { RecommendationsSection } from "../components/RecommendationsSection";
 import { SuccessScoreBadge } from "../components/SuccessScoreBadge";
 import { GrantTagBadges } from "../components/GrantTagBadges";
 import { EligibilityProfileBanner } from "../components/EligibilityProfileBanner";
+import { GrantCardSkeleton } from "../components/GrantCardSkeleton";
 import { useOrganization } from "../contexts/OrganizationContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useSavedGrantIds } from "../hooks/useSavedGrants";
@@ -582,14 +583,7 @@ export function DiscoverPage() {
           )}
 
           {/* Loading state */}
-          {isLoading && (
-            <Card padding="xl" withBorder>
-              <Group justify="center">
-                <Loader size="lg" />
-                <Text>Loading opportunities...</Text>
-              </Group>
-            </Card>
-          )}
+          {isLoading && <GrantCardSkeleton count={5} />}
 
           {/* Error state */}
           {error && (

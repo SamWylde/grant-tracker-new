@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
+import type { UserProfile, OrgMember } from '../types/api';
 
 type Organization = Database['public']['Tables']['organizations']['Row'];
 
@@ -54,7 +55,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       if (profileError) {
         console.error('Error fetching user profile:', profileError);
       } else {
-        setIsPlatformAdmin((profileData as any)?.is_platform_admin || false);
+        const profile = profileData as unknown as UserProfile;
+        setIsPlatformAdmin(profile?.is_platform_admin || false);
       }
 
       // Get organizations the user is a member of
@@ -65,8 +67,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
       if (membershipsError) throw membershipsError;
 
-      const orgs = (memberships || [])
-        .map((m: any) => m.organizations)
+      const typedMemberships = memberships as unknown as Array<{
+        org_id: string;
+        role: 'admin' | 'contributor';
+        organizations: Organization;
+      }>;
+
+      const orgs = (typedMemberships || [])
+        .map((m) => m.organizations)
         .filter(Boolean);
 
       setUserOrgs(orgs);
@@ -76,10 +84,10 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
       let orgToSet = orgs.find((o: Organization) => o.id === savedOrgId) || orgs[0] || null;
 
       if (orgToSet) {
-        const membership = memberships?.find((m: any) => m.org_id === orgToSet?.id);
+        const membership = typedMemberships?.find((m) => m.org_id === orgToSet?.id);
         setCurrentOrg(orgToSet);
-        const role = (membership as any)?.role;
-        setUserRole(role ? (role as 'admin' | 'contributor') : null);
+        const role = membership?.role;
+        setUserRole(role || null);
       }
     } catch (error) {
       console.error('Error loading organizations:', error);
@@ -108,7 +116,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user?.id || '')
         .single()
         .then(({ data }) => {
-          setUserRole((data as any)?.role as 'admin' | 'contributor' | null);
+          const member = data as unknown as OrgMember;
+          setUserRole(member?.role || null);
         });
     }
   };

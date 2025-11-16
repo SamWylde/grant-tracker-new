@@ -16,6 +16,7 @@ import {
 import { IconBell, IconBellFilled, IconCheck } from "@tabler/icons-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import { usePageVisibility } from "../hooks/usePageVisibility";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -58,6 +59,7 @@ interface MentionBellProps {
 export function MentionBell({ orgId }: MentionBellProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isPageVisible = usePageVisibility();
   const [mentions, setMentions] = useState<MentionNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -103,15 +105,25 @@ export function MentionBell({ orgId }: MentionBellProps) {
     }
   };
 
-  // Fetch mentions on mount and when menu is opened
+  // Fetch mentions on mount and poll when page is visible
   useEffect(() => {
+    // Only fetch if user exists
+    if (!user) return;
+
+    // Fetch immediately
     fetchMentions();
 
-    // Poll for new mentions every 30 seconds
+    // Only poll if page is visible (prevents memory leak and unnecessary API calls)
+    if (!isPageVisible) return;
+
+    // Poll for new mentions every 30 seconds when page is visible
     const interval = setInterval(fetchMentions, 30000);
 
-    return () => clearInterval(interval);
-  }, [user, orgId]);
+    // Cleanup: Clear interval when component unmounts or page becomes hidden
+    return () => {
+      clearInterval(interval);
+    };
+  }, [user, orgId, isPageVisible]);
 
   // Refresh when menu is opened
   useEffect(() => {
