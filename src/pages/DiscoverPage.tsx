@@ -38,7 +38,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   FEDERAL_AGENCIES,
   FUNDING_CATEGORIES,
@@ -72,6 +72,10 @@ export function DiscoverPage() {
   const queryClient = useQueryClient();
   const { currentOrg } = useOrganization();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get initial page from URL or default to 1
+  const pageFromUrl = parseInt(searchParams.get('page') || '1', 10);
 
   // Filter state
   const [keyword, setKeyword] = useState("");
@@ -81,7 +85,7 @@ export function DiscoverPage() {
   const [statusForecasted, setStatusForecasted] = useState(true);
   const [dueInDays, setDueInDays] = useState<number | string>("");
   const [sortBy, setSortBy] = useState<string>("due_soon"); // relevance, due_soon, newest
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(pageFromUrl);
 
   // Details modal state
   const [selectedGrantId, setSelectedGrantId] = useState<string | null>(null);
@@ -113,7 +117,25 @@ export function DiscoverPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
+    // Update URL to page 1
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', '1');
+    setSearchParams(newParams, { replace: true });
   }, [debouncedKeyword, category, agency, oppStatuses, dueInDays]);
+
+  // Update URL when page changes and scroll to top
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    if (currentPage === 1) {
+      newParams.delete('page');
+    } else {
+      newParams.set('page', currentPage.toString());
+    }
+    setSearchParams(newParams, { replace: true });
+
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   // Fetch grants
   const { data, isLoading, error, refetch } = useQuery<SearchResponse>({
@@ -270,6 +292,60 @@ export function DiscoverPage() {
 
   const totalPages = data ? Math.ceil(data.totalCount / ITEMS_PER_PAGE) : 0;
 
+  // Pre-fetch next and previous pages for better UX
+  useEffect(() => {
+    if (!data || totalPages === 0) return;
+
+    const prefetchPage = (page: number) => {
+      if (page < 1 || page > totalPages || page === currentPage) return;
+
+      queryClient.prefetchQuery({
+        queryKey: [
+          "grants",
+          debouncedKeyword,
+          category,
+          agency,
+          oppStatuses,
+          dueInDays,
+          sortBy,
+          page,
+        ],
+        queryFn: async () => {
+          const response = await fetch("/api/grants/search-catalog", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              keyword: debouncedKeyword || undefined,
+              fundingCategories: category || undefined,
+              agencies: agency || undefined,
+              oppStatuses: oppStatuses || "posted|forecasted",
+              dueInDays: dueInDays ? Number(dueInDays) : undefined,
+              sortBy: sortBy || undefined,
+              rows: ITEMS_PER_PAGE,
+              startRecordNum: (page - 1) * ITEMS_PER_PAGE,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch grants");
+          }
+
+          return response.json();
+        },
+      });
+    };
+
+    // Prefetch next page
+    if (currentPage < totalPages) {
+      prefetchPage(currentPage + 1);
+    }
+
+    // Prefetch previous page
+    if (currentPage > 1) {
+      prefetchPage(currentPage - 1);
+    }
+  }, [currentPage, totalPages, debouncedKeyword, category, agency, oppStatuses, dueInDays, sortBy, queryClient]);
+
   // Save/unsave grant
   const handleSaveToggle = async (grant: NormalizedGrant, isSaved: boolean) => {
     try {
@@ -417,7 +493,7 @@ export function DiscoverPage() {
       {/* Header */}
       <AppHeader subtitle="Discover Federal Grants" />
 
-      <Container size="xl" py="xl">
+      <Container size="xl" py="xl" component="main" id="main-content">
         <Stack gap="lg">
           {/* Page header */}
           <Group justify="space-between" align="flex-start">
@@ -431,8 +507,9 @@ export function DiscoverPage() {
               <Button
                 variant="outline"
                 color="grape"
-                leftSection={<IconPlus size={16} />}
+                leftSection={<IconPlus size={16} aria-hidden="true" />}
                 onClick={() => setQuickAddModalOpen(true)}
+                aria-label="Quick add grant from URL"
               >
                 Quick Add from URL
               </Button>
@@ -441,6 +518,7 @@ export function DiscoverPage() {
                 color="grape"
                 component={Link}
                 to="/pipeline"
+                aria-label={`View ${savedGrants?.grants.length || 0} saved grants in pipeline`}
               >
                 View Saved ({savedGrants?.grants.length || 0})
               </Button>
@@ -480,20 +558,21 @@ export function DiscoverPage() {
           />
 
           {/* Filters */}
-          <Paper p="md" withBorder>
+          <Paper p="md" withBorder role="search" aria-label="Grant search filters">
             <Stack gap="md">
               <Group gap="xs">
-                <IconFilter size={20} />
+                <IconFilter size={20} aria-hidden="true" />
                 <Text fw={600}>Filters & Sort</Text>
               </Group>
 
               <Group align="flex-end" wrap="wrap">
                 <TextInput
                   placeholder="Search keywords..."
-                  leftSection={<IconSearch size={16} />}
+                  leftSection={<IconSearch size={16} aria-hidden="true" />}
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
                   style={{ flex: 1, minWidth: 250 }}
+                  aria-label="Search grants by keywords"
                 />
 
                 <Select
@@ -507,6 +586,7 @@ export function DiscoverPage() {
                   clearable
                   searchable
                   style={{ minWidth: 200 }}
+                  aria-label="Filter by funding category"
                 />
 
                 <Select
@@ -520,20 +600,22 @@ export function DiscoverPage() {
                   clearable
                   searchable
                   style={{ minWidth: 200 }}
+                  aria-label="Filter by federal agency"
                 />
 
                 <NumberInput
                   placeholder="Due in ≤ X days"
-                  leftSection={<IconCalendar size={16} />}
+                  leftSection={<IconCalendar size={16} aria-hidden="true" />}
                   value={dueInDays}
                   onChange={setDueInDays}
                   min={0}
                   style={{ minWidth: 180 }}
+                  aria-label="Filter by days until deadline"
                 />
 
                 <Select
                   placeholder="Sort by"
-                  leftSection={<IconArrowsSort size={16} />}
+                  leftSection={<IconArrowsSort size={16} aria-hidden="true" />}
                   data={[
                     { value: "due_soon", label: "Due Soon" },
                     { value: "newest", label: "Newest" },
@@ -542,6 +624,7 @@ export function DiscoverPage() {
                   value={sortBy}
                   onChange={(value) => setSortBy(value || "due_soon")}
                   style={{ minWidth: 180 }}
+                  aria-label="Sort grants by"
                 />
               </Group>
 
@@ -566,11 +649,18 @@ export function DiscoverPage() {
           {/* Results header */}
           {data && (
             <Group justify="space-between">
-              <Text size="sm" c="dimmed">
-                Showing {sortedGrants.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–
-                {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount ?? 0)} of{" "}
-                {(data.totalCount ?? 0).toLocaleString()} results
-              </Text>
+              <Stack gap={4}>
+                <Text size="sm" c="dimmed">
+                  Showing {sortedGrants.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}–
+                  {Math.min(currentPage * ITEMS_PER_PAGE, data.totalCount ?? 0)} of{" "}
+                  {(data.totalCount ?? 0).toLocaleString()} results
+                </Text>
+                {totalPages > 1 && (
+                  <Text size="xs" c="dimmed" fw={500}>
+                    Page {currentPage} of {totalPages}
+                  </Text>
+                )}
+              </Stack>
               <Button
                 variant="subtle"
                 size="xs"
@@ -685,10 +775,11 @@ export function DiscoverPage() {
                             c="dark"
                             style={{ textDecoration: "none" }}
                             onClick={(e) => e.stopPropagation()}
+                            aria-label={`View ${grant.title} on Grants.gov (opens in new tab)`}
                           >
                             <Group gap="xs" wrap="nowrap">
                               <Text lineClamp={2}>{grant.title}</Text>
-                              <IconExternalLink size={16} style={{ flexShrink: 0 }} />
+                              <IconExternalLink size={16} style={{ flexShrink: 0 }} aria-hidden="true" />
                             </Group>
                           </Anchor>
 
@@ -706,11 +797,12 @@ export function DiscoverPage() {
                             variant="light"
                             color="blue"
                             size="sm"
-                            leftSection={<IconFileText size={16} />}
+                            leftSection={<IconFileText size={16} aria-hidden="true" />}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleViewDetails(grant.id);
                             }}
+                            aria-label={`View details for ${grant.title}`}
                           >
                             Details
                           </Button>
@@ -720,15 +812,16 @@ export function DiscoverPage() {
                             size="sm"
                             leftSection={
                               isSaved ? (
-                                <IconBookmarkFilled size={16} />
+                                <IconBookmarkFilled size={16} aria-hidden="true" />
                               ) : (
-                                <IconBookmark size={16} />
+                                <IconBookmark size={16} aria-hidden="true" />
                               )
                             }
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSaveToggle(grant, isSaved);
                             }}
+                            aria-label={isSaved ? `Remove ${grant.title} from pipeline` : `Save ${grant.title} to pipeline`}
                           >
                             {isSaved ? "Saved" : "Save"}
                           </Button>
@@ -803,14 +896,21 @@ export function DiscoverPage() {
 
           {/* Pagination */}
           {!isLoading && !error && totalPages > 1 && (
-            <Group justify="center" py="md">
-              <Pagination
-                total={totalPages}
-                value={currentPage}
-                onChange={setCurrentPage}
-                color="grape"
-              />
-            </Group>
+            <Stack gap="sm">
+              <Group justify="center" py="md">
+                <Pagination
+                  total={totalPages}
+                  value={currentPage}
+                  onChange={setCurrentPage}
+                  color="grape"
+                  siblings={1}
+                  boundaries={1}
+                />
+              </Group>
+              <Text size="xs" c="dimmed" ta="center">
+                Page {currentPage} of {totalPages} ({(data?.totalCount ?? 0).toLocaleString()} total results)
+              </Text>
+            </Stack>
           )}
         </Stack>
       </Container>

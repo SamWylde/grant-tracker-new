@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import {
   Drawer,
   Stack,
@@ -83,7 +84,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: "red",
 };
 
-export function GrantDetailDrawer({
+export const GrantDetailDrawer = memo(function GrantDetailDrawer({
   grant,
   opened,
   onClose,
@@ -194,28 +195,36 @@ export function GrantDetailDrawer({
     enabled: opened && !!grant,
   });
 
-  // Early return after all hooks
-  if (!grant) return null;
+  // All hooks must be called before any early returns
+  const daysUntilDeadline = useMemo(() =>
+    grant?.close_date ? dayjs(grant.close_date).diff(dayjs(), "days") : null,
+    [grant?.close_date]
+  );
 
-  const daysUntilDeadline = grant.close_date
-    ? dayjs(grant.close_date).diff(dayjs(), "days")
-    : null;
+  const isOverdue = useMemo(() =>
+    daysUntilDeadline !== null && daysUntilDeadline < 0,
+    [daysUntilDeadline]
+  );
 
-  const isOverdue = daysUntilDeadline !== null && daysUntilDeadline < 0;
-  const isClosingSoon = daysUntilDeadline !== null && daysUntilDeadline <= 14 && daysUntilDeadline >= 0;
+  const isClosingSoon = useMemo(() =>
+    daysUntilDeadline !== null && daysUntilDeadline <= 14 && daysUntilDeadline >= 0,
+    [daysUntilDeadline]
+  );
 
   // Handle notes editing
-  const handleEditNotes = () => {
+  const handleEditNotes = useCallback(() => {
+    if (!grant) return;
     setNotesValue(grant.notes || "");
     setMentionedUsers([]);
     setIsEditingNotes(true);
-  };
+  }, [grant]);
 
-  const handleMentionAdded = (userId: string, userName: string) => {
+  const handleMentionAdded = useCallback((userId: string, userName: string) => {
     setMentionedUsers(prev => [...prev, { userId, userName }]);
-  };
+  }, []);
 
-  const handleSaveNotes = async () => {
+  const handleSaveNotes = useCallback(async () => {
+    if (!grant) return;
     setIsSavingNotes(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -244,7 +253,7 @@ export function GrantDetailDrawer({
             related_grant_id: grant.external_id,
             action_url: `/pipeline/grant/${grant.id}`,
             action_label: 'View Grant',
-          } as any);
+          });
         } catch (notifError) {
           console.error('Failed to send mention notification:', notifError);
         }
@@ -271,70 +280,65 @@ export function GrantDetailDrawer({
     } finally {
       setIsSavingNotes(false);
     }
-  };
+  }, [grant, notesValue, mentionedUsers, user?.email]);
 
-  const handlePrintBrief = () => {
+  const handlePrintBrief = useCallback(() => {
     if (!grant) return;
     printGrantBrief(grant, tasksData?.tasks);
-  };
+  }, [grant, tasksData?.tasks]);
 
   // Comment handlers
-  const handleReply = (commentId: string, authorName?: string) => {
+  const handleReply = useCallback((commentId: string, authorName?: string) => {
     setReplyingToCommentId(commentId);
     setReplyingToAuthor(authorName || null);
-  };
+  }, []);
 
-  const handleCancelReply = () => {
+  const handleCancelReply = useCallback(() => {
     setReplyingToCommentId(null);
     setReplyingToAuthor(null);
-  };
+  }, []);
 
-  const handleCommentSuccess = () => {
+  const handleCommentSuccess = useCallback(() => {
     refetchComments();
     handleCancelReply();
-  };
+  }, [refetchComments, handleCancelReply]);
 
-  const handleEditComment = async (commentId: string, content: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+  const handleEditComment = useCallback(async (commentId: string, content: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
 
-      const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ content }),
-      });
+    const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ content }),
+    });
 
-      if (!response.ok) throw new Error("Failed to update comment");
+    if (!response.ok) throw new Error("Failed to update comment");
 
-      refetchComments();
-    } catch (error) {
-      throw error;
-    }
-  };
+    refetchComments();
+  }, [refetchComments]);
 
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
 
-      const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-      });
+    const response = await fetch(`/api/comments/grant-comments?id=${commentId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+    });
 
-      if (!response.ok) throw new Error("Failed to delete comment");
+    if (!response.ok) throw new Error("Failed to delete comment");
 
-      refetchComments();
-    } catch (error) {
-      throw error;
-    }
-  };
+    refetchComments();
+  }, [refetchComments]);
+
+  // Early return after all hooks
+  if (!grant) return null;
 
   return (
     <Drawer
@@ -347,13 +351,19 @@ export function GrantDetailDrawer({
           <Text size="lg" fw={600} lineClamp={1}>
             Grant Details
           </Text>
-          <ActionIcon variant="subtle" color="gray" onClick={onClose}>
-            <IconX size={20} />
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            onClick={onClose}
+            aria-label="Close grant details drawer"
+          >
+            <IconX size={20} aria-hidden="true" />
           </ActionIcon>
         </Group>
       }
       withCloseButton={false}
       scrollAreaComponent={ScrollArea.Autosize}
+      aria-label="Grant details"
     >
       <ErrorBoundary boundaryName="GrantDetailDrawer">
         <Stack gap="lg">
@@ -385,6 +395,7 @@ export function GrantDetailDrawer({
                   cursor: 'pointer',
                 },
               }}
+              aria-label="Grant priority"
             />
 
             {/* Inline Status Editor */}
@@ -412,6 +423,7 @@ export function GrantDetailDrawer({
                   cursor: 'pointer',
                 },
               }}
+              aria-label="Grant status"
             />
           </Group>
           <Title order={3} mb="sm">
@@ -419,7 +431,7 @@ export function GrantDetailDrawer({
           </Title>
           {grant.agency && (
             <Group gap={6} mb="xs">
-              <IconBuilding size={16} style={{ color: "var(--mantine-color-gray-6)" }} />
+              <IconBuilding size={16} style={{ color: "var(--mantine-color-gray-6)" }} aria-hidden="true" />
               <Text size="sm" c="dimmed">
                 {grant.agency}
               </Text>
@@ -443,6 +455,8 @@ export function GrantDetailDrawer({
               : "var(--mantine-color-gray-0)",
             borderRadius: "var(--mantine-radius-md)",
           }}
+          role="region"
+          aria-label="Grant deadline information"
         >
           <Group gap="md">
             <IconCalendar
@@ -454,6 +468,7 @@ export function GrantDetailDrawer({
                   ? "var(--mantine-color-yellow-6)"
                   : "var(--mantine-color-gray-6)",
               }}
+              aria-hidden="true"
             />
             <div>
               <Text size="sm" fw={500}>
@@ -482,6 +497,7 @@ export function GrantDetailDrawer({
               <IconClock
                 size={20}
                 style={{ color: "var(--mantine-color-gray-6)" }}
+                aria-hidden="true"
               />
               <div>
                 <Text size="sm" fw={500}>
@@ -559,16 +575,18 @@ export function GrantDetailDrawer({
             href={`https://www.grants.gov/search-results-detail/${grant.external_id}`}
             target="_blank"
             rel="noopener noreferrer"
-            leftSection={<IconExternalLink size={16} />}
+            leftSection={<IconExternalLink size={16} aria-hidden="true" />}
             variant="light"
+            aria-label={`View ${grant.title} on Grants.gov (opens in new tab)`}
           >
             View on Grants.gov
           </Button>
           <Button
             onClick={handlePrintBrief}
-            leftSection={<IconPrinter size={16} />}
+            leftSection={<IconPrinter size={16} aria-hidden="true" />}
             variant="light"
             color="grape"
+            aria-label="Print grant brief"
           >
             Print Brief
           </Button>
@@ -577,22 +595,22 @@ export function GrantDetailDrawer({
         <Divider />
 
         {/* Tabs for Tasks, Budget, Payments, Compliance, AI Summary, Notes, and Comments */}
-        <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs value={activeTab} onChange={setActiveTab} aria-label="Grant detail sections">
           <Tabs.List>
             <Tabs.Tab value="tasks">Tasks</Tabs.Tab>
-            <Tabs.Tab value="documents" leftSection={<IconFile size={14} />}>
+            <Tabs.Tab value="documents" leftSection={<IconFile size={14} aria-hidden="true" />}>
               Documents
             </Tabs.Tab>
-            <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} />}>
+            <Tabs.Tab value="budget" leftSection={<IconCurrencyDollar size={14} aria-hidden="true" />}>
               Budget
             </Tabs.Tab>
-            <Tabs.Tab value="payments" leftSection={<IconReceipt size={14} />}>
+            <Tabs.Tab value="payments" leftSection={<IconReceipt size={14} aria-hidden="true" />}>
               Payments
             </Tabs.Tab>
-            <Tabs.Tab value="compliance" leftSection={<IconShieldCheck size={14} />}>
+            <Tabs.Tab value="compliance" leftSection={<IconShieldCheck size={14} aria-hidden="true" />}>
               Compliance
             </Tabs.Tab>
-            <Tabs.Tab value="ai-summary" leftSection={<IconSparkles size={14} />}>
+            <Tabs.Tab value="ai-summary" leftSection={<IconSparkles size={14} aria-hidden="true" />}>
               AI Summary
             </Tabs.Tab>
             <Tabs.Tab value="notes">Notes</Tabs.Tab>
@@ -656,13 +674,15 @@ export function GrantDetailDrawer({
                         setMentionedUsers([]);
                       }}
                       disabled={isSavingNotes}
+                      aria-label="Cancel editing notes"
                     >
                       Cancel
                     </Button>
                     <Button
-                      leftSection={<IconCheck size={16} />}
+                      leftSection={<IconCheck size={16} aria-hidden="true" />}
                       onClick={handleSaveNotes}
                       loading={isSavingNotes}
+                      aria-label="Save notes"
                     >
                       Save Notes
                     </Button>
@@ -681,9 +701,10 @@ export function GrantDetailDrawer({
                   )}
                   <Group justify="flex-end">
                     <Button
-                      leftSection={<IconEdit size={16} />}
+                      leftSection={<IconEdit size={16} aria-hidden="true" />}
                       variant="light"
                       onClick={handleEditNotes}
+                      aria-label={grant.notes ? "Edit grant notes" : "Add grant notes"}
                     >
                       {grant.notes ? "Edit Notes" : "Add Notes"}
                     </Button>
@@ -720,4 +741,4 @@ export function GrantDetailDrawer({
       </ErrorBoundary>
     </Drawer>
   );
-}
+});

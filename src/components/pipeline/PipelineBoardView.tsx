@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import {
   Box,
   Card,
@@ -52,7 +53,7 @@ interface PipelineBoardViewProps {
   onRemove: (grantId: string) => void;
 }
 
-export function PipelineBoardView({
+export const PipelineBoardView = memo(function PipelineBoardView({
   grantsByStage,
   draggedItem,
   onDragStart,
@@ -65,7 +66,7 @@ export function PipelineBoardView({
 }: PipelineBoardViewProps) {
   const navigate = useNavigate();
 
-  const getPriorityColor = (priority: string | null) => {
+  const getPriorityColor = useCallback((priority: string | null) => {
     switch (priority) {
       case "urgent":
         return "red";
@@ -76,7 +77,7 @@ export function PipelineBoardView({
       default:
         return "gray";
     }
-  };
+  }, []);
 
   return (
     <ScrollArea>
@@ -336,4 +337,4 @@ export function PipelineBoardView({
       </Group>
     </ScrollArea>
   );
-}
+});

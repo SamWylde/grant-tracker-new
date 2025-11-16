@@ -24,10 +24,24 @@ interface CustomGrantFormProps {
   onSuccess?: () => void;
 }
 
+interface FieldErrors {
+  title?: string;
+  closeDate?: string;
+  estimatedFunding?: string;
+  awardFloor?: string;
+  awardCeiling?: string;
+  expectedAwards?: string;
+  openDate?: string;
+  sourceUrl?: string;
+  applicationUrl?: string;
+}
+
 export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormProps) {
   const { currentOrg } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   // Form state
   const [title, setTitle] = useState('');
@@ -84,6 +98,113 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
     setSourceUrl('');
     setApplicationUrl('');
     setErrors([]);
+    setFieldErrors({});
+    setTouched({});
+  };
+
+  // Validation functions
+  const validateTitle = (value: string) => {
+    if (!value || value.trim() === '') {
+      return 'Grant title is required';
+    }
+    if (value.length < 3) {
+      return 'Grant title must be at least 3 characters';
+    }
+    if (value.length > 500) {
+      return 'Grant title must be less than 500 characters';
+    }
+    return undefined;
+  };
+
+  const validateUrl = (value: string) => {
+    if (!value) return undefined;
+    try {
+      new URL(value);
+      return undefined;
+    } catch {
+      return 'Please enter a valid URL (e.g., https://example.com)';
+    }
+  };
+
+  const validateDate = (value: string, fieldName: string) => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return `Invalid ${fieldName}`;
+    }
+    return undefined;
+  };
+
+  const validateDateRange = () => {
+    if (openDate && closeDate) {
+      const open = new Date(openDate);
+      const close = new Date(closeDate);
+      if (close < open) {
+        return 'Close date must be after open date';
+      }
+    }
+    return undefined;
+  };
+
+  const validateAwardRange = () => {
+    const floor = Number(awardFloor);
+    const ceiling = Number(awardCeiling);
+    if (floor && ceiling && floor > ceiling) {
+      return 'Award ceiling must be greater than award floor';
+    }
+    return undefined;
+  };
+
+  // Real-time validation
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    if (touched.title) {
+      setFieldErrors(prev => ({ ...prev, title: validateTitle(value) }));
+    }
+  };
+
+  const handleCloseDateChange = (value: string) => {
+    setCloseDate(value);
+    if (touched.closeDate) {
+      const error = validateDate(value, 'close date') || validateDateRange();
+      setFieldErrors(prev => ({ ...prev, closeDate: error }));
+    }
+  };
+
+  const handleOpenDateChange = (value: string) => {
+    setOpenDate(value);
+    if (touched.openDate) {
+      const error = validateDate(value, 'open date') || validateDateRange();
+      setFieldErrors(prev => ({ ...prev, openDate: error }));
+    }
+  };
+
+  const handleSourceUrlChange = (value: string) => {
+    setSourceUrl(value);
+    if (touched.sourceUrl) {
+      setFieldErrors(prev => ({ ...prev, sourceUrl: validateUrl(value) }));
+    }
+  };
+
+  const handleApplicationUrlChange = (value: string) => {
+    setApplicationUrl(value);
+    if (touched.applicationUrl) {
+      setFieldErrors(prev => ({ ...prev, applicationUrl: validateUrl(value) }));
+    }
+  };
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+
+    // Validate on blur
+    const newErrors: FieldErrors = {};
+    if (field === 'title') newErrors.title = validateTitle(title);
+    if (field === 'closeDate') newErrors.closeDate = validateDate(closeDate, 'close date') || validateDateRange();
+    if (field === 'openDate') newErrors.openDate = validateDate(openDate, 'open date') || validateDateRange();
+    if (field === 'sourceUrl') newErrors.sourceUrl = validateUrl(sourceUrl);
+    if (field === 'applicationUrl') newErrors.applicationUrl = validateUrl(applicationUrl);
+
+    setFieldErrors(prev => ({ ...prev, ...newErrors }));
   };
 
   const handleSubmit = async () => {
@@ -91,6 +212,46 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
       notifications.show({
         title: 'Error',
         message: 'No organization selected',
+        color: 'red',
+      });
+      return;
+    }
+
+    // Validate all fields before submission
+    const validationErrors: FieldErrors = {
+      title: validateTitle(title),
+      closeDate: validateDate(closeDate, 'close date') || validateDateRange(),
+      openDate: validateDate(openDate, 'open date'),
+      sourceUrl: validateUrl(sourceUrl),
+      applicationUrl: validateUrl(applicationUrl),
+    };
+
+    const awardRangeError = validateAwardRange();
+    if (awardRangeError) {
+      validationErrors.awardCeiling = awardRangeError;
+    }
+
+    // Remove undefined errors
+    Object.keys(validationErrors).forEach(key => {
+      if (!validationErrors[key as keyof FieldErrors]) {
+        delete validationErrors[key as keyof FieldErrors];
+      }
+    });
+
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setTouched({
+        title: true,
+        closeDate: true,
+        openDate: true,
+        sourceUrl: true,
+        applicationUrl: true,
+        awardFloor: true,
+        awardCeiling: true,
+      });
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please fix the errors in the form before submitting',
         color: 'red',
       });
       return;
@@ -191,8 +352,11 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
           label="Grant Title"
           placeholder="Enter grant title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={() => handleBlur('title')}
+          error={touched.title && fieldErrors.title}
           required
+          description="Provide a clear, descriptive title for the grant opportunity"
         />
 
         <Textarea
@@ -263,20 +427,38 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
             label="Award Floor"
             placeholder="Minimum award"
             value={awardFloor}
-            onChange={setAwardFloor}
+            onChange={(value) => {
+              setAwardFloor(value);
+              if (touched.awardFloor || touched.awardCeiling) {
+                const error = validateAwardRange();
+                setFieldErrors(prev => ({ ...prev, awardFloor: error, awardCeiling: error }));
+              }
+            }}
+            onBlur={() => handleBlur('awardFloor')}
+            error={touched.awardFloor && fieldErrors.awardFloor}
             prefix="$"
             thousandSeparator=","
             min={0}
+            description="Minimum award amount"
           />
 
           <NumberInput
             label="Award Ceiling"
             placeholder="Maximum award"
             value={awardCeiling}
-            onChange={setAwardCeiling}
+            onChange={(value) => {
+              setAwardCeiling(value);
+              if (touched.awardFloor || touched.awardCeiling) {
+                const error = validateAwardRange();
+                setFieldErrors(prev => ({ ...prev, awardFloor: error, awardCeiling: error }));
+              }
+            }}
+            onBlur={() => handleBlur('awardCeiling')}
+            error={touched.awardCeiling && fieldErrors.awardCeiling}
             prefix="$"
             thousandSeparator=","
             min={0}
+            description="Maximum award amount"
           />
         </Group>
 
@@ -286,7 +468,10 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
             placeholder="YYYY-MM-DD"
             type="date"
             value={openDate}
-            onChange={(e) => setOpenDate(e.target.value)}
+            onChange={(e) => handleOpenDateChange(e.target.value)}
+            onBlur={() => handleBlur('openDate')}
+            error={touched.openDate && fieldErrors.openDate}
+            description="When the grant opens"
           />
 
           <TextInput
@@ -294,8 +479,11 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
             placeholder="YYYY-MM-DD"
             type="date"
             value={closeDate}
-            onChange={(e) => setCloseDate(e.target.value)}
+            onChange={(e) => handleCloseDateChange(e.target.value)}
+            onBlur={() => handleBlur('closeDate')}
+            error={touched.closeDate && fieldErrors.closeDate}
             required
+            description="Application deadline"
           />
         </Group>
 
@@ -309,14 +497,20 @@ export function CustomGrantForm({ opened, onClose, onSuccess }: CustomGrantFormP
           label="Source URL"
           placeholder="https://..."
           value={sourceUrl}
-          onChange={(e) => setSourceUrl(e.target.value)}
+          onChange={(e) => handleSourceUrlChange(e.target.value)}
+          onBlur={() => handleBlur('sourceUrl')}
+          error={touched.sourceUrl && fieldErrors.sourceUrl}
+          description="Link to the grant announcement or details page"
         />
 
         <TextInput
           label="Application URL"
           placeholder="https://..."
           value={applicationUrl}
-          onChange={(e) => setApplicationUrl(e.target.value)}
+          onChange={(e) => handleApplicationUrlChange(e.target.value)}
+          onBlur={() => handleBlur('applicationUrl')}
+          error={touched.applicationUrl && fieldErrors.applicationUrl}
+          description="Link to the application portal"
         />
 
         <Group justify="flex-end" mt="md">

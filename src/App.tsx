@@ -1,6 +1,7 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
-import { MantineProvider } from "@mantine/core";
+import { lazy, Suspense } from "react";
+import { MantineProvider, Loader, Center, Stack, Text } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
@@ -9,46 +10,58 @@ import { OrganizationProvider } from "./contexts/OrganizationContext";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { HomePage } from "./pages/HomePage";
-import SignInPage from "./pages/SignInPage";
-import SignUpPage from "./pages/SignUpPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import UpdatePasswordPage from "./pages/UpdatePasswordPage";
-import { PricingPage } from "./pages/PricingPage";
-import { FeaturesPage } from "./pages/FeaturesPage";
-import { PrivacyPage } from "./pages/PrivacyPage";
-import { TermsPage } from "./pages/TermsPage";
-import { SecurityPage } from "./pages/SecurityPage";
-import { SupportPage } from "./pages/SupportPage";
-import { DiscoverPage } from "./pages/DiscoverPage";
-import { PipelinePage } from "./pages/PipelinePage";
-import { GrantDetailPage } from "./pages/GrantDetailPage";
-import { MetricsPage } from "./pages/MetricsPage";
-import { AnalyticsPage } from "./pages/AnalyticsPage";
-import { ActivityPage } from "./pages/ActivityPage";
-import { GrantHubImportPage } from "./pages/GrantHubImportPage";
-import { GrantHubMigrationPage } from "./pages/GrantHubMigrationPage";
-import { AcceptInvitePage } from "./pages/AcceptInvitePage";
-import { NotFoundPage } from "./pages/NotFoundPage";
-import { EligibilityWizardPage } from "./pages/EligibilityWizardPage";
-import { ApprovalWorkflowsPage } from "./pages/ApprovalWorkflowsPage";
-import { ApprovalsPage } from "./pages/ApprovalsPage";
-import { FundersPage } from "./pages/FundersPage";
-import {
-  ProfilePage,
-  OrganizationPage,
-  TeamPage,
-  TeamPerformancePage,
-  NotificationsPage,
-  AlertsPage,
-  CalendarPage,
-  BillingPage,
-  ReportsPage,
-  DangerZonePage,
-  PrivacyDataPage,
-  AdminPage,
-} from "./pages/settings";
 import { theme } from "./theme";
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <Center h="100vh">
+    <Stack align="center" gap="md">
+      <Loader size="lg" />
+      <Text c="dimmed">Loading...</Text>
+    </Stack>
+  </Center>
+);
+
+// Lazy load all page components for code splitting
+const HomePage = lazy(() => import("./pages/HomePage").then(m => ({ default: m.HomePage })));
+const SignInPage = lazy(() => import("./pages/SignInPage"));
+const SignUpPage = lazy(() => import("./pages/SignUpPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const UpdatePasswordPage = lazy(() => import("./pages/UpdatePasswordPage"));
+const PricingPage = lazy(() => import("./pages/PricingPage").then(m => ({ default: m.PricingPage })));
+const FeaturesPage = lazy(() => import("./pages/FeaturesPage").then(m => ({ default: m.FeaturesPage })));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage").then(m => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import("./pages/TermsPage").then(m => ({ default: m.TermsPage })));
+const SecurityPage = lazy(() => import("./pages/SecurityPage").then(m => ({ default: m.SecurityPage })));
+const SupportPage = lazy(() => import("./pages/SupportPage").then(m => ({ default: m.SupportPage })));
+const DiscoverPage = lazy(() => import("./pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })));
+const PipelinePage = lazy(() => import("./pages/PipelinePage").then(m => ({ default: m.PipelinePage })));
+const GrantDetailPage = lazy(() => import("./pages/GrantDetailPage").then(m => ({ default: m.GrantDetailPage })));
+const MetricsPage = lazy(() => import("./pages/MetricsPage").then(m => ({ default: m.MetricsPage })));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })));
+const ActivityPage = lazy(() => import("./pages/ActivityPage").then(m => ({ default: m.ActivityPage })));
+const GrantHubImportPage = lazy(() => import("./pages/GrantHubImportPage").then(m => ({ default: m.GrantHubImportPage })));
+const GrantHubMigrationPage = lazy(() => import("./pages/GrantHubMigrationPage").then(m => ({ default: m.GrantHubMigrationPage })));
+const AcceptInvitePage = lazy(() => import("./pages/AcceptInvitePage").then(m => ({ default: m.AcceptInvitePage })));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })));
+const EligibilityWizardPage = lazy(() => import("./pages/EligibilityWizardPage").then(m => ({ default: m.EligibilityWizardPage })));
+const ApprovalWorkflowsPage = lazy(() => import("./pages/ApprovalWorkflowsPage").then(m => ({ default: m.ApprovalWorkflowsPage })));
+const ApprovalsPage = lazy(() => import("./pages/ApprovalsPage").then(m => ({ default: m.ApprovalsPage })));
+const FundersPage = lazy(() => import("./pages/FundersPage").then(m => ({ default: m.FundersPage })));
+
+// Settings pages
+const ProfilePage = lazy(() => import("./pages/settings").then(m => ({ default: m.ProfilePage })));
+const OrganizationPage = lazy(() => import("./pages/settings").then(m => ({ default: m.OrganizationPage })));
+const TeamPage = lazy(() => import("./pages/settings").then(m => ({ default: m.TeamPage })));
+const TeamPerformancePage = lazy(() => import("./pages/settings").then(m => ({ default: m.TeamPerformancePage })));
+const NotificationsPage = lazy(() => import("./pages/settings").then(m => ({ default: m.NotificationsPage })));
+const AlertsPage = lazy(() => import("./pages/settings").then(m => ({ default: m.AlertsPage })));
+const CalendarPage = lazy(() => import("./pages/settings").then(m => ({ default: m.CalendarPage })));
+const BillingPage = lazy(() => import("./pages/settings").then(m => ({ default: m.BillingPage })));
+const ReportsPage = lazy(() => import("./pages/settings").then(m => ({ default: m.ReportsPage })));
+const DangerZonePage = lazy(() => import("./pages/settings").then(m => ({ default: m.DangerZonePage })));
+const PrivacyDataPage = lazy(() => import("./pages/settings").then(m => ({ default: m.PrivacyDataPage })));
+const AdminPage = lazy(() => import("./pages/settings").then(m => ({ default: m.AdminPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,7 +75,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <ErrorBoundary boundaryName="App" showDetails={true}>
-      <MantineProvider theme={theme} defaultColorScheme="light">
+      <MantineProvider theme={theme} defaultColorScheme="auto">
         <Notifications position="top-right" />
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
@@ -70,9 +83,10 @@ export default function App() {
               <BrowserRouter>
                 <ScrollToTop />
                 <ErrorBoundary boundaryName="Router" showDetails={true}>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route path="/" element={<HomePage />} />
+                  <Suspense fallback={<LoadingFallback />}>
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route path="/" element={<HomePage />} />
                     <Route path="/signin" element={<SignInPage />} />
                     <Route path="/signup" element={<SignUpPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -324,9 +338,10 @@ export default function App() {
                       }
                     />
 
-                    {/* 404 Catch-all Route */}
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Routes>
+                      {/* 404 Catch-all Route */}
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                  </Suspense>
                 </ErrorBoundary>
               </BrowserRouter>
             </OrganizationProvider>

@@ -90,6 +90,8 @@ export function GrantHubImportPage() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
+  const [importStatus, setImportStatus] = useState('');
+  const [importCancelled, setImportCancelled] = useState(false);
 
   // Auto-detect column mapping based on common field names
   const autoMapColumns = (columns: string[]): ColumnMapping => {
@@ -292,6 +294,8 @@ export function GrantHubImportPage() {
 
     setImporting(true);
     setImportProgress(0);
+    setImportCancelled(false);
+    setImportStatus('Starting import...');
 
     // Get auth token
     const { data: { session } } = await supabase.auth.getSession();
@@ -324,7 +328,14 @@ export function GrantHubImportPage() {
     const warnings: string[] = [];
 
     for (let i = 0; i < selectedGrants.length; i++) {
+      // Check if import was cancelled
+      if (importCancelled) {
+        setImportStatus('Import cancelled');
+        break;
+      }
+
       const grant = selectedGrants[i];
+      setImportStatus(`Importing grant ${i + 1} of ${selectedGrants.length}: ${grant.title.substring(0, 50)}...`);
 
       // Check for duplicate
       const grantKey = `${grant.title.toLowerCase()}|${(grant.agency || '').toLowerCase()}`;
@@ -448,7 +459,7 @@ export function GrantHubImportPage() {
                     <List size="sm">
                       <List.Item>Log in to your GrantHub account</List.Item>
                       <List.Item>Navigate to your grants list</List.Item>
-                      <List.Item>Click "Export" or "Download CSV"</List.Item>
+                      <List.Item>Click &quot;Export&quot; or &quot;Download CSV&quot;</List.Item>
                       <List.Item>Save the CSV file to your computer</List.Item>
                       <List.Item>Upload it here!</List.Item>
                     </List>
@@ -480,8 +491,8 @@ export function GrantHubImportPage() {
               <Stack gap="md" mt="lg">
                 <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
                   <Text size="sm">
-                    We've automatically detected your CSV columns and mapped them to GrantCue fields.
-                    Review and adjust the mapping below. At minimum, you must map one column to "Grant Title".
+                    We&apos;ve automatically detected your CSV columns and mapped them to GrantCue fields.
+                    Review and adjust the mapping below. At minimum, you must map one column to &quot;Grant Title&quot;.
                   </Text>
                 </Alert>
 
@@ -623,14 +634,39 @@ export function GrantHubImportPage() {
 
                 {importing && (
                   <Paper p="md" withBorder>
-                    <Stack gap="xs">
-                      <Text size="sm" fw={600}>
-                        Importing grants...
-                      </Text>
-                      <Progress value={importProgress} animated />
-                      <Text size="xs" c="dimmed">
-                        {importProgress.toFixed(0)}% complete
-                      </Text>
+                    <Stack gap="md">
+                      <Group justify="space-between" align="flex-start">
+                        <Stack gap="xs" style={{ flex: 1 }}>
+                          <Text size="sm" fw={600}>
+                            Importing grants...
+                          </Text>
+                          <Progress value={importProgress} size="lg" animated />
+                          <Group justify="space-between">
+                            <Text size="xs" c="dimmed">
+                              {importProgress.toFixed(0)}% complete
+                            </Text>
+                            <Text size="xs" fw={500}>
+                              {parsedGrants.filter(g => g.selected).length > 0
+                                ? `${Math.floor((importProgress / 100) * parsedGrants.filter(g => g.selected).length)} of ${parsedGrants.filter(g => g.selected).length} grants`
+                                : '0 of 0 grants'}
+                            </Text>
+                          </Group>
+                          {importStatus && (
+                            <Text size="xs" c="dimmed" lineClamp={1}>
+                              {importStatus}
+                            </Text>
+                          )}
+                        </Stack>
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="red"
+                          onClick={() => setImportCancelled(true)}
+                          disabled={importCancelled}
+                        >
+                          {importCancelled ? 'Cancelling...' : 'Cancel'}
+                        </Button>
+                      </Group>
                     </Stack>
                   </Paper>
                 )}
@@ -645,42 +681,60 @@ export function GrantHubImportPage() {
                     <Title order={2}>Import Complete!</Title>
 
                     {importResults && (
-                      <SimpleGrid cols={3} w="100%" mt="md">
-                        <Paper p="md" withBorder bg="var(--mantine-color-green-0)">
-                          <Stack gap={4} align="center">
-                            <Text size="xl" fw={700} c="green">
-                              {importResults.imported}
-                            </Text>
-                            <Text size="sm" c="dimmed">
-                              Imported
-                            </Text>
-                          </Stack>
-                        </Paper>
-                        {importResults.skipped > 0 && (
-                          <Paper p="md" withBorder bg="var(--mantine-color-yellow-0)">
+                      <>
+                        <SimpleGrid cols={3} w="100%" mt="md">
+                          <Paper p="md" withBorder bg="var(--mantine-color-green-0)">
                             <Stack gap={4} align="center">
-                              <Text size="xl" fw={700} c="orange">
-                                {importResults.skipped}
+                              <Text size="xl" fw={700} c="green">
+                                {importResults.imported}
                               </Text>
                               <Text size="sm" c="dimmed">
-                                Skipped (duplicates)
+                                Imported
                               </Text>
                             </Stack>
                           </Paper>
+                          {importResults.skipped > 0 && (
+                            <Paper p="md" withBorder bg="var(--mantine-color-yellow-0)">
+                              <Stack gap={4} align="center">
+                                <Text size="xl" fw={700} c="orange">
+                                  {importResults.skipped}
+                                </Text>
+                                <Text size="sm" c="dimmed">
+                                  Skipped (duplicates)
+                                </Text>
+                              </Stack>
+                            </Paper>
+                          )}
+                          {importResults.failed > 0 && (
+                            <Paper p="md" withBorder bg="var(--mantine-color-red-0)">
+                              <Stack gap={4} align="center">
+                                <Text size="xl" fw={700} c="red">
+                                  {importResults.failed}
+                                </Text>
+                                <Text size="sm" c="dimmed">
+                                  Failed
+                                </Text>
+                              </Stack>
+                            </Paper>
+                          )}
+                        </SimpleGrid>
+
+                        {/* Show detailed results */}
+                        {(importResults.skipped > 0 || importResults.failed > 0) && (
+                          <Alert color="blue" mt="md">
+                            <Text size="sm" fw={500} mb="xs">
+                              Import Details:
+                            </Text>
+                            <Text size="xs">
+                              {importResults.imported > 0 && `✓ ${importResults.imported} grants successfully imported`}
+                              {importResults.imported > 0 && (importResults.skipped > 0 || importResults.failed > 0) && <br />}
+                              {importResults.skipped > 0 && `⚠ ${importResults.skipped} grants skipped (already in pipeline)`}
+                              {importResults.skipped > 0 && importResults.failed > 0 && <br />}
+                              {importResults.failed > 0 && `✗ ${importResults.failed} grants failed to import. Check console for details.`}
+                            </Text>
+                          </Alert>
                         )}
-                        {importResults.failed > 0 && (
-                          <Paper p="md" withBorder bg="var(--mantine-color-red-0)">
-                            <Stack gap={4} align="center">
-                              <Text size="xl" fw={700} c="red">
-                                {importResults.failed}
-                              </Text>
-                              <Text size="sm" c="dimmed">
-                                Failed
-                              </Text>
-                            </Stack>
-                          </Paper>
-                        )}
-                      </SimpleGrid>
+                      </>
                     )}
 
                     <Text ta="center" c="dimmed" mt="md">

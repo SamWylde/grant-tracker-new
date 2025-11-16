@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -24,6 +24,7 @@ import { PipelineFilters } from "../components/pipeline/PipelineFilters";
 import { BulkActionsToolbar } from "../components/pipeline/BulkActionsToolbar";
 import { PipelineBoardView } from "../components/pipeline/PipelineBoardView";
 import { PipelineListView } from "../components/pipeline/PipelineListView";
+import { ConfirmationDialog } from "../components/ConfirmationDialog";
 
 // Pipeline stages
 const PIPELINE_STAGES = [
@@ -54,6 +55,10 @@ export function PipelinePage() {
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const [selectedGrantIds, setSelectedGrantIds] = useState<Set<string>>(new Set());
   const [isBulkOperating, setIsBulkOperating] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [singleGrantToDelete, setSingleGrantToDelete] = useState<string | null>(null);
+  const [singleGrantToArchive, setSingleGrantToArchive] = useState<string | null>(null);
 
   // View state management with URL persistence
   const viewParam = searchParams.get('view');
@@ -288,7 +293,7 @@ export function PipelinePage() {
   });
 
   // Bulk operations handlers
-  const toggleGrantSelection = (grantId: string) => {
+  const toggleGrantSelection = useCallback((grantId: string) => {
     const newSelection = new Set(selectedGrantIds);
     if (newSelection.has(grantId)) {
       newSelection.delete(grantId);
@@ -296,17 +301,18 @@ export function PipelinePage() {
       newSelection.add(grantId);
     }
     setSelectedGrantIds(newSelection);
-  };
+  }, [selectedGrantIds]);
 
-  const selectAllGrants = () => {
-    setSelectedGrantIds(new Set(sortedAndFilteredGrants.map(g => g.id)));
-  };
-
-  const deselectAllGrants = () => {
+  const deselectAllGrants = useCallback(() => {
     setSelectedGrantIds(new Set());
+  }, []);
+
+  const handleBulkDelete = () => {
+    if (selectedGrantIds.size === 0) return;
+    setDeleteConfirmOpen(true);
   };
 
-  const handleBulkDelete = async () => {
+  const confirmBulkDelete = async () => {
     if (selectedGrantIds.size === 0) return;
 
     setIsBulkOperating(true);
@@ -339,6 +345,7 @@ export function PipelinePage() {
       });
     } finally {
       setIsBulkOperating(false);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -423,26 +430,29 @@ export function PipelinePage() {
   };
 
   // Filter grants before grouping by stage
-  const filteredGrants = data?.grants ? data.grants.filter((grant) => {
-    if (grant.status === "archived") return false;
+  const filteredGrants = useMemo(() =>
+    data?.grants ? data.grants.filter((grant) => {
+      if (grant.status === "archived") return false;
 
-    if (filters.priority && filters.priority.length > 0) {
-      if (!grant.priority || !filters.priority.includes(grant.priority)) return false;
-    }
+      if (filters.priority && filters.priority.length > 0) {
+        if (!grant.priority || !filters.priority.includes(grant.priority)) return false;
+      }
 
-    if (filters.assignedTo && filters.assignedTo.length > 0) {
-      if (!grant.assigned_to || !filters.assignedTo.includes(grant.assigned_to)) return false;
-    }
+      if (filters.assignedTo && filters.assignedTo.length > 0) {
+        if (!grant.assigned_to || !filters.assignedTo.includes(grant.assigned_to)) return false;
+      }
 
-    if (showMyGrantsOnly && user) {
-      if (grant.assigned_to !== user.id) return false;
-    }
+      if (showMyGrantsOnly && user) {
+        if (grant.assigned_to !== user.id) return false;
+      }
 
-    return true;
-  }) : [];
+      return true;
+    }) : [],
+    [data?.grants, filters.priority, filters.assignedTo, showMyGrantsOnly, user]
+  );
 
   // Sort grants for list view
-  const sortedAndFilteredGrants = [...filteredGrants].sort((a, b) => {
+  const sortedAndFilteredGrants = useMemo(() => [...filteredGrants].sort((a, b) => {
     switch (sortBy) {
       case "deadline-asc":
         if (!a.close_date) return 1;
@@ -467,42 +477,50 @@ export function PipelinePage() {
       default:
         return 0;
     }
-  });
+  }), [filteredGrants, sortBy]);
 
   // Group grants by status
-  const grantsByStage = PIPELINE_STAGES.reduce((acc, stage) => {
-    acc[stage.id] = filteredGrants.filter((g) => g.status === stage.id);
-    return acc;
-  }, {} as Record<PipelineStage, SavedGrant[]>);
+  const grantsByStage = useMemo(() =>
+    PIPELINE_STAGES.reduce((acc, stage) => {
+      acc[stage.id] = filteredGrants.filter((g) => g.status === stage.id);
+      return acc;
+    }, {} as Record<PipelineStage, SavedGrant[]>),
+    [filteredGrants]
+  );
+
+  // selectAllGrants must be defined after sortedAndFilteredGrants
+  const selectAllGrants = useCallback(() => {
+    setSelectedGrantIds(new Set(sortedAndFilteredGrants.map(g => g.id)));
+  }, [sortedAndFilteredGrants]);
 
   // Drag and drop handlers
-  const handleDragStart = (e: React.DragEvent, grantId: string) => {
+  const handleDragStart = useCallback((e: React.DragEvent, grantId: string) => {
     setDraggedItem(grantId);
     e.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent, newStatus: PipelineStage) => {
+  const handleDrop = useCallback((e: React.DragEvent, newStatus: PipelineStage) => {
     e.preventDefault();
     if (draggedItem) {
       updateStatusMutation.mutate({ grantId: draggedItem, newStatus });
       setDraggedItem(null);
     }
-  };
+  }, [draggedItem, updateStatusMutation]);
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
-  };
+  }, []);
 
   if (!currentOrg) {
     return (
       <Box>
         <AppHeader subtitle="Pipeline" />
-        <Container size="xl" py="xl">
+        <Container size="xl" py="xl" component="main" id="main-content">
           <Text>Please select an organization</Text>
         </Container>
       </Box>
@@ -513,7 +531,7 @@ export function PipelinePage() {
     <Box bg="var(--mantine-color-gray-0)" mih="100vh">
       <AppHeader subtitle="Grant Pipeline" />
 
-      <Container size="xl" py="xl">
+      <Container size="xl" py="xl" component="main" id="main-content">
         <Stack gap="lg">
           {/* Header */}
           <PipelineHeader
@@ -585,8 +603,14 @@ export function PipelinePage() {
               onUpdateStatus={(grantId, newStatus) =>
                 updateStatusMutation.mutate({ grantId, newStatus })
               }
-              onArchive={(grantId) => archiveGrantMutation.mutate(grantId)}
-              onRemove={(grantId) => removeFromPipelineMutation.mutate(grantId)}
+              onArchive={(grantId) => {
+                setSingleGrantToArchive(grantId);
+                setArchiveConfirmOpen(true);
+              }}
+              onRemove={(grantId) => {
+                setSingleGrantToDelete(grantId);
+                setDeleteConfirmOpen(true);
+              }}
             />
           ) : (
             // List View
@@ -596,7 +620,10 @@ export function PipelinePage() {
               onToggleSelection={toggleGrantSelection}
               onSelectAll={selectAllGrants}
               onDeselectAll={deselectAllGrants}
-              onRemove={(grantId) => removeFromPipelineMutation.mutate(grantId)}
+              onRemove={(grantId) => {
+                setSingleGrantToDelete(grantId);
+                setDeleteConfirmOpen(true);
+              }}
               isLoading={isLoading}
             />
           )}
@@ -610,6 +637,50 @@ export function PipelinePage() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['savedGrants'] });
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        opened={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false);
+          setSingleGrantToDelete(null);
+        }}
+        onConfirm={singleGrantToDelete ? async () => {
+          await removeFromPipelineMutation.mutateAsync(singleGrantToDelete);
+          setDeleteConfirmOpen(false);
+          setSingleGrantToDelete(null);
+        } : confirmBulkDelete}
+        title="Delete Grants"
+        message={singleGrantToDelete
+          ? "Are you sure you want to remove this grant from your pipeline? This action cannot be undone."
+          : "Are you sure you want to remove these grants from your pipeline? This action cannot be undone."}
+        confirmLabel="Delete"
+        confirmColor="red"
+        loading={isBulkOperating || removeFromPipelineMutation.isPending}
+        itemCount={singleGrantToDelete ? 1 : selectedGrantIds.size}
+      />
+
+      {/* Archive Confirmation Dialog */}
+      <ConfirmationDialog
+        opened={archiveConfirmOpen}
+        onClose={() => {
+          setArchiveConfirmOpen(false);
+          setSingleGrantToArchive(null);
+        }}
+        onConfirm={async () => {
+          if (singleGrantToArchive) {
+            await archiveGrantMutation.mutateAsync(singleGrantToArchive);
+          }
+          setArchiveConfirmOpen(false);
+          setSingleGrantToArchive(null);
+        }}
+        title="Archive Grant"
+        message="Are you sure you want to archive this grant? Archived grants are hidden from your active pipeline but can be restored later."
+        confirmLabel="Archive"
+        confirmColor="orange"
+        loading={archiveGrantMutation.isPending}
+        itemCount={1}
       />
     </Box>
   );

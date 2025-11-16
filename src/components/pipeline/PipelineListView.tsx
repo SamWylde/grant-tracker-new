@@ -1,3 +1,4 @@
+import { memo, useCallback } from "react";
 import {
   Card,
   Stack,
@@ -28,7 +29,7 @@ interface PipelineListViewProps {
   isLoading: boolean;
 }
 
-export function PipelineListView({
+export const PipelineListView = memo(function PipelineListView({
   grants,
   selectedGrantIds,
   onToggleSelection,
@@ -39,7 +40,7 @@ export function PipelineListView({
 }: PipelineListViewProps) {
   const navigate = useNavigate();
 
-  const getPriorityColor = (priority: string | null) => {
+  const getPriorityColor = useCallback((priority: string | null) => {
     switch (priority) {
       case "urgent":
         return "red";
@@ -50,7 +51,7 @@ export function PipelineListView({
       default:
         return "gray";
     }
-  };
+  }, []);
 
   if (grants.length === 0) {
     return (
@@ -261,4 +262,4 @@ export function PipelineListView({
       </Stack>
     </>
   );
-}
+});

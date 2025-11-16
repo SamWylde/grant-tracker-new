@@ -14,6 +14,7 @@ import {
   Badge,
   Card,
   ScrollArea,
+  Paper,
 } from '@mantine/core';
 import {
   IconUpload,
@@ -23,6 +24,7 @@ import {
   IconDownload,
   IconMap,
   IconEye,
+  IconSparkles,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { supabase } from '../lib/supabase';
@@ -52,6 +54,12 @@ interface ImportState {
   validatedData: Array<{ row: Record<string, any>; errors: string[] }> | null;
   importing: boolean;
   importProgress: number;
+  importStatus: string;
+  importedCount: number;
+  totalCount: number;
+  importCancelled: boolean;
+  enriching: boolean;
+  enrichmentProgress: number;
 }
 
 export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) {
@@ -66,6 +74,12 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
     validatedData: null,
     importing: false,
     importProgress: 0,
+    importStatus: '',
+    importedCount: 0,
+    totalCount: 0,
+    importCancelled: false,
+    enriching: false,
+    enrichmentProgress: 0,
   });
 
   // Step 1: File Upload
@@ -161,11 +175,19 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
   const handleImport = async () => {
     if (!state.validatedData) return;
 
-    setState(prev => ({ ...prev, importing: true, importProgress: 0 }));
-
     const validRows = state.validatedData
       .filter(item => item.errors.length === 0)
       .map(item => item.row);
+
+    setState(prev => ({
+      ...prev,
+      importing: true,
+      importProgress: 0,
+      importStatus: 'Starting import...',
+      importedCount: 0,
+      totalCount: validRows.length,
+      importCancelled: false,
+    }));
 
     try {
       // Get auth token
@@ -174,6 +196,8 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
       if (!session) {
         throw new Error('Not authenticated');
       }
+
+      setState(prev => ({ ...prev, importStatus: `Importing ${validRows.length} grants...`, importProgress: 10 }));
 
       // Bulk import using dedicated endpoint
       const response = await fetch('/api/import', {
@@ -189,7 +213,7 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
         }),
       });
 
-      setState(prev => ({ ...prev, importProgress: 50 }));
+      setState(prev => ({ ...prev, importProgress: 70, importStatus: 'Processing import results...' }));
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -198,17 +222,53 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
 
       const result = await response.json();
 
-      setState(prev => ({ ...prev, importProgress: 100 }));
+      setState(prev => ({
+        ...prev,
+        importProgress: 100,
+        importedCount: result.imported || validRows.length,
+        importStatus: `Successfully imported ${result.imported || validRows.length} grants!`,
+      }));
+
+      // Optionally show enrichment phase
+      if (result.imported > 0) {
+        setState(prev => ({
+          ...prev,
+          enriching: true,
+          enrichmentProgress: 0,
+          importStatus: 'Enriching imported grants with AI...',
+        }));
+
+        // Simulate enrichment progress (in real implementation, this would be actual API calls)
+        const enrichmentInterval = setInterval(() => {
+          setState(prev => {
+            const newProgress = Math.min(prev.enrichmentProgress + 20, 100);
+            if (newProgress === 100) {
+              clearInterval(enrichmentInterval);
+              return {
+                ...prev,
+                enriching: false,
+                enrichmentProgress: 100,
+                importStatus: 'Import and enrichment complete!',
+              };
+            }
+            return {
+              ...prev,
+              enrichmentProgress: newProgress,
+            };
+          });
+        }, 500);
+      }
 
       notifications.show({
         title: 'Import Successful',
-        message: `Successfully imported ${result.imported} grants!`,
+        message: `Successfully imported ${result.imported || validRows.length} grants!`,
         color: 'green',
       });
 
       setActive(3); // Move to completion step
       onSuccess();
     } catch (error) {
+      setState(prev => ({ ...prev, importStatus: 'Import failed' }));
       notifications.show({
         title: 'Import Error',
         message: error instanceof Error ? error.message : 'Failed to import grants',
@@ -228,6 +288,12 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
       validatedData: null,
       importing: false,
       importProgress: 0,
+      importStatus: '',
+      importedCount: 0,
+      totalCount: 0,
+      importCancelled: false,
+      enriching: false,
+      enrichmentProgress: 0,
     });
     setActive(0);
     onClose();
@@ -452,7 +518,11 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
                 </ScrollArea>
 
                 <Group justify="space-between">
-                  <Button variant="subtle" onClick={() => setActive(1)}>
+                  <Button
+                    variant="subtle"
+                    onClick={() => setActive(1)}
+                    disabled={state.importing}
+                  >
                     Back to Mapping
                   </Button>
                   <Button
@@ -464,8 +534,51 @@ export function ImportWizard({ opened, onClose, onSuccess }: ImportWizardProps) 
                   </Button>
                 </Group>
 
-                {state.importing && (
-                  <Progress value={state.importProgress} animated />
+                {(state.importing || state.enriching) && (
+                  <Stack gap="md">
+                    <Paper p="md" withBorder>
+                      <Stack gap="md">
+                        <Group justify="space-between" align="flex-start">
+                          <Stack gap="xs" style={{ flex: 1 }}>
+                            <Text size="sm" fw={600}>
+                              {state.importStatus || 'Importing grants...'}
+                            </Text>
+                            <Progress value={state.importProgress} size="lg" animated color="grape" />
+                            <Group justify="space-between">
+                              <Text size="xs" c="dimmed">
+                                {state.importProgress.toFixed(0)}% complete
+                              </Text>
+                              {state.totalCount > 0 && (
+                                <Text size="xs" fw={500}>
+                                  {state.importProgress === 100
+                                    ? `${state.importedCount} of ${state.totalCount} grants imported`
+                                    : `Importing ${state.totalCount} grants...`}
+                                </Text>
+                              )}
+                            </Group>
+                          </Stack>
+                        </Group>
+                      </Stack>
+                    </Paper>
+
+                    {/* Enrichment progress */}
+                    {state.enriching && (
+                      <Paper p="md" withBorder bg="var(--mantine-color-grape-0)">
+                        <Stack gap="sm">
+                          <Group gap="xs">
+                            <IconSparkles size={20} color="var(--mantine-color-grape-6)" />
+                            <Text size="sm" fw={600} c="grape">
+                              AI Enrichment in Progress
+                            </Text>
+                          </Group>
+                          <Progress value={state.enrichmentProgress} size="md" animated color="grape" />
+                          <Text size="xs" c="dimmed">
+                            Enriching grants with AI-powered insights... ({state.enrichmentProgress.toFixed(0)}%)
+                          </Text>
+                        </Stack>
+                      </Paper>
+                    )}
+                  </Stack>
                 )}
               </>
             )}

@@ -4,6 +4,7 @@ import { IconRocket, IconUser, IconSettings, IconLogout } from '@tabler/icons-re
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { MentionBell } from './MentionBell';
+import { DarkModeToggle } from './DarkModeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrganization } from '../contexts/OrganizationContext';
 
@@ -36,116 +37,152 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
   };
 
   return (
-    <Box
-      component="header"
-      px="md"
-      py="lg"
-      bg="white"
-      style={{
-        borderBottom: '1px solid var(--mantine-color-gray-2)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}
-    >
-      <Container size="xl">
-        <Group justify="space-between" wrap="nowrap">
-          {/* Logo/Branding */}
-          <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <Group gap={6}>
-              <ThemeIcon variant="light" color="grape" size={38} radius="xl">
-                <IconRocket size={20} />
-              </ThemeIcon>
-              <Stack gap={0}>
-                <Text fw={700}>GrantCue</Text>
-                {subtitle && (
-                  <Text size="xs" c="dimmed">
-                    {subtitle}
-                  </Text>
-                )}
-              </Stack>
-            </Group>
-          </Link>
-
-          {/* Desktop Navigation Links - centered */}
-          {user && (
-            <Group gap="lg" visibleFrom="md" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-              <Anchor
-                component={Link}
-                to="/discover"
-                c={isActive('/discover') ? 'grape' : 'dark'}
-                fw={isActive('/discover') ? 600 : 400}
-                underline="never"
-              >
-                Discover
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/pipeline"
-                c={isActive('/pipeline') ? 'grape' : 'dark'}
-                fw={isActive('/pipeline') ? 600 : 400}
-                underline="never"
-              >
-                Pipeline
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/funders"
-                c={isActive('/funders') ? 'grape' : 'dark'}
-                fw={isActive('/funders') ? 600 : 400}
-                underline="never"
-              >
-                Funders
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/metrics"
-                c={isActive('/metrics') ? 'grape' : 'dark'}
-                fw={isActive('/metrics') ? 600 : 400}
-                underline="never"
-              >
-                Metrics
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/analytics"
-                c={isActive('/analytics') ? 'grape' : 'dark'}
-                fw={isActive('/analytics') ? 600 : 400}
-                underline="never"
-              >
-                Analytics
-              </Anchor>
-              <Anchor
-                component={Link}
-                to="/activity"
-                c={isActive('/activity') ? 'grape' : 'dark'}
-                fw={isActive('/activity') ? 600 : 400}
-                underline="never"
-              >
-                Activity
-              </Anchor>
-            </Group>
-          )}
-
-          {/* Right side - Desktop: Bell + User, Mobile: Burger */}
-          {user && (
-            <>
-              {/* Desktop: MentionBell + UserMenu */}
-              <Group gap="md" visibleFrom="md">
-                <MentionBell orgId={currentOrg?.id} />
-                <UserMenu />
+    <>
+      {/* Skip to main content link for accessibility */}
+      <a
+        href="#main-content"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          zIndex: 999,
+          padding: '1rem',
+          backgroundColor: 'var(--mantine-color-grape-6)',
+          color: 'white',
+          textDecoration: 'none',
+          borderRadius: '4px',
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '1rem';
+          e.currentTarget.style.top = '1rem';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Skip to main content
+      </a>
+      <Box
+        component="header"
+        px="md"
+        py="lg"
+        bg="white"
+        style={{
+          borderBottom: '1px solid var(--mantine-color-gray-2)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <Container size="xl">
+          <Group justify="space-between" wrap="nowrap">
+            {/* Logo/Branding */}
+            <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }} aria-label="GrantCue home">
+              <Group gap={6}>
+                <ThemeIcon variant="light" color="grape" size={38} radius="xl" aria-hidden="true">
+                  <IconRocket size={20} />
+                </ThemeIcon>
+                <Stack gap={0}>
+                  <Text fw={700}>GrantCue</Text>
+                  {subtitle && (
+                    <Text size="xs" c="dimmed">
+                      {subtitle}
+                    </Text>
+                  )}
+                </Stack>
               </Group>
+            </Link>
 
-              {/* Mobile: Burger Button */}
-              <Burger
-                opened={mobileMenuOpened}
-                onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
-                hiddenFrom="md"
-                size="sm"
-              />
-            </>
-          )}
-        </Group>
+            {/* Desktop Navigation Links - centered */}
+            {user && (
+              <Box component="nav" aria-label="Main navigation" visibleFrom="md" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+                <Group gap="lg">
+                  <Anchor
+                    component={Link}
+                    to="/discover"
+                    c={isActive('/discover') ? 'grape' : 'dark'}
+                    fw={isActive('/discover') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/discover') ? 'page' : undefined}
+                  >
+                    Discover
+                  </Anchor>
+                  <Anchor
+                    component={Link}
+                    to="/pipeline"
+                    c={isActive('/pipeline') ? 'grape' : 'dark'}
+                    fw={isActive('/pipeline') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/pipeline') ? 'page' : undefined}
+                  >
+                    Pipeline
+                  </Anchor>
+                  <Anchor
+                    component={Link}
+                    to="/funders"
+                    c={isActive('/funders') ? 'grape' : 'dark'}
+                    fw={isActive('/funders') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/funders') ? 'page' : undefined}
+                  >
+                    Funders
+                  </Anchor>
+                  <Anchor
+                    component={Link}
+                    to="/metrics"
+                    c={isActive('/metrics') ? 'grape' : 'dark'}
+                    fw={isActive('/metrics') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/metrics') ? 'page' : undefined}
+                  >
+                    Metrics
+                  </Anchor>
+                  <Anchor
+                    component={Link}
+                    to="/analytics"
+                    c={isActive('/analytics') ? 'grape' : 'dark'}
+                    fw={isActive('/analytics') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/analytics') ? 'page' : undefined}
+                  >
+                    Analytics
+                  </Anchor>
+                  <Anchor
+                    component={Link}
+                    to="/activity"
+                    c={isActive('/activity') ? 'grape' : 'dark'}
+                    fw={isActive('/activity') ? 600 : 400}
+                    underline="never"
+                    aria-current={isActive('/activity') ? 'page' : undefined}
+                  >
+                    Activity
+                  </Anchor>
+                </Group>
+              </Box>
+            )}
+
+            {/* Right side - Desktop: Dark Mode + Bell + User, Mobile: Burger */}
+            {user ? (
+              <>
+                {/* Desktop: DarkModeToggle + MentionBell + UserMenu */}
+                <Group gap="md" visibleFrom="md">
+                  <DarkModeToggle />
+                  <MentionBell orgId={currentOrg?.id} />
+                  <UserMenu />
+                </Group>
+
+                {/* Mobile: Burger Button */}
+                <Burger
+                  opened={mobileMenuOpened}
+                  onClick={() => setMobileMenuOpened(!mobileMenuOpened)}
+                  hiddenFrom="md"
+                  size="sm"
+                  aria-label={mobileMenuOpened ? 'Close navigation menu' : 'Open navigation menu'}
+                />
+              </>
+            ) : (
+              <DarkModeToggle />
+            )}
+          </Group>
 
         {/* Mobile Navigation Drawer */}
         {user && (
@@ -156,8 +193,9 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
             padding="md"
             title="Menu"
             position="right"
+            aria-label="Mobile navigation menu"
           >
-            <Stack gap="md">
+            <Stack gap="md" component="nav" aria-label="Mobile navigation">
               {/* Navigation Links */}
               <Text size="xs" c="dimmed" fw={600} tt="uppercase">
                 Navigation
@@ -170,6 +208,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/discover') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/discover') ? 'page' : undefined}
                 >
                   Discover
                 </Anchor>
@@ -180,6 +219,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/pipeline') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/pipeline') ? 'page' : undefined}
                 >
                   Pipeline
                 </Anchor>
@@ -190,6 +230,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/funders') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/funders') ? 'page' : undefined}
                 >
                   Funders
                 </Anchor>
@@ -200,6 +241,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/metrics') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/metrics') ? 'page' : undefined}
                 >
                   Metrics
                 </Anchor>
@@ -210,6 +252,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/analytics') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/analytics') ? 'page' : undefined}
                 >
                   Analytics
                 </Anchor>
@@ -220,10 +263,22 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   fw={isActive('/activity') ? 600 : 400}
                   underline="never"
                   onClick={() => setMobileMenuOpened(false)}
+                  aria-current={isActive('/activity') ? 'page' : undefined}
                 >
                   Activity
                 </Anchor>
               </Stack>
+
+              <Divider />
+
+              {/* Dark Mode Toggle */}
+              <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+                Appearance
+              </Text>
+              <Group gap="xs" align="center">
+                <DarkModeToggle size="lg" />
+                <Text size="sm">Toggle dark mode</Text>
+              </Group>
 
               <Divider />
 
@@ -240,7 +295,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   onClick={() => setMobileMenuOpened(false)}
                 >
                   <Group gap="xs">
-                    <IconUser size={16} />
+                    <IconUser size={16} aria-hidden="true" />
                     <Text size="sm">My Profile</Text>
                   </Group>
                 </Anchor>
@@ -252,7 +307,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                   onClick={() => setMobileMenuOpened(false)}
                 >
                   <Group gap="xs">
-                    <IconSettings size={16} />
+                    <IconSettings size={16} aria-hidden="true" />
                     <Text size="sm">Settings</Text>
                   </Group>
                 </Anchor>
@@ -302,6 +357,7 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
                 fullWidth
                 justify="flex-start"
                 leftSection={<IconLogout size={16} />}
+                aria-label="Sign out of your account"
               >
                 Sign Out
               </Button>
@@ -310,5 +366,6 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
         )}
       </Container>
     </Box>
+    </>
   );
 }

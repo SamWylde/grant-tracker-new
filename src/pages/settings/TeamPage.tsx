@@ -46,6 +46,8 @@ export function TeamPage() {
   // Invite form state
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<string>('contributor');
+  const [emailError, setEmailError] = useState<string | undefined>(undefined);
+  const [emailTouched, setEmailTouched] = useState(false);
 
   // Modal states
   const [removeModal, setRemoveModal] = useState<{ open: boolean; memberId?: string; name?: string }>({ open: false });
@@ -60,6 +62,43 @@ export function TeamPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
   const canManageTeam = hasPermission('manage_team');
+
+  // Email validation
+  const validateEmail = (email: string): string | undefined => {
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!email.includes('@')) {
+      return 'Please enter a valid email address';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    // Check if email is already a member
+    const existingMember = members?.find((m: any) => m.email?.toLowerCase() === email.toLowerCase());
+    if (existingMember) {
+      return 'This email is already a team member';
+    }
+    // Check if email has a pending invitation
+    const pendingInvite = invitations?.find((inv: any) => inv.email?.toLowerCase() === email.toLowerCase());
+    if (pendingInvite) {
+      return 'An invitation has already been sent to this email';
+    }
+    return undefined;
+  };
+
+  const handleEmailChange = (value: string) => {
+    setInviteEmail(value);
+    if (emailTouched) {
+      setEmailError(validateEmail(value));
+    }
+  };
+
+  const handleEmailBlur = () => {
+    setEmailTouched(true);
+    setEmailError(validateEmail(inviteEmail));
+  };
 
   // Load available roles for role assignment
   const { data: availableRoles } = useQuery({
@@ -110,6 +149,14 @@ export function TeamPage() {
     mutationFn: async () => {
       if (!currentOrg || !user) throw new Error('No organization or user');
 
+      // Validate before sending
+      const validationError = validateEmail(inviteEmail);
+      if (validationError) {
+        setEmailError(validationError);
+        setEmailTouched(true);
+        throw new Error(validationError);
+      }
+
       const invitation: Database['public']['Tables']['team_invitations']['Insert'] = {
         org_id: currentOrg.id,
         email: inviteEmail,
@@ -124,11 +171,14 @@ export function TeamPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teamInvitations'] });
+      const sentEmail = inviteEmail;
       setInviteEmail('');
       setInviteRole('contributor');
+      setEmailError(undefined);
+      setEmailTouched(false);
       notifications.show({
         title: 'Invitation sent',
-        message: `Invitation sent to ${inviteEmail}`,
+        message: `Invitation sent to ${sentEmail}`,
         color: 'green',
       });
     },
@@ -273,9 +323,13 @@ export function TeamPage() {
                       label="Email Address"
                       placeholder="teammate@example.com"
                       value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      onBlur={handleEmailBlur}
+                      error={emailTouched && emailError}
                       type="email"
                       required
+                      description="Enter the email address of the person you want to invite"
+                      leftSection={<IconUserEdit size={16} />}
                     />
 
                     <Select
@@ -288,7 +342,7 @@ export function TeamPage() {
 
                     <Button
                       fullWidth
-                      disabled={!inviteEmail || !inviteEmail.includes('@')}
+                      disabled={!inviteEmail || !!emailError || !inviteEmail.includes('@')}
                       loading={inviteMutation.isPending}
                       onClick={() => inviteMutation.mutate()}
                     >
@@ -533,7 +587,7 @@ export function TeamPage() {
                   <Stack gap="sm">
                     <Title order={4}>View Only Access</Title>
                     <Text size="sm">
-                      You're viewing the team as a <strong>Contributor</strong>. Only admins can
+                      You&apos;re viewing the team as a <strong>Contributor</strong>. Only admins can
                       invite or remove members.
                     </Text>
                   </Stack>
@@ -632,7 +686,9 @@ export function TeamPage() {
               <Button
                 loading={changeRoleMutation.isPending}
                 onClick={async () => {
-                  if (!changeRoleModal.memberId || !changeRoleModal.userId || !currentOrg || !user) return;
+                  if (!changeRoleModal.memberId || !changeRoleModal.userId || !currentOrg || !user) {
+                    return;
+                  }
 
                   try {
                     // Update legacy role
